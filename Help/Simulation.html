@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Simulation</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="custom_style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Simulation</h1>
+</header>
+<h1 id="starting-a-simulation">Starting a Simulation</h1>
+<p>A simulation is defined by the following parameters:</p>
+<ul>
+<li>min/max wavelength (wavelength range)</li>
+<li>incidence angle (phi/theta)</li>
+<li>incident light polarization (te/tm)</li>
+<li>layer setup (reflection medium/device/transmission medium)</li>
+<li>measurables (reflection/transmission/reflection)</li>
+</ul>
+<h1 id="simulation">Simulation</h1>
+<p>When the “simulate” button is clicked the program will gather the aforementioned information and use it to perform the simulation and then plot the results. The plot will show the results for the different measurables chosen, for instance is reflection/transmission/absorption are all checked then the simulation will plot the results for all three values.</p>
+<h1 id="multiple-simulation">Multiple Simulation</h1>
+<p>Multiple simulations can be done sequentially and the results will be plotted on the same plot and stored internally. The number of simulations stored are shown in the clear button (“clear(10)” means there are 10 simulations stored in memory). Clicking the clear button will flush all the results and clear all the open plots.</p>
+<h1 id="exporting-data">Exporting Data</h1>
+<p>The export button can be used to export simulation results to files. When clicked it will open the following interface.</p>
+<p>On the left it is possible to choose with measurables to export. On the right all the simulations are shown with the name describing the simulation setup ((theta, phi)/material name(material thickness)/material name(material thickness)) and then it is possible to preview the respective simulation, export that particular simulation or export all simulations stored</p>
+<figure>
+<img src="export.png" alt="Export" /><figcaption aria-hidden="true">Export</figcaption>
+</figure>
+<p><a href="help.html">Return to Home page</a></p>
+</body>
+</html>

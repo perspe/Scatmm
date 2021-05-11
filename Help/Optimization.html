@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Optimization</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="custom_style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Optimization</h1>
+</header>
+<h1 id="defining-the-optimization">Defining the Optimization</h1>
+<p>An optimization is defined by the following parameters:</p>
+<ul>
+<li>incidence angle (phi/theta)</li>
+<li>incident light polarization (te/tm)</li>
+<li>layer setup (reflection medium/device/transmission medium)</li>
+<li>optimization measurable (one of reflection/transmission/reflection)</li>
+<li>data to fit</li>
+</ul>
+<h1 id="steps-to-start-an-optimization">Steps to Start an Optimization</h1>
+<p>Before doing an optimization data should be imported to perform the fitting. The data should have 2 columns, one with the wavelength in nm and another one with the measurement to be fitted (absorption/reflection/transmission). Afterwards the user should select, from the simulation properties which is the measurable to be fitted. If the imported data, provides some reflection data, the user should only select reflection in the simulation properties.</p>
+<p>Afterwards, the layer setup should be built, by selecting the materials for the several layers and selecting the minimum and maximum thickness values for each layer. It is important to note that the program will never find values outside this range.</p>
+<h1 id="optimization">Optimization</h1>
+<p>The optimization is started by clicking the “Optimize” button. After doing that, the progress bar will provide information regarding the progress of the optimization.</p>
+<p>When the optimization finishes it will plot the best result achieved alongside the imported data and will provide the best found thicknesses in the text box on the bottom right.</p>
+<p><a href="help.html">Return to Home page</a></p>
+</body>
+</html>

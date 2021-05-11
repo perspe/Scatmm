@@ -1,0 +1,6 @@
+n_particles:int:25
+n_iter:int:30
+w:float:0.55
+c1:float:1.2
+c2:float:1.9
+sim_points:int:200
