@@ -6,9 +6,9 @@
 
 ## Description
 
-This script implements a graphical interface (on PyQt5) to interact with the transfer matrix method (calculater Reflection/Transmission/Absorption for 1D stacked material layers). The transfer matrix method was developed from the information provided on the Computational Electromagnetics Youtube video series by [EMPossible](https://www.youtube.com/channel/UCPC6uCfBVSK71MnPPcp8AGA).
+This script implements a graphical interface (on PyQt5) to interact with the transfer matrix method (calculate Reflection/Transmission/Absorption for 1D stacked material layers). The transfer matrix method was developed from the information provided on the Computational Electromagnetics Youtube video series by [EMPossible](https://www.youtube.com/channel/UCPC6uCfBVSK71MnPPcp8AGA).
 The program has a database of materials (easily expanded with new materials), that is used to perform the calculations.
-This programm allows for:
+This program allows for:
 * Calculation of arbitrarily sized stacks of planar materials
 * Export the results of simulations to text files
 * Import data to compare with simulations
@@ -29,6 +29,6 @@ python scatmm.py
 ```
 
 When run the program will display the image bellow.
-The help menu provides a brief description of all the programm's capabilities
+The help menu provides a brief description of all the program's capabilities
 
 ![Scatmm Interface](gui.png)
