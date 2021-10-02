@@ -6,9 +6,11 @@ import os
 import sys
 import math
 import webbrowser
+import json
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
@@ -22,6 +24,8 @@ from smm_export_window import Ui_ExportWindow
 from smm_import_db_mat import Ui_ImportDB
 from smm_main_window import Ui_SMM_Window
 from smm_properties_ui import Ui_Properties
+
+VERSION = "1.1.0"
 
 # Set plot to be opened by default
 plt.ion()
@@ -49,7 +53,8 @@ class OptimizeWorkder(QtCore.QThread):
         self.thickness = thickness
         self.e_array = e_array
         self.ref_check, self.trn_check, self.abs_check = checks
-        self.particle_info = particle_info
+        self.particle_info = {key: info[1]
+                              for key, info in particle_info.items()}
         self.iterator = 0
 
     def run(self):
@@ -161,10 +166,9 @@ class SMMGUI(QMainWindow):
         self.sim_results = []
         # Store imported data
         self.imported_data = []
-        # Load simulation properties
-        self.global_properties = {}
-        self.global_properties_type = {}
-        self.load_default_properties()
+        # Load simulation default properties
+        with open("config.json", "r") as config:
+            self.global_properties = json.load(config)
         # Initialize main dictionaries for simulations
         self.sim_config = {
             "materials": self.sim_mat,
@@ -229,49 +233,36 @@ class SMMGUI(QMainWindow):
     def aboutDialog(self):
         """Show the about dialog"""
         title = "About Scatmm"
-        msg = "Graphical interface to interact with the transfer matrix method (using scattering matrices\n\nAuthor: Miguel Alexandre\n\nVersion: 1.0.1"
+        msg = "Graphical interface to interact with"\
+            "the transfer matrix method (using scattering"\
+            f"matrices\n\nAuthor: Miguel Alexandre\n\nVersion: {VERSION}"
         QMessageBox.about(self, title, msg)
-
-    def load_default_properties(self):
-        """ Load the default properties from the propertiesrc file """
-        with open("propertiesrc", "r") as props:
-            lines = props.readlines()
-            for line in lines:
-                if line == '':
-                    continue
-                line = line.split("\n")[0]
-                lines_values = line.split(":")
-                if lines_values[1] == "int":
-                    self.global_properties[lines_values[0]] = int(
-                        lines_values[2])
-                    self.global_properties_type[lines_values[0]] = int
-                elif lines_values[1] == "float":
-                    self.global_properties[lines_values[0]] = float(
-                        lines_values[2])
-                    self.global_properties_type[lines_values[0]] = float
 
     def update_properties(self):
         """
         Update all the properties - Linked to Apply button in properties window
         """
-        for key in self.global_properties.keys():
-            self.global_properties[key] = self.global_properties_type[key](
-                self.propertie_values[key].text())
+        try:
+            for key in self.global_properties.keys():
+                if self.global_properties[key][0] == "int":
+                    self.global_properties[key] = ["int", int(
+                        self.propertie_values[key].text())]
+                elif self.global_properties[key][0] == "float":
+                    self.global_properties[key] = ["float", float(
+                        self.propertie_values[key].text())]
+                else:
+                    raise Exception("Unknown type format in config.json")
+        except ValueError:
+            raise Exception("Mistaken type in config file")
         self.properties_window.close()
 
     def save_default_properties(self):
         """
         Store the properties as default values in the propertiesrc file
         """
-        with open("propertiesrc", "w") as props:
-            for key in self.propertie_values.keys():
-                if self.global_properties_type[key] == int:
-                    props.write(key + ":int:" +
-                                self.propertie_values[key].text() + "\n")
-                elif self.global_properties_type[key] == float:
-                    props.write(key + ":float:" +
-                                self.propertie_values[key].text() + "\n")
         self.update_properties()
+        with open("config.json", "w") as config:
+            json.dump(self.global_properties, config, indent=2)
 
     def open_properties(self):
         """
@@ -294,7 +285,7 @@ class SMMGUI(QMainWindow):
         # Load the properties values from the global properties variable
         for key in self.global_properties.keys():
             self.propertie_values[key].setText(str(
-                self.global_properties[key]))
+                self.global_properties[key][1]))
 
         # Atribute actions to the different buttons
         self.properties_ui.properties_close_button.clicked.connect(
@@ -569,14 +560,12 @@ class SMMGUI(QMainWindow):
         title = "Invalid Import Format"
         msg = "The imported data has an unacceptable format"
         try:
-            data = np.loadtxt(filepath, comments="#")
+            data_df = pd.read_csv(filepath, sep="[ ;,:]")
+            data = data_df.values
         except ValueError:
-            try:
-                data = np.loadtxt(filepath, delimiter=",", comments="#")
-            except ValueError:
-                QMessageBox.warning(self, title, msg, QMessageBox.Close,
-                                    QMessageBox.Close)
-                raise ValueError
+            QMessageBox.warning(self, title, msg, QMessageBox.Close,
+                                QMessageBox.Close)
+            raise ValueError
         return data
 
     def import_data(self):
@@ -604,7 +593,7 @@ class SMMGUI(QMainWindow):
         try:
             theta, phi, pol, lmb_min, lmb_max = self.get_sim_data()
             lmb = np.linspace(lmb_min, lmb_max,
-                              self.global_properties["sim_points"])
+                              self.global_properties["sim_points"][1])
             # Get all the sim_config_values
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
             thick, e_array, mat = self.get_material_config(
@@ -786,8 +775,10 @@ class SMMGUI(QMainWindow):
         self.ui.opt_res_text.clear()
         # Check if only one optimization option is chosen
         title = "Bad Optimization option"
-        msg1 = "Only one of Absorption/Reflection/Transmission options can be chosen for optimization"
-        msg2 = "One of the Absorption/Reflection/Transmission options must be chosen for optimization"
+        msg1 = "Only one of Absorption/Reflection/Transmission"\
+            "options can be chosen for optimization"
+        msg2 = "One of the Absorption/Reflection/Transmission"\
+            "options must be chosen for optimization"
         ref_check = self.sim_data["ref"].isChecked()
         trn_check = self.sim_data["trn"].isChecked()
         abs_check = self.sim_data["abs"].isChecked()
