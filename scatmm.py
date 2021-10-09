@@ -10,7 +10,7 @@ import webbrowser
 import json
 
 import matplotlib.style as mstyle
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import numpy as np
 import pandas as pd
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -40,9 +40,12 @@ class OptimizeWorkder(QtCore.QThread):
     updateTextSignal = QtCore.pyqtSignal(str)
     updateOptButton = QtCore.pyqtSignal(bool)
 
-    def __init__(self, particle_info, lmb, compare_data, theta, phi, pol,
-                 ref_medium, trn_medium, thickness, e_array, checks):
+    def __init__(self, figure_handler, particle_info, lmb, compare_data,
+                 theta, phi, pol, ref_medium, trn_medium, thickness,
+                 e_array, checks):
         super().__init__()
+        self.figure_canvas = figure_handler
+        self.figure = self.figure_canvas.axes
         self.lmb = lmb
         self.compare_data = compare_data
         self.theta = theta
@@ -63,8 +66,6 @@ class OptimizeWorkder(QtCore.QThread):
         """
         # Disable optimization button
         self.updateOptButton.emit(False)
-
-        # Define function to optimize
 
         def optimize_function(**thicknesses):
             t_array = np.stack([thick_i for thick_i in thicknesses.values()])
@@ -111,7 +112,7 @@ class OptimizeWorkder(QtCore.QThread):
         self.updateOptButton.emit(True)
         for i, t_i in enumerate(best_thick):
             self.updateTextSignal.emit(f"thick {i+1} = {t_i:.3f}")
-        # Plot data
+        # Reinit the graph and plot the best curve
         ref, trn = smm_broadband(self.theta,
                                  self.phi,
                                  self.e_array,
@@ -121,15 +122,12 @@ class OptimizeWorkder(QtCore.QThread):
                                  inc_medium=self.ref_medium,
                                  trn_medium=self.trn_medium)
         if self.ref_check:
-            plt.plot(self.lmb, ref, label="Optimized Ref")
+            self.figure.plot(self.lmb, ref, ":")
         elif self.trn_check:
-            plt.plot(self.lmb, trn, label="Optimized Trn")
+            self.figure.plot(self.lmb, trn, ":")
         elif self.abs_check:
-            plt.plot(self.lmb, 1 - ref - trn)
-            # plt.plot(lmb, 1 - ref - trn, label="Optimized Abs")
-        plt.ylabel("Abs/Trn/Ref")
-        plt.xlabel("Wavelength (nm)")
-        # plt.legend(bbox_to_anchor=(1, 1), loc="upper left")
+            self.figure.plot(self.lmb, 1-trn-ref, ":")
+        self.figure_canvas.draw()
 
 
 class SMMGUI(QMainWindow):
@@ -145,7 +143,7 @@ class SMMGUI(QMainWindow):
         self.main_canvas = PltFigure(self.fig_layout, "Wavelength (nm)",
                                      "R/T/Abs")
         self.addToolBar(QtCore.Qt.TopToolBarArea,
-                        NavigationToolbar(self.main_canvas, self))
+                        NavigationToolbar2QT(self.main_canvas, self))
         # Alias to add plots to the figure
         self.main_figure = self.main_canvas.axes
         # Initialize database
@@ -575,7 +573,7 @@ class SMMGUI(QMainWindow):
         self.main_canvas.reinit()
         self.clear_button.setText("Clear")
 
-    """ Functions and export button """
+    """ Export button and associated functions """
 
     def export_simulation(self):
         """
@@ -778,6 +776,9 @@ class SMMGUI(QMainWindow):
             # Get the data for optimization
             lmb = self.imported_data[:, 0].T
             compare_data = self.imported_data[:, 1][:, np.newaxis]
+            self.main_canvas.reinit()
+            self.main_figure.plot(lmb, compare_data, "-.")
+            self.main_canvas.draw()
             theta, phi, pol, _, _ = self.get_sim_data()
             ref_medium, trn_medium = self.get_medium_config(self.opt_config)
             thick, e_array, _ = self.get_material_config(lmb,
@@ -786,10 +787,20 @@ class SMMGUI(QMainWindow):
             # Create a new worker thread to do the optimization
             self.ui.opt_res_text.clear()
             self.ui.opt_res_text.append("Simulation started...")
-            self.opt_worker = OptimizeWorkder(
-                self.global_properties, lmb, compare_data, theta, phi, pol,
-                ref_medium, trn_medium, thick, e_array,
-                (ref_check, trn_check, abs_check))
+            self.opt_worker = OptimizeWorkder(self.main_canvas,
+                                              self.global_properties,
+                                              lmb,
+                                              compare_data,
+                                              theta,
+                                              phi,
+                                              pol,
+                                              ref_medium,
+                                              trn_medium,
+                                              thick,
+                                              e_array,
+                                              (ref_check,
+                                                  trn_check,
+                                                  abs_check))
             # Connect the new thread with functions from the main thread
             self.opt_worker.updateValueSignal.connect(self.update_progress_bar)
             self.opt_worker.updateTextSignal.connect(self.updateTextBrower)
@@ -827,7 +838,8 @@ class SMMGUI(QMainWindow):
         except ValueError:
             return
         self.imported_data = data[:, [0, 1]]
-        self.main_figure.plot(data[:, 0], data[:, 1], '.', label="Import Data")
+        self.main_figure.plot(data[:, 0], data[:, 1],
+                              '--', label="Import Data")
         self.main_canvas.draw()
 
     """ Generic function to import data from file """
@@ -848,8 +860,28 @@ class SMMGUI(QMainWindow):
         return data
 
     def dragEnterEvent(self, event):
-        # TODO: Implemet drag and drop <09-10-21, Miguel> #
-        pass
+        """ Check for correct datatype to accept drops """
+        if event.mimeData().hasUrls:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        """ Check if only a single file was imported and then
+        import the data from that file """
+        if event.mimeData().hasUrls():
+            url = event.mimeData().urls()
+            if len(url) > 1:
+                QMessageBox.warning(self, "Multiple Import",
+                                    "Only a single file can be imported!!!",
+                                    QMessageBox.Close,
+                                    QMessageBox.Close)
+                return
+            data = self.get_data_from_file(str(url[0].toLocalFile()))
+            self.imported_data = data[:, [0, 1]]
+            self.main_figure.plot(
+                data[:, 0], data[:, 1], "--", label="Import Data")
+            self.main_canvas.draw()
 
 
 if __name__ == "__main__":

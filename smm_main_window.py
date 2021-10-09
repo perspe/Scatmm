@@ -2,24 +2,23 @@
 
 # Form implementation generated from reading ui file 'Designer_UIs/main.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.1
+# Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
-
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_SMM_Window(object):
     def setupUi(self, SMM_Window):
         SMM_Window.setObjectName("SMM_Window")
-        SMM_Window.resize(1252, 540)
+        SMM_Window.resize(1335, 622)
         font = QtGui.QFont()
         font.setFamily("Arial")
         font.setPointSize(13)
         SMM_Window.setFont(font)
+        SMM_Window.setAcceptDrops(True)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("Designer_UIs/../logo.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("../logo.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         SMM_Window.setWindowIcon(icon)
         self.centralwidget = QtWidgets.QWidget(SMM_Window)
         self.centralwidget.setObjectName("centralwidget")
@@ -752,22 +751,22 @@ class Ui_SMM_Window(object):
         self.verticalLayout_3.addWidget(self.import_button)
         self.horizontalLayout_5.addWidget(self.right_frame)
         self.figure_widget = QtWidgets.QWidget(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.figure_widget.sizePolicy().hasHeightForWidth())
         self.figure_widget.setSizePolicy(sizePolicy)
-        self.figure_widget.setMinimumSize(QtCore.QSize(600, 0))
+        self.figure_widget.setMinimumSize(QtCore.QSize(600, 550))
         self.figure_widget.setStyleSheet("")
         self.figure_widget.setObjectName("figure_widget")
         self.figure_frame = QtWidgets.QFrame(self.figure_widget)
-        self.figure_frame.setGeometry(QtCore.QRect(0, 10, 591, 461))
+        self.figure_frame.setGeometry(QtCore.QRect(0, 10, 591, 541))
         self.figure_frame.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.figure_frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.figure_frame.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.figure_frame.setObjectName("figure_frame")
         self.verticalLayoutWidget = QtWidgets.QWidget(self.figure_frame)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 591, 471))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 591, 541))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
         self.figure_layout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.figure_layout.setContentsMargins(0, 0, 0, 0)
@@ -775,7 +774,7 @@ class Ui_SMM_Window(object):
         self.horizontalLayout_5.addWidget(self.figure_widget)
         SMM_Window.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(SMM_Window)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1252, 26))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1335, 26))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
@@ -944,3 +943,4 @@ class Ui_SMM_Window(object):
         self.actionProperties.setText(_translate("SMM_Window", "Properties"))
         self.actionHelp.setText(_translate("SMM_Window", "Help"))
         self.actionAbout.setText(_translate("SMM_Window", "About"))
+
