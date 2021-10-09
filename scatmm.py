@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 Main script that combines everything from the SMM method
 """
@@ -8,28 +9,27 @@ import math
 import webbrowser
 import json
 
-import matplotlib.pyplot as plt
+import matplotlib.style as mstyle
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import numpy as np
 import pandas as pd
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 from scipy.interpolate import interp1d
 
 from Database.database import Database
 from modules.pso import particle_swarm
 from modules.scattering_matrix import smm_broadband
-from smm_database_window import Ui_Database
+from modules.fig_class import PltFigure, FigWidget
 from smm_export_window import Ui_ExportWindow
-from smm_import_db_mat import Ui_ImportDB
 from smm_main_window import Ui_SMM_Window
 from smm_properties_ui import Ui_Properties
+from db_window import DBWindow
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
-# Set plot to be opened by default
-plt.ion()
-plt.style.use("smm_style")
+# Default plot properties
+mstyle.use("smm_style")
 
 
 class OptimizeWorkder(QtCore.QThread):
@@ -40,9 +40,12 @@ class OptimizeWorkder(QtCore.QThread):
     updateTextSignal = QtCore.pyqtSignal(str)
     updateOptButton = QtCore.pyqtSignal(bool)
 
-    def __init__(self, particle_info, lmb, compare_data, theta, phi, pol,
-                 ref_medium, trn_medium, thickness, e_array, checks):
+    def __init__(self, figure_handler, particle_info, lmb, compare_data,
+                 theta, phi, pol, ref_medium, trn_medium, thickness,
+                 e_array, checks):
         super().__init__()
+        self.figure_canvas = figure_handler
+        self.figure = self.figure_canvas.axes
         self.lmb = lmb
         self.compare_data = compare_data
         self.theta = theta
@@ -63,8 +66,6 @@ class OptimizeWorkder(QtCore.QThread):
         """
         # Disable optimization button
         self.updateOptButton.emit(False)
-
-        # Define function to optimize
 
         def optimize_function(**thicknesses):
             t_array = np.stack([thick_i for thick_i in thicknesses.values()])
@@ -111,7 +112,7 @@ class OptimizeWorkder(QtCore.QThread):
         self.updateOptButton.emit(True)
         for i, t_i in enumerate(best_thick):
             self.updateTextSignal.emit(f"thick {i+1} = {t_i:.3f}")
-        # Plot data
+        # Reinit the graph and plot the best curve
         ref, trn = smm_broadband(self.theta,
                                  self.phi,
                                  self.e_array,
@@ -121,15 +122,12 @@ class OptimizeWorkder(QtCore.QThread):
                                  inc_medium=self.ref_medium,
                                  trn_medium=self.trn_medium)
         if self.ref_check:
-            plt.plot(self.lmb, ref, label="Optimized Ref")
+            self.figure.plot(self.lmb, ref, ":")
         elif self.trn_check:
-            plt.plot(self.lmb, trn, label="Optimized Trn")
+            self.figure.plot(self.lmb, trn, ":")
         elif self.abs_check:
-            plt.plot(self.lmb, 1 - ref - trn)
-            # plt.plot(lmb, 1 - ref - trn, label="Optimized Abs")
-        plt.ylabel("Abs/Trn/Ref")
-        plt.xlabel("Wavelength (nm)")
-        # plt.legend(bbox_to_anchor=(1, 1), loc="upper left")
+            self.figure.plot(self.lmb, 1-trn-ref, ":")
+        self.figure_canvas.draw()
 
 
 class SMMGUI(QMainWindow):
@@ -140,6 +138,14 @@ class SMMGUI(QMainWindow):
         super(SMMGUI, self).__init__()
         self.ui = Ui_SMM_Window()
         self.ui.setupUi(self)
+        # Initialize the Main Figure
+        self.fig_layout = self.ui.figure_layout
+        self.main_canvas = PltFigure(self.fig_layout, "Wavelength (nm)",
+                                     "R/T/Abs")
+        self.addToolBar(QtCore.Qt.TopToolBarArea,
+                        NavigationToolbar2QT(self.main_canvas, self))
+        # Alias to add plots to the figure
+        self.main_figure = self.main_canvas.axes
         # Initialize database
         self.database = Database(os.path.join("Database", "database"))
         # Initialize list with the buttons in the opt and sim tabs
@@ -238,6 +244,8 @@ class SMMGUI(QMainWindow):
             f"matrices\n\nAuthor: Miguel Alexandre\n\nVersion: {VERSION}"
         QMessageBox.about(self, title, msg)
 
+    """ Properties Button and associated functions """
+
     def update_properties(self):
         """
         Update all the properties - Linked to Apply button in properties window
@@ -258,7 +266,7 @@ class SMMGUI(QMainWindow):
 
     def save_default_properties(self):
         """
-        Store the properties as default values in the propertiesrc file
+        Store default properties in config.json file
         """
         self.update_properties()
         with open("config.json", "w") as config:
@@ -294,6 +302,8 @@ class SMMGUI(QMainWindow):
             self.update_properties)
         self.properties_ui.save_default_button.clicked.connect(
             self.save_default_properties)
+
+    """ Layer Management """
 
     def add_layer(self, tab):
         """
@@ -413,6 +423,8 @@ class SMMGUI(QMainWindow):
             self.opt_mat_size_max[-1].deleteLater()
             del self.opt_mat_size_max[-1]
 
+    """ Aliases to get information necessary for simulation/optimization """
+
     def get_sim_data(self):
         """
         Get simulation configuration
@@ -420,6 +432,7 @@ class SMMGUI(QMainWindow):
         try:
             theta = np.radians(float(self.sim_data["theta"].text()))
             phi = np.radians(float(self.sim_data["phi"].text()))
+            # TODO: Normalize the polarization vector <08-10-21, Miguel> #
             pol = (complex(self.sim_data["pte"].text()),
                    complex(self.sim_data["ptm"].text()))
             lmb_min = float(self.sim_data["lmb_min"].text())
@@ -493,97 +506,13 @@ class SMMGUI(QMainWindow):
             return thick, e_array.T, material_i
         except ValueError:
             title = "Error: Material Out of Bounds"
-            message = "One of the materials in the simulation is undefined for the defined wavelength range"
+            message = "One of the materials in the simulation is"\
+                "undefined for the defined wavelength range"
             QMessageBox.warning(self, title, message, QMessageBox.Close,
                                 QMessageBox.Close)
             raise ValueError
 
-    def sim_plot_data(self, lmb, ref, trn):
-        """
-        Verify which checkboxes are toggled and plot data accordingly
-        """
-        fig_num = 0
-        for _ in plt.get_fignums():
-            fig_num += 1
-        if fig_num > 1:
-            title = "Error: Too many Open Plots"
-            message = "Sry I'm not that smart...\n\
-                    Must close non-simulation plots before proceding"
-
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
-                                QMessageBox.Close)
-            return
-        # Cleal all previous optimization plots
-        if not self.last_plot_sim:
-            plt.clear("all")
-            self.last_plot_sim = True
-        # Check what data to plot
-        ref_check = self.sim_data["ref"].isChecked()
-        trn_check = self.sim_data["trn"].isChecked()
-        abs_check = self.sim_data["abs"].isChecked()
-        simulations = str(len(self.sim_results))
-        # Plot according to the checkboxes
-        if ref_check:
-            plt.plot(lmb, ref, label="R Sim(" + simulations + ")")
-        if trn_check:
-            plt.plot(lmb, trn, label="T Sim(" + simulations + ")")
-        if abs_check:
-            plt.plot(lmb, 1 - ref - trn, label="A Sim(" + simulations + ")")
-        plt.ylabel("Abs/Trn/Ref")
-        plt.xlabel("Wavelength (nm)")
-        # plt.ylim([0, 1])
-        plt.legend(bbox_to_anchor=(1, 1), loc="upper left")
-
-    def clear_sim_buffer(self):
-        """
-        Clear all stored simulation values and destroy all open plots
-        """
-        self.sim_results = []
-        plt.close("all")
-        self.clear_button.setText("Clear")
-
-    def sim_results_update(self, theta, phi, mat, thick, lmb, ref, trn):
-        """
-        Update the simulation results
-        """
-        ident_string = "(" + str(round(math.degrees(theta), 2)) + "," + str(
-            round(math.degrees(phi), 2)) + ") "
-        for mat_i, thick_i in zip(mat, thick):
-            ident_string += "|" + mat_i[:9] + "(" + str(thick_i) + ")"
-        self.sim_results.append((ident_string, lmb, ref, trn))
-        self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
-
-    def get_data_from_file(self, filepath):
-        """
-        Get data from file and return it as numpy array
-        """
-        title = "Invalid Import Format"
-        msg = "The imported data has an unacceptable format"
-        try:
-            data_df = pd.read_csv(filepath, sep="[ ;,:]")
-            data = data_df.values
-        except ValueError:
-            QMessageBox.warning(self, title, msg, QMessageBox.Close,
-                                QMessageBox.Close)
-            raise ValueError
-        return data
-
-    def import_data(self):
-        """
-        Function for import button - import data for simulation/optimization
-        """
-        filepath = QFileDialog.getOpenFileName(self, 'Open File')
-        if filepath[0] == '':
-            return
-        try:
-            data = self.get_data_from_file(filepath[0])
-        except ValueError:
-            return
-        self.imported_data = data[:, [0, 1]]
-        plt.plot(data[:, 0], data[:, 1], '.', label="Import Data")
-        plt.xlabel("Wavelength (nm)")
-        plt.ylabel("Abs/Ref/Trn")
-        plt.legend(bbox_to_anchor=(1, 1), loc="upper left")
+    """ Simulate and plot simulation data """
 
     def simulate(self):
         """
@@ -605,6 +534,67 @@ class SMMGUI(QMainWindow):
             return ref, trn
         except ValueError:
             pass
+
+    def sim_plot_data(self, lmb, ref, trn):
+        """
+        Verify which checkboxes are toggled and plot data accordingly
+        """
+        # Check what data to plot
+        ref_check = self.sim_data["ref"].isChecked()
+        trn_check = self.sim_data["trn"].isChecked()
+        abs_check = self.sim_data["abs"].isChecked()
+        simulations = str(len(self.sim_results))
+        # Plot according to the checkboxes
+        if ref_check:
+            self.main_figure.plot(lmb, ref, label="R Sim(" + simulations + ")")
+        if trn_check:
+            self.main_figure.plot(lmb, trn, label="T Sim(" + simulations + ")")
+        if abs_check:
+            self.main_figure.plot(lmb, 1 - ref - trn,
+                                  label="A Sim(" + simulations + ")")
+        self.main_canvas.draw()
+
+    def sim_results_update(self, theta, phi, mat, thick, lmb, ref, trn):
+        """
+        Update the simulation results
+        """
+        ident_string = "(" + str(round(math.degrees(theta), 2)) + "," + str(
+            round(math.degrees(phi), 2)) + ") "
+        for mat_i, thick_i in zip(mat, thick):
+            ident_string += "|" + mat_i[:9] + "(" + str(thick_i) + ")"
+        self.sim_results.append((ident_string, lmb, ref, trn))
+        self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
+
+    def clear_sim_buffer(self):
+        """
+        Clear all stored simulation values and destroy all open plots
+        """
+        self.sim_results = []
+        self.main_canvas.reinit()
+        self.clear_button.setText("Clear")
+
+    """ Export button and associated functions """
+
+    def export_simulation(self):
+        """
+        Open a new window displaying all the simulated results
+        Choose outputs and then ask for directory to output information
+        """
+        self.export_window = QtWidgets.QTabWidget()
+        self.export_ui = Ui_ExportWindow()
+        self.export_ui.setupUi(self.export_window)
+        self.export_window.show()
+        self.chosen_sim = self.export_ui.simulations_combobox
+        self.export_checks = [
+            self.export_ui.reflection_checkbox,
+            self.export_ui.transmission_checkbox,
+            self.export_ui.absorption_checkbox
+        ]
+        export_names = [sim_name for sim_name, _, _, _ in self.sim_results]
+        self.chosen_sim.addItems(export_names)
+        self.export_ui.export_all_button.clicked.connect(self.export_all)
+        self.export_ui.export_button.clicked.connect(self.export)
+        self.export_ui.preview_button.clicked.connect(self.preview_export)
 
     def export(self):
         """
@@ -666,7 +656,7 @@ class SMMGUI(QMainWindow):
                                                "Text Files (*.txt)")
         if savepath[0] == '':
             return
-        export_name = os.path.basename(savepath[2])
+        export_name = os.path.basename(savepath[0])
         export_dir = os.path.dirname(savepath[0])
         ref_check = self.export_checks[0].isChecked()
         trn_check = self.export_checks[1].isChecked()
@@ -725,36 +715,19 @@ class SMMGUI(QMainWindow):
         Preview the selected simulation chosen in the combobox
         """
         sim_choice = self.chosen_sim.currentText()
-        fig_preview, ax_preview = plt.subplots()
+        self.preview_window = FigWidget(f"Preview {sim_choice}")
+        self.preview_fig = PltFigure(self.preview_window.layout,
+                                     "Wavelength (nm)", "R/T/Abs", width=7)
+        self.preview_window.show()
         for name, lmb, ref, trn in self.sim_results:
             if name == sim_choice:
-                ax_preview.plot(lmb, ref, lmb, trn)
-                ax_preview.set_xlabel("Wavelength (nm)")
-                ax_preview.set_ylabel("Abs/Ref/Trn")
-        self.export_window.raise_()
-        self.export_window.setFocus(True)
-        self.export_window.activateWindow()
+                self.preview_fig.axes.plot(lmb, ref, label="Ref")
+                self.preview_fig.axes.plot(lmb, trn, label="Trn")
+                self.preview_fig.axes.plot(lmb, 1-ref-trn, label="Abs")
+        self.preview_fig.axes.legend(bbox_to_anchor=(1, 1), loc="upper left")
+        self.preview_fig.draw()
 
-    def export_simulation(self):
-        """
-        Open a new window displaying all the simulated results
-        Choose outputs and then ask for directory to output information
-        """
-        self.export_window = QtWidgets.QTabWidget()
-        self.export_ui = Ui_ExportWindow()
-        self.export_ui.setupUi(self.export_window)
-        self.export_window.show()
-        self.chosen_sim = self.export_ui.simulations_combobox
-        self.export_checks = [
-            self.export_ui.reflection_checkbox,
-            self.export_ui.transmission_checkbox,
-            self.export_ui.absorption_checkbox
-        ]
-        export_names = [sim_name for sim_name, _, _, _ in self.sim_results]
-        self.chosen_sim.addItems(export_names)
-        self.export_ui.export_all_button.clicked.connect(self.export_all)
-        self.export_ui.export_button.clicked.connect(self.export)
-        self.export_ui.preview_button.clicked.connect(self.preview_export)
+    """ Optimization functions """
 
     def update_progress_bar(self, value):
         """Connect the progress bar with the worker thread"""
@@ -803,6 +776,9 @@ class SMMGUI(QMainWindow):
             # Get the data for optimization
             lmb = self.imported_data[:, 0].T
             compare_data = self.imported_data[:, 1][:, np.newaxis]
+            self.main_canvas.reinit()
+            self.main_figure.plot(lmb, compare_data, "-.")
+            self.main_canvas.draw()
             theta, phi, pol, _, _ = self.get_sim_data()
             ref_medium, trn_medium = self.get_medium_config(self.opt_config)
             thick, e_array, _ = self.get_material_config(lmb,
@@ -811,10 +787,20 @@ class SMMGUI(QMainWindow):
             # Create a new worker thread to do the optimization
             self.ui.opt_res_text.clear()
             self.ui.opt_res_text.append("Simulation started...")
-            self.opt_worker = OptimizeWorkder(
-                self.global_properties, lmb, compare_data, theta, phi, pol,
-                ref_medium, trn_medium, thick, e_array,
-                (ref_check, trn_check, abs_check))
+            self.opt_worker = OptimizeWorkder(self.main_canvas,
+                                              self.global_properties,
+                                              lmb,
+                                              compare_data,
+                                              theta,
+                                              phi,
+                                              pol,
+                                              ref_medium,
+                                              trn_medium,
+                                              thick,
+                                              e_array,
+                                              (ref_check,
+                                                  trn_check,
+                                                  abs_check))
             # Connect the new thread with functions from the main thread
             self.opt_worker.updateValueSignal.connect(self.update_progress_bar)
             self.opt_worker.updateTextSignal.connect(self.updateTextBrower)
@@ -829,236 +815,73 @@ class SMMGUI(QMainWindow):
                                 QMessageBox.Close, QMessageBox.Close)
             self.ui.opt_res_text.append("Optimization Failed")
 
-    def update_db_preview(self):
-        """
-        Update visualizer of database materials
-        """
-        self.data.clear()
-        self.data.setHorizontalHeaderLabels(
-            ["Material", "Min Wav (µm)", "Max Wav (µm)"])
-        for index, material in enumerate(self.database.content):
-            data_array = self.database[material]
-            lmb_min = np.min(data_array[:, 0])
-            lmb_max = np.max(data_array[:, 0])
-            data = [
-                QStandardItem(material),
-                QStandardItem(str(np.around(lmb_min / 1000, 2))),
-                QStandardItem(str(np.around(lmb_max / 1000, 2)))
-            ]
-            self.data.insertRow(index, data)
-
-    def update_mat_comboboxes(self):
-        """
-        Update checkboxes in simulation and optimization tabs with db materials
-        """
-        for smat, omat in zip(self.sim_mat, self.opt_mat):
-            smat.clear()
-            omat.clear()
-            smat.addItems(self.database.content)
-            omat.addItems(self.database.content)
-
-    def choose_db_mat(self):
-        """
-        Open a AskFileDialog to choose a file with the material data and
-        update the qtextlabel with the name of the file
-        """
-        filepath = QFileDialog.getOpenFileName(self, 'Open File')
-        if filepath[0] == '':
-            return
-        chosen_unit = self.db_import_ui.unit_combobox.currentText()
-        filename = os.path.basename(filepath[0])
-        self.db_import_window.raise_()
-        self.db_import_window.setFocus(True)
-        self.db_import_window.activateWindow()
-        self.new_mat = self.get_data_from_file(filepath[0])
-        if self.new_mat.shape[0] == 0:
-            return
-        self.new_mat[:, 0] *= self.units[chosen_unit]
-        if self.new_mat.shape[1] < 3:
-            title = "Incomplete import"
-            msg = "The data must have 3 columns (wavelength/n/k)"
-            QMessageBox.warning(self, title, msg, QMessageBox.Close,
-                                QMessageBox.Close)
-            self.new_mat = np.array([])
-        else:
-            self.db_import_ui.chosen_file_label.setText(filename)
-        self.db_import_window.raise_()
-        self.db_import_window.setFocus(True)
-        self.db_import_window.activateWindow()
-
-    def import_db_mat(self):
-        """
-        Add the chosen material to the database
-        """
-        mat_name = self.db_import_ui.mat_name_edit.text()
-        if self.new_mat.shape[0] == 0:
-            QMessageBox.information(self, "Choose File",
-                                    "Must select a file before importing",
-                                    QMessageBox.Ok, QMessageBox.Ok)
-            self.db_import_window.raise_()
-            self.db_import_window.setFocus(True)
-            self.db_import_window.activateWindow()
-            return
-        elif mat_name == '':
-            QMessageBox.information(
-                self, "No material name",
-                "Please select a material name before importing",
-                QMessageBox.Ok, QMessageBox.Ok)
-            self.db_import_window.raise_()
-            self.db_import_window.setFocus(True)
-            self.db_import_window.activateWindow()
-            return
-        self.database.add_content(mat_name, self.new_mat)
-        self.new_mat = np.array([])
-        self.db_import_window.close()
-        QMessageBox.information(self, "Import Successful",
-                                "Material imported successfully",
-                                QMessageBox.Ok, QMessageBox.Ok)
-        # Update the database previews
-        self.update_db_preview()
-        # Update the comboboxes with the materials
-        self.update_mat_comboboxes()
-        self.database_window.raise_()
-        self.database_window.setFocus(True)
-        self.database_window.activateWindow()
-
-    def preview_db_mat(self):
-        """
-        Show a preview of the imported data with the interpolation
-        """
-        if self.new_mat.shape[0] == 0:
-            QMessageBox.information(self, "Choose File",
-                                    "Must select a file before previewing",
-                                    QMessageBox.Ok, QMessageBox.Ok)
-            self.db_import_window.raise_()
-            self.db_import_window.setFocus(True)
-            self.db_import_window.activateWindow()
-            return
-        lmb, n, k = self.new_mat[:, 0], self.new_mat[:, 1], self.new_mat[:, 2]
-        interp_n = interp1d(lmb, n)
-        interp_k = interp1d(lmb, k)
-        # Plot the results
-        fig_preview, ax_preview = plt.subplots()
-        ax_preview_k = ax_preview.twinx()
-        ax_preview.set_xlabel("Wavelength (nm)")
-        ax_preview.set_ylabel("n")
-        ax_preview.plot(lmb, n, 'b.', label="Imported n")
-        ax_preview.plot(lmb, interp_n(lmb), 'b', label="Interpolated n")
-        ax_preview_k.plot(lmb, k, 'r.', label="Imported k")
-        ax_preview_k.plot(lmb, interp_k(lmb), 'r', label="Interpolated k")
-        ax_preview_k.set_ylabel("k")
-        ax_preview.legend(loc="upper right")
-        ax_preview_k.legend(loc="center right")
-        self.db_import_window.raise_()
-        self.db_import_window.setFocus(True)
-        self.db_import_window.activateWindow()
-
-    def add_db_material(self):
-        """
-        Open a new UI to manage importing new data
-        """
-        self.new_mat = np.array([])
-        self.units = {"nm": 1, "um": 1e3, "mm": 1e6}
-        self.db_import_window = QtWidgets.QTabWidget()
-        self.db_import_ui = Ui_ImportDB()
-        self.db_import_ui.setupUi(self.db_import_window)
-        self.db_import_window.show()
-        self.db_import_ui.unit_combobox.addItems(list(self.units.keys()))
-        self.db_import_ui.choose_file_button.clicked.connect(
-            self.choose_db_mat)
-        self.db_import_ui.import_button.clicked.connect(self.import_db_mat)
-        self.db_import_ui.preview_button.clicked.connect(self.preview_db_mat)
-
-    def rmv_db_material(self):
-        """
-        Remove the currently selected material from the database
-        """
-        choice = self.db_table.currentIndex().row()
-        if choice < 0:
-            QMessageBox.information(self, "Choose a material",
-                                    "No material chosen to be removed!!",
-                                    QMessageBox.Ok, QMessageBox.Ok)
-            # Put focus on the database window
-            self.database_window.setFocus(True)
-            self.database_window.activateWindow()
-            self.database_window.raise_()
-            return
-        # Ask the user for confirmation to delete the material
-        answer = QMessageBox.question(
-            self, "Remove Material",
-            f"Do you really want to delete {self.database.content[choice]}?",
-            QMessageBox.No | QMessageBox.Yes, QMessageBox.Yes)
-        if answer == QMessageBox.Yes:
-            mat_choice = self.database.content[choice]
-            ret = self.database.rmv_content(mat_choice)
-            # Rebuild the material comboboxes in the main gui
-            self.update_mat_comboboxes()
-            if ret == 0:
-                QMessageBox.information(self, "Removed Successfully",
-                                        "Material Removed Successfully!!",
-                                        QMessageBox.Ok, QMessageBox.Ok)
-            self.update_db_preview()
-        # Put focus on the Database window
-        self.database_window.setFocus(True)
-        self.database_window.activateWindow()
-        self.database_window.raise_()
-
-    def db_preview(self):
-        """
-        Get selected material from the QTableView Widget and plot the
-        stored values and their interpolations
-        """
-        choice = self.db_table.currentIndex().row()
-        if choice < 0:
-            QMessageBox.information(self, "Choose a material",
-                                    "No material chosen for preview!!",
-                                    QMessageBox.Ok, QMessageBox.Ok)
-            # Put focus on the database window
-            self.database_window.setFocus(True)
-            self.database_window.activateWindow()
-            self.database_window.raise_()
-            return
-        # Get the database values and the interpolations
-        data = self.database[choice]
-        lmb, n, k = data[:, 0], data[:, 1], data[:, 2]
-        interp_n = interp1d(lmb, n)
-        interp_k = interp1d(lmb, k)
-        # Plot the results
-        fig_preview, ax_preview = plt.subplots()
-        ax_preview_k = ax_preview.twinx()
-        ax_preview.set_xlabel("Wavelength (nm)")
-        ax_preview.set_ylabel("n")
-        ax_preview.plot(lmb, n, 'b.', label="Imported n")
-        ax_preview.plot(lmb, interp_n(lmb), 'b', label="Interpolated n")
-        ax_preview_k.plot(lmb, k, 'r.', label="Imported k")
-        ax_preview_k.plot(lmb, interp_k(lmb), 'r', label="Interpolated k")
-        ax_preview_k.set_ylabel("k")
-        ax_preview.legend(loc="upper right")
-        ax_preview_k.legend(loc="center right")
-        # Put focus on the Database window
-        self.database_window.setFocus(True)
-        self.database_window.activateWindow()
-        self.database_window.raise_()
+    """ Open the Database Window """
 
     def view_database(self):
         """
         Open a new window to see all the database materials
         """
-        # Create a new window to show the database ui
-        self.database_window = QtWidgets.QTabWidget()
-        self.data = QStandardItemModel()
-        self.database_ui = Ui_Database()
-        self.database_ui.setupUi(self.database_window)
-        self.database_window.show()
-        # Setup the QTableView widget
-        self.db_table = self.database_ui.database_table
-        self.db_table.setModel(self.data)
-        self.data.setColumnCount(3)
-        self.update_db_preview()
-        # Connect buttons
-        self.database_ui.add_material.clicked.connect(self.add_db_material)
-        self.database_ui.rmv_material.clicked.connect(self.rmv_db_material)
-        self.database_ui.view_material.clicked.connect(self.db_preview)
+        self.db_ui = DBWindow(self, self.database)
+        self.db_ui.show()
+
+    """ Import data from file """
+
+    def import_data(self):
+        """
+        Function for import button - import data for simulation/optimization
+        """
+        filepath = QFileDialog.getOpenFileName(self, 'Open File')
+        if filepath[0] == '':
+            return
+        try:
+            data = self.get_data_from_file(filepath[0])
+        except ValueError:
+            return
+        self.imported_data = data[:, [0, 1]]
+        self.main_figure.plot(data[:, 0], data[:, 1],
+                              '--', label="Import Data")
+        self.main_canvas.draw()
+
+    """ Generic function to import data from file """
+
+    def get_data_from_file(self, filepath):
+        """
+        Get data from file and return it as numpy array
+        """
+        title = "Invalid Import Format"
+        msg = "The imported data has an unacceptable format"
+        try:
+            data_df = pd.read_csv(filepath, sep="[ ;,:\t]")
+            data = data_df.values
+        except ValueError:
+            QMessageBox.warning(self, title, msg, QMessageBox.Close,
+                                QMessageBox.Close)
+            raise ValueError
+        return data
+
+    def dragEnterEvent(self, event):
+        """ Check for correct datatype to accept drops """
+        if event.mimeData().hasUrls:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        """ Check if only a single file was imported and then
+        import the data from that file """
+        if event.mimeData().hasUrls():
+            url = event.mimeData().urls()
+            if len(url) > 1:
+                QMessageBox.warning(self, "Multiple Import",
+                                    "Only a single file can be imported!!!",
+                                    QMessageBox.Close,
+                                    QMessageBox.Close)
+                return
+            data = self.get_data_from_file(str(url[0].toLocalFile()))
+            self.imported_data = data[:, [0, 1]]
+            self.main_figure.plot(
+                data[:, 0], data[:, 1], "--", label="Import Data")
+            self.main_canvas.draw()
 
 
 if __name__ == "__main__":
