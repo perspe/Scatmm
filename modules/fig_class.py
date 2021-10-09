@@ -11,6 +11,7 @@ class FigWidget(QWidget):
         super().__init__()
         self.setWindowTitle(title)
         self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
 
 
 class PltFigure(FigureCanvasQTAgg):

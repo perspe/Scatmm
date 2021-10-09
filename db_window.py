@@ -12,9 +12,10 @@ from modules.fig_class import PltFigure, FigWidget
 class DBWindow(QWidget):
     """ Main Class for the DB Window """
 
-    def __init__(self, database):
+    def __init__(self, parent, database):
         """ Initialize the elements of the main window """
         self.database = database
+        self.parent = parent
         super(DBWindow, self).__init__()
         self.ui = Ui_Database()
         self.ui.setupUi(self)
@@ -48,6 +49,16 @@ class DBWindow(QWidget):
                 QStandardItem(str(np.around(lmb_max / 1000, 2)))
             ]
             self.data.insertRow(index, data)
+
+    def update_mat_comboboxes(self):
+        """
+        Update checkboxes in simulation and optimization tabs with db materials
+        """
+        for smat, omat in zip(self.parent.sim_mat, self.parent.opt_mat):
+            smat.clear()
+            omat.clear()
+            smat.addItems(self.database.content)
+            omat.addItems(self.database.content)
 
     """ Functions for the different buttons in the DB Interface """
 
@@ -112,15 +123,31 @@ class DBWindow(QWidget):
                                     "No material chosen for preview!!",
                                     QMessageBox.Ok, QMessageBox.Ok)
             # Put focus on the database window
-            self.database_window.setFocus(True)
-            self.database_window.activateWindow()
-            self.database_window.raise_()
+            self.setFocus(True)
+            self.activateWindow()
+            self.raise_()
             return
         # Get the database values and the interpolations
         data = self.database[choice]
         lmb, n, k = data[:, 0], data[:, 1], data[:, 2]
         interp_n = interp1d(lmb, n)
         interp_k = interp1d(lmb, k)
+        # Preview chosen material
+        self.preview_choice = FigWidget(
+            f"Preview {self.database.content[choice]}")
+        self.preview_choice_fig = PltFigure(self.preview_choice.layout,
+                                            "Wavelength (nm)", "n/k", width=7)
+        self.n_plot = self.preview_choice_fig.axes
+        self.n_plot.set_ylabel("n")
+        self.n_plot.plot(lmb, n, "b.", label="n")
+        self.n_plot.plot(lmb, interp_n(lmb), "b", label="interp n")
+        self.k_plot = self.n_plot.twinx()
+        self.k_plot.set_ylabel("k")
+        self.k_plot.plot(lmb, k, "r.", label="k")
+        self.k_plot.plot(lmb, interp_k(lmb), "r", label="interp k")
+        self.n_plot.legend(loc="upper right")
+        self.k_plot.legend(loc="center right")
+        self.preview_choice.show()
 
     """ Functions for the Add button """
 
@@ -137,7 +164,7 @@ class DBWindow(QWidget):
         self.db_import_window.raise_()
         self.db_import_window.setFocus(True)
         self.db_import_window.activateWindow()
-        self.new_mat = self.get_data_from_file(filepath[0])
+        self.new_mat = self.parent.get_data_from_file(filepath[0])
         if self.new_mat.shape[0] == 0:
             return
         self.new_mat[:, 0] *= self.units[chosen_unit]
@@ -169,20 +196,22 @@ class DBWindow(QWidget):
         interp_n = interp1d(lmb, n)
         interp_k = interp1d(lmb, k)
         # Plot the results
-        fig_preview, ax_preview = plt.subplots()
-        ax_preview_k = ax_preview.twinx()
-        ax_preview.set_xlabel("Wavelength (nm)")
-        ax_preview.set_ylabel("n")
-        ax_preview.plot(lmb, n, 'b.', label="Imported n")
-        ax_preview.plot(lmb, interp_n(lmb), 'b', label="Interpolated n")
-        ax_preview_k.plot(lmb, k, 'r.', label="Imported k")
-        ax_preview_k.plot(lmb, interp_k(lmb), 'r', label="Interpolated k")
-        ax_preview_k.set_ylabel("k")
-        ax_preview.legend(loc="upper right")
-        ax_preview_k.legend(loc="center right")
-        self.db_import_window.raise_()
-        self.db_import_window.setFocus(True)
-        self.db_import_window.activateWindow()
+        # Preview chosen material
+        self.preview_import = FigWidget(
+            "Preview New Material")
+        self.preview_import_fig = PltFigure(self.preview_import.layout,
+                                            "Wavelength (nm)", "n/k", width=7)
+        self.n_plot = self.preview_import_fig.axes
+        self.n_plot.set_ylabel("n")
+        self.n_plot.plot(lmb, n, "b.", label="n")
+        self.n_plot.plot(lmb, interp_n(lmb), "b", label="interp n")
+        self.k_plot = self.n_plot.twinx()
+        self.k_plot.set_ylabel("k")
+        self.k_plot.plot(lmb, k, "r.", label="k")
+        self.k_plot.plot(lmb, interp_k(lmb), "r", label="interp k")
+        self.n_plot.legend(loc="upper right")
+        self.k_plot.legend(loc="center right")
+        self.preview_import.show()
 
     def import_db_mat(self):
         """
@@ -216,6 +245,6 @@ class DBWindow(QWidget):
         self.update_db_preview()
         # Update the comboboxes with the materials
         self.update_mat_comboboxes()
-        self.database_window.raise_()
-        self.database_window.setFocus(True)
-        self.database_window.activateWindow()
+        self.raise_()
+        self.setFocus(True)
+        self.activateWindow()

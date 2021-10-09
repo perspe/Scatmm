@@ -246,6 +246,8 @@ class SMMGUI(QMainWindow):
             f"matrices\n\nAuthor: Miguel Alexandre\n\nVersion: {VERSION}"
         QMessageBox.about(self, title, msg)
 
+    """ Properties Button and associated functions """
+
     def update_properties(self):
         """
         Update all the properties - Linked to Apply button in properties window
@@ -302,6 +304,8 @@ class SMMGUI(QMainWindow):
             self.update_properties)
         self.properties_ui.save_default_button.clicked.connect(
             self.save_default_properties)
+
+    """ Layer Management """
 
     def add_layer(self, tab):
         """
@@ -421,6 +425,8 @@ class SMMGUI(QMainWindow):
             self.opt_mat_size_max[-1].deleteLater()
             del self.opt_mat_size_max[-1]
 
+    """ Aliases to get information necessary for simulation/optimization """
+
     def get_sim_data(self):
         """
         Get simulation configuration
@@ -508,73 +514,7 @@ class SMMGUI(QMainWindow):
                                 QMessageBox.Close)
             raise ValueError
 
-    def sim_plot_data(self, lmb, ref, trn):
-        """
-        Verify which checkboxes are toggled and plot data accordingly
-        """
-        # Check what data to plot
-        ref_check = self.sim_data["ref"].isChecked()
-        trn_check = self.sim_data["trn"].isChecked()
-        abs_check = self.sim_data["abs"].isChecked()
-        simulations = str(len(self.sim_results))
-        # Plot according to the checkboxes
-        if ref_check:
-            self.main_figure.plot(lmb, ref, label="R Sim(" + simulations + ")")
-        if trn_check:
-            self.main_figure.plot(lmb, trn, label="T Sim(" + simulations + ")")
-        if abs_check:
-            self.main_figure.plot(lmb, 1 - ref - trn,
-                                  label="A Sim(" + simulations + ")")
-        self.main_canvas.draw()
-
-    def clear_sim_buffer(self):
-        """
-        Clear all stored simulation values and destroy all open plots
-        """
-        self.sim_results = []
-        self.main_canvas.reinit()
-        self.clear_button.setText("Clear")
-
-    def sim_results_update(self, theta, phi, mat, thick, lmb, ref, trn):
-        """
-        Update the simulation results
-        """
-        ident_string = "(" + str(round(math.degrees(theta), 2)) + "," + str(
-            round(math.degrees(phi), 2)) + ") "
-        for mat_i, thick_i in zip(mat, thick):
-            ident_string += "|" + mat_i[:9] + "(" + str(thick_i) + ")"
-        self.sim_results.append((ident_string, lmb, ref, trn))
-        self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
-
-    def get_data_from_file(self, filepath):
-        """
-        Get data from file and return it as numpy array
-        """
-        title = "Invalid Import Format"
-        msg = "The imported data has an unacceptable format"
-        try:
-            data_df = pd.read_csv(filepath, sep="[ ;,:]")
-            data = data_df.values
-        except ValueError:
-            QMessageBox.warning(self, title, msg, QMessageBox.Close,
-                                QMessageBox.Close)
-            raise ValueError
-        return data
-
-    def import_data(self):
-        """
-        Function for import button - import data for simulation/optimization
-        """
-        filepath = QFileDialog.getOpenFileName(self, 'Open File')
-        if filepath[0] == '':
-            return
-        try:
-            data = self.get_data_from_file(filepath[0])
-        except ValueError:
-            return
-        self.imported_data = data[:, [0, 1]]
-        self.main_figure.plot(data[:, 0], data[:, 1], '.', label="Import Data")
-        self.main_canvas.draw()
+    """ Simulate and plot simulation data """
 
     def simulate(self):
         """
@@ -596,6 +536,44 @@ class SMMGUI(QMainWindow):
             return ref, trn
         except ValueError:
             pass
+
+    def sim_plot_data(self, lmb, ref, trn):
+        """
+        Verify which checkboxes are toggled and plot data accordingly
+        """
+        # Check what data to plot
+        ref_check = self.sim_data["ref"].isChecked()
+        trn_check = self.sim_data["trn"].isChecked()
+        abs_check = self.sim_data["abs"].isChecked()
+        simulations = str(len(self.sim_results))
+        # Plot according to the checkboxes
+        if ref_check:
+            self.main_figure.plot(lmb, ref, label="R Sim(" + simulations + ")")
+        if trn_check:
+            self.main_figure.plot(lmb, trn, label="T Sim(" + simulations + ")")
+        if abs_check:
+            self.main_figure.plot(lmb, 1 - ref - trn,
+                                  label="A Sim(" + simulations + ")")
+        self.main_canvas.draw()
+
+    def sim_results_update(self, theta, phi, mat, thick, lmb, ref, trn):
+        """
+        Update the simulation results
+        """
+        ident_string = "(" + str(round(math.degrees(theta), 2)) + "," + str(
+            round(math.degrees(phi), 2)) + ") "
+        for mat_i, thick_i in zip(mat, thick):
+            ident_string += "|" + mat_i[:9] + "(" + str(thick_i) + ")"
+        self.sim_results.append((ident_string, lmb, ref, trn))
+        self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
+
+    def clear_sim_buffer(self):
+        """
+        Clear all stored simulation values and destroy all open plots
+        """
+        self.sim_results = []
+        self.main_canvas.reinit()
+        self.clear_button.setText("Clear")
 
     """ Functions and export button """
 
@@ -739,13 +717,19 @@ class SMMGUI(QMainWindow):
         Preview the selected simulation chosen in the combobox
         """
         sim_choice = self.chosen_sim.currentText()
-        preview_window = FigWidget(f"Preview {sim_choice}")
-        preview_fig = PltFigure(preview_window.layout, "Wavelength (nm)", "R/T/Abs")
+        self.preview_window = FigWidget(f"Preview {sim_choice}")
+        self.preview_fig = PltFigure(self.preview_window.layout,
+                                     "Wavelength (nm)", "R/T/Abs", width=7)
+        self.preview_window.show()
         for name, lmb, ref, trn in self.sim_results:
             if name == sim_choice:
-                preview_fig.axes.plot(lmb, ref, lmb, trn)
-        preview_fig.draw()
-        preview_window.show()
+                self.preview_fig.axes.plot(lmb, ref, label="Ref")
+                self.preview_fig.axes.plot(lmb, trn, label="Trn")
+                self.preview_fig.axes.plot(lmb, 1-ref-trn, label="Abs")
+        self.preview_fig.axes.legend(bbox_to_anchor=(1, 1), loc="upper left")
+        self.preview_fig.draw()
+
+    """ Optimization functions """
 
     def update_progress_bar(self, value):
         """Connect the progress bar with the worker thread"""
@@ -820,22 +804,48 @@ class SMMGUI(QMainWindow):
                                 QMessageBox.Close, QMessageBox.Close)
             self.ui.opt_res_text.append("Optimization Failed")
 
-    def update_mat_comboboxes(self):
-        """
-        Update checkboxes in simulation and optimization tabs with db materials
-        """
-        for smat, omat in zip(self.sim_mat, self.opt_mat):
-            smat.clear()
-            omat.clear()
-            smat.addItems(self.database.content)
-            omat.addItems(self.database.content)
+    """ Open the Database Window """
 
     def view_database(self):
         """
         Open a new window to see all the database materials
         """
-        self.db_ui = DBWindow(self.database)
+        self.db_ui = DBWindow(self, self.database)
         self.db_ui.show()
+
+    """ Import data from file """
+
+    def import_data(self):
+        """
+        Function for import button - import data for simulation/optimization
+        """
+        filepath = QFileDialog.getOpenFileName(self, 'Open File')
+        if filepath[0] == '':
+            return
+        try:
+            data = self.get_data_from_file(filepath[0])
+        except ValueError:
+            return
+        self.imported_data = data[:, [0, 1]]
+        self.main_figure.plot(data[:, 0], data[:, 1], '.', label="Import Data")
+        self.main_canvas.draw()
+
+    """ Generic function to import data from file """
+
+    def get_data_from_file(self, filepath):
+        """
+        Get data from file and return it as numpy array
+        """
+        title = "Invalid Import Format"
+        msg = "The imported data has an unacceptable format"
+        try:
+            data_df = pd.read_csv(filepath, sep="[ ;,:\t]")
+            data = data_df.values
+        except ValueError:
+            QMessageBox.warning(self, title, msg, QMessageBox.Close,
+                                QMessageBox.Close)
+            raise ValueError
+        return data
 
     def dragEnterEvent(self, event):
         # TODO: Implemet drag and drop <09-10-21, Miguel> #
