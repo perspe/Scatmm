@@ -12,6 +12,7 @@ import json
 import matplotlib.style as mstyle
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import numpy as np
+from numpy.linalg import norm
 import pandas as pd
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
@@ -430,17 +431,27 @@ class SMMGUI(QMainWindow):
         Get simulation configuration
         """
         try:
-            theta = np.radians(float(self.sim_data["theta"].text()))
+            theta = float(self.sim_data["theta"].text())
             phi = np.radians(float(self.sim_data["phi"].text()))
+            if theta % 90 == 0 and theta != 0:
+                raise Exception("Theta not valid")
+            theta = np.radians(theta)
             # TODO: Normalize the polarization vector <08-10-21, Miguel> #
-            pol = (complex(self.sim_data["pte"].text()),
-                   complex(self.sim_data["ptm"].text()))
+            pol = np.array([complex(self.sim_data["pte"].text()),
+                            complex(self.sim_data["ptm"].text())])
+            pol /= norm(pol)
             lmb_min = float(self.sim_data["lmb_min"].text())
             lmb_max = float(self.sim_data["lmb_max"].text())
             return theta, phi, pol, lmb_min, lmb_max
         except ValueError:
             title = "Error: Invalid number"
             message = "Invalid simulation parameter"
+            QMessageBox.warning(self, title, message, QMessageBox.Close,
+                                QMessageBox.Close)
+            raise ValueError
+        except Exception:
+            title = "Error: Invalid number"
+            message = "Not valid incidence angle - θ is multiple of 90º"
             QMessageBox.warning(self, title, message, QMessageBox.Close,
                                 QMessageBox.Close)
             raise ValueError
@@ -532,7 +543,7 @@ class SMMGUI(QMainWindow):
             self.sim_results_update(theta, phi, mat, thick, lmb, ref, trn)
             self.sim_plot_data(lmb, ref, trn)
             return ref, trn
-        except ValueError:
+        except ValueError or Exception:
             pass
 
     def sim_plot_data(self, lmb, ref, trn):
@@ -558,10 +569,12 @@ class SMMGUI(QMainWindow):
         """
         Update the simulation results
         """
-        ident_string = "(" + str(round(math.degrees(theta), 2)) + "," + str(
-            round(math.degrees(phi), 2)) + ") "
+        # The identifier string is of the form S(sim)(theta,phi)|Layer_config|
+        ident_string = "S" + str(len(self.sim_results) + 1) + "(" + str(
+            int(math.degrees(theta))) + "," + str(
+            int(math.degrees(phi))) + ") "
         for mat_i, thick_i in zip(mat, thick):
-            ident_string += "|" + mat_i[:9] + "(" + str(thick_i) + ")"
+            ident_string += "|" + mat_i[:5] + "(" + str(thick_i) + ")"
         self.sim_results.append((ident_string, lmb, ref, trn))
         self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
 
@@ -807,7 +820,7 @@ class SMMGUI(QMainWindow):
             self.opt_worker.updateOptButton.connect(self.updateOptButton)
             # Start worker
             self.opt_worker.start()
-        except ValueError:
+        except ValueError or Exception:
             self.ui.opt_res_text.append("Optimization Failed")
         except TypeError:
             QMessageBox.warning(self, "Import Data missing",
