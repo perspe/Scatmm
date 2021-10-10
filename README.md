@@ -35,4 +35,4 @@ In spyder it may also be necessary to change the matplotlib backend to automatic
 When run the program will display the image bellow.
 The help menu provides a brief description of all the program's capabilities
 
-![Scatmm Interface](preview.png)
+![Scatmm Interface](gui.png)
