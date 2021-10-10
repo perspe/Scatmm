@@ -4,8 +4,18 @@ title: Importing Data
 
 # How Data Should be Formated
 
-Data should be imported from text files. The import functionality has a limited range of applications, thus leaving the burden to the user to adequately prepare the data for importing. The data should have a tabular format of numeric-only entries separated either by spaces or commas. Any non-numeric data should be commented with # (see Example 3 bellow). Furthermore, when importing the data the program does not check the number of columns in the file. For the case of optimizations, only the first two columns will be used and will be assumed to be wavelength (in nm) and either absorption/reflection/transmission ([Optimization](Optimization.html)). To import materials to the database 3 columns will be used and assumed to be wavelength/real refractive index/complex refractive index ([Manage Database](Manage Database.html)).
-Below are provided 3 examples of possible data to be imported.
+Data should be imported from text files. The import functionality has a limited
+range of applications, thus leaving the burden to the user to adequately
+prepare the data for importing. The data should have a tabular format of
+numeric-only entries separated either by spaces or commas. Any non-numeric data
+should be commented with # (see Example 3 bellow). Furthermore, when importing
+the data the program does not check the number of columns in the file. For the
+case of optimizations, only the first two columns will be used and will be
+assumed to be wavelength (in nm) and either absorption/reflection/transmission
+([Optimization](Optimization.html)). To import materials to the database 3
+columns will be used and assumed to be wavelength/real refractive index/complex
+refractive index ([Manage Database](Manage Database.html)). Below are provided
+3 examples of possible data to be imported.
 
 # Examples
 
