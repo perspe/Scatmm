@@ -142,8 +142,7 @@ class Layer1D():
         u_array: Permeability data (1 as default)
     """
 
-    def __init__(self, name, thickness, lmb, n_val, k_val):
-        self.name = name
+    def __init__(self, thickness, lmb, n_val, k_val):
         self.thickness = thickness
         self.lmb = lmb
         self.n = n_val
@@ -168,12 +167,11 @@ class Layer3D():
         u_array: Permeability data (1 as default)
     """
 
-    def __init__(self, name, thickness, lmb, n_array, k_array):
-        self.name = name
+    def __init__(self, thickness, lmb, n_array, k_array, **kwargs):
         self.lmb = [np.min(lmb), np.max(lmb)]
         self.thickness = thickness
-        self.n = interp1d(lmb, n_array)
-        self.k = interp1d(lmb, k_array)
+        self.n = interp1d(lmb, n_array, **kwargs)
+        self.k = interp1d(lmb, k_array, **kwargs)
 
     def e_value(self, lmb):
         """ Calculate e_values for a range of wavelengths """
@@ -187,7 +185,7 @@ class Layer3D():
 
 def _initialize_smm(theta, phi, lmb, pol, inc_medium, trn_medium):
     """ Initialize the parameters necessary for the smm calculation """
-    if np.size(lmb) > 1 and np.size(theta) > 0:
+    if np.size(lmb) > 1 and np.size(theta) > 1:
         raise Exception("Only wavelength or theta can be an array")
     # Wavevector for the incident wave
     k0 = 2 * np.pi / lmb
@@ -226,9 +224,41 @@ def _e_fields(S_Global, p, kx, ky, kz_ref, kz_trn):
     return E_ref, E_trn, E_z_ref, E_z_trn
 
 
-def smm_broadband(layer_list, theta, phi, lmb, pol, ref_medium, trn_medium):
-    """ SMM for broadband simulation """
-    pass
+def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med):
+    """
+    SMM for broadband simulation
+    Args:
+        layer_list: List of Layer objects with the info for all layers
+        theta/phi: Incidence angles
+        lmb: Array with wavelengths for simulation
+        pol: Tuple with the TM/TE polarization components
+        i_med/t_med: Data for the reflection and transmission media
+    Returns:
+        R, T: Arrays with the Reflection and transmission for the layer setup
+    """
+    k0, kx, ky, V0, p, S_Global = _initialize_smm(
+        theta, phi, lmb, pol, i_med, t_med)
+    kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
+    kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
+    # This is a simplification to determine all the values in beforehand
+    layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
+    R = []
+    T = []
+    for lmb_i, k0_i, layer_data in zip(lmb, k0, layer_data.T):
+        S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
+        S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
+        S_Global_i = S_Global
+        for index, layer in enumerate(layer_list):
+            S_Layer = SMM(V0, k0_i, kx, ky, layer.thickness, layer_data[index])
+            S_Global_i *= S_Layer
+        S_Global_i = S_ref * S_Global_i * S_trn
+        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
+            S_Global_i, p, kx, ky, kz_ref, kz_trn)
+        R.append(abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2)
+        T.append(
+                (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
+                    (kz_trn * i_med[1]) / (kz_ref * t_med[1])))
+    return np.array(R), np.array(T)
 
 
 def smm_angle(layer_list, theta, phi, lmb, pol, ref_medium, trn_medium):
@@ -237,7 +267,17 @@ def smm_angle(layer_list, theta, phi, lmb, pol, ref_medium, trn_medium):
 
 
 def smm(layer_list, lmb, theta, phi, pol, i_med, t_med):
-    """ SMM for a single wavelength/angle """
+    """
+    SMM for a single point simulation
+    Args:
+        layer_list: List of Layer objects with the info for all layers
+        theta/phi: Incidence angles
+        lmb: Wavelength for a particular simulation
+        pol: Tuple with the TM/TE polarization components
+        i_med/t_med: Data for the reflection and transmission media
+    Returns:
+        R, T: Arrays with the Reflection and transmission for the layer setup
+    """
     # Inicialize necessary values
     k0, kx, ky, V0, p, S_Global = _initialize_smm(
         theta, phi, lmb, pol, i_med, t_med)
@@ -520,30 +560,29 @@ def smm_broadband_old(theta,
 
 
 if __name__ == '__main__':
-    startTime = time.time()
-    lam0 = 0.5
+    n_comp = 15000
+    lmb = np.linspace(1, 4, n_comp)
     theta = np.radians(57)
     phi = np.radians(23)
     p = (1, 0)
-    e = np.array([(1.5+0.1j)**2, 1.3**2, 1.4**2])
-    thick = np.array([0.25, 0.5, 0.1]) * lam0
-    for i in range(500000):
-        res_old = smm_old(theta,
-                          phi,
-                          e,
-                          thick,
-                          lam0,
-                          pol=p,
-                          inc_medium=(1, 1.3),
-                          trn_medium=(1, 1.2))
+    n_array = np.random.random((n_comp, 3))*1.5
+    k_array = np.random.random((n_comp, 3))
+    e_array = (n_array+1j*k_array)**2
+    thick = np.array([0.25, 0.5, 0.1])
+    inc_medium = (1, 1)
+    trn_medium = (1, 1)
+    startTime = time.time()
+    smm_broadband_old(theta, phi, e_array, thick,
+                      lmb, p, inc_medium, trn_medium)
     exec_time = (time.time() - startTime)
     print(f"Run time {exec_time}")
-    startTime = time.time()
     print("Method 2")
-    layer_1 = Layer1D("layer1", 0.25*0.5, 0.5, 1.5, 0.1)
-    layer_2 = Layer1D("layer2", 0.5*0.5, 0.5, 1.3, 0)
-    layer_3 = Layer1D("layer3", 0.1*0.5, 0.5, 1.4, 0)
-    for i in range(500000):
-        smm([layer_1, layer_2, layer_3], lam0, theta, phi, p, (1, 1.3), (1, 1.2))
+    startTime = time.time()
+    layer1 = Layer3D("layer_1", 0.25, lmb, n_array[:, 0], k_array[:, 0])
+    layer2 = Layer3D("layer_2", 0.5, lmb, n_array[:, 1], k_array[:, 1])
+    layer3 = Layer3D("layer_3", 0.1, lmb, n_array[:, 2], k_array[:, 2])
+    R, T = smm_broadband([layer1, layer2, layer3],
+                         theta, phi, lmb, p, inc_medium, trn_medium)
+
     exec_time = (time.time() - startTime)
     print(f"Run time {exec_time}")
