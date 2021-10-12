@@ -28,6 +28,7 @@ from smm_properties_ui import Ui_Properties
 from db_window import DBWindow
 
 VERSION = "1.2.0"
+# TODO: Reorganize code layout in module <11-10-21, Miguel> #
 
 # Default plot properties
 mstyle.use("smm_style")
@@ -858,6 +859,7 @@ class SMMGUI(QMainWindow):
     """ Generic function to import data from file """
 
     def get_data_from_file(self, filepath):
+        # TODO: Move to a file outside <11-10-21, Miguel> #
         """
         Get data from file and return it as numpy array
         """
@@ -890,7 +892,10 @@ class SMMGUI(QMainWindow):
                                     QMessageBox.Close,
                                     QMessageBox.Close)
                 return
-            data = self.get_data_from_file(str(url[0].toLocalFile()))
+            try:
+                data = self.get_data_from_file(str(url[0].toLocalFile()))
+            except ValueError:
+                return
             self.imported_data = data[:, [0, 1]]
             self.main_figure.plot(
                 data[:, 0], data[:, 1], "--", label="Import Data")
