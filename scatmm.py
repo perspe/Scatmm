@@ -16,18 +16,17 @@ from numpy.linalg import norm
 import pandas as pd
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
-from scipy.interpolate import interp1d
 
 from Database.database import Database
 from modules.pso import particle_swarm
-from modules.scattering_matrix import smm_broadband
+from modules.scattering_matrix import smm_broadband, Layer3D
 from modules.fig_class import PltFigure, FigWidget
 from smm_export_window import Ui_ExportWindow
 from smm_main_window import Ui_SMM_Window
 from smm_properties_ui import Ui_Properties
 from db_window import DBWindow
 
-VERSION = "1.2.0"
+VERSION = "2.0.0"
 # TODO: Reorganize code layout in module <11-10-21, Miguel> #
 
 # Default plot properties
@@ -44,19 +43,15 @@ class OptimizeWorkder(QtCore.QThread):
 
     def __init__(self, figure_handler, particle_info, lmb, compare_data,
                  theta, phi, pol, ref_medium, trn_medium, thickness,
-                 e_array, checks):
+                 layer_list, checks):
         super().__init__()
         self.figure_canvas = figure_handler
         self.figure = self.figure_canvas.axes
-        self.lmb = lmb
+        self.smm_args = {"lmb": lmb, "theta": theta, "phi": phi, "pol": pol,
+                         "i_med": ref_medium, "t_med": trn_medium}
         self.compare_data = compare_data
-        self.theta = theta
-        self.phi = phi
-        self.pol = pol
-        self.ref_medium = ref_medium
-        self.trn_medium = trn_medium
         self.thickness = thickness
-        self.e_array = e_array
+        self.layer_list = layer_list
         self.ref_check, self.trn_check, self.abs_check = checks
         self.particle_info = {key: info[1]
                               for key, info in particle_info.items()}
@@ -72,14 +67,9 @@ class OptimizeWorkder(QtCore.QThread):
         def optimize_function(**thicknesses):
             t_array = np.stack([thick_i for thick_i in thicknesses.values()])
             ref, trn = np.apply_along_axis(
-                lambda thick: smm_broadband(self.theta,
-                                            self.phi,
-                                            self.e_array,
-                                            thick,
-                                            self.lmb,
-                                            pol=self.pol,
-                                            inc_medium=self.ref_medium,
-                                            trn_medium=self.trn_medium), 0,
+                lambda thick: smm_broadband(self.layer_list,
+                                            override_thick=thick,
+                                            **self.smm_args), 0,
                 t_array)
             if self.ref_check:
                 point_error = np.sum((ref - self.compare_data)**2, axis=0)
@@ -114,21 +104,15 @@ class OptimizeWorkder(QtCore.QThread):
         self.updateOptButton.emit(True)
         for i, t_i in enumerate(best_thick):
             self.updateTextSignal.emit(f"thick {i+1} = {t_i:.3f}")
-        # Reinit the graph and plot the best curve
-        ref, trn = smm_broadband(self.theta,
-                                 self.phi,
-                                 self.e_array,
-                                 best_thick,
-                                 self.lmb,
-                                 pol=self.pol,
-                                 inc_medium=self.ref_medium,
-                                 trn_medium=self.trn_medium)
+        # Plot the best result
+        ref, trn = smm_broadband(self.layer_list, override_thick=best_thick,
+                                 **self.smm_args)
         if self.ref_check:
-            self.figure.plot(self.lmb, ref, ":")
+            self.figure.plot(self.smm_args["lmb"], ref, ":")
         elif self.trn_check:
-            self.figure.plot(self.lmb, trn, ":")
+            self.figure.plot(self.smm_args["lmb"], trn, ":")
         elif self.abs_check:
-            self.figure.plot(self.lmb, 1-trn-ref, ":")
+            self.figure.plot(self.smm_args["lmb"], 1-trn-ref, ":")
         self.figure_canvas.draw()
 
 
@@ -482,40 +466,31 @@ class SMMGUI(QMainWindow):
         """
         try:
             thick = []
-            material_i = []
+            layer_list = []
             # Get results depending on the respective tab
             if tab == "sim":
                 for material, thickness in zip(material_structure["materials"],
                                                material_structure["size"]):
-                    thick.append(float(thickness.text()))
-                    material_i.append(material.currentText())
-                thick = np.array(thick)
+                    mat_i = material.currentText()
+                    db_data = self.database[mat_i]
+                    layer_list.append(
+                        Layer3D(mat_i, float(thickness.text()),
+                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                                kind='cubic'))
             else:
                 for material, low_t, upp_t in zip(
                         material_structure["materials"],
                         material_structure["size_low"],
                         material_structure["size_high"]):
                     thick.append([float(low_t.text()), float(upp_t.text())])
-                    material_i.append(material.currentText())
-                thick = np.array(thick)
-            # Build the interpolated n and k arrays from the input materials
-            n_array = []
-            k_array = []
-            for mat_i in material_i:
-                db_data = self.database[mat_i]
-                interp_n_array = interp1d(db_data[:, 0],
-                                          db_data[:, 1],
-                                          kind="cubic")
-                interp_k_array = interp1d(db_data[:, 0],
-                                          db_data[:, 2],
-                                          kind="cubic")
-                n_array.append(interp_n_array(lmb))
-                k_array.append(interp_k_array(lmb))
-            n_array = np.stack(n_array)
-            k_array = np.stack(k_array)
-            # Create the e_array
-            e_array = (n_array + 1j * k_array)**2
-            return thick, e_array.T, material_i
+                    mat_i = material.currentText()
+                    db_data = self.database[mat_i]
+                    layer_list.append(
+                        Layer3D(mat_i, float(low_t.text()),
+                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                                kind='cubic'))
+            thick = np.array(thick)
+            return thick, layer_list
         except ValueError:
             title = "Error: Material Out of Bounds"
             message = "One of the materials in the simulation is"\
@@ -537,13 +512,12 @@ class SMMGUI(QMainWindow):
                               self.global_properties["sim_points"][1])
             # Get all the sim_config_values
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
-            thick, e_array, mat = self.get_material_config(
+            _, layer_list = self.get_material_config(
                 lmb, self.sim_config)
-            ref, trn = smm_broadband(theta, phi, e_array, thick, lmb, pol,
-                                     ref_medium, trn_medium)
-            self.sim_results_update(theta, phi, mat, thick, lmb, ref, trn)
+            ref, trn = smm_broadband(
+                layer_list, theta, phi, lmb, pol, ref_medium, trn_medium)
+            self.sim_results_update(layer_list, theta, phi, lmb, ref, trn)
             self.sim_plot_data(lmb, ref, trn)
-            return ref, trn
         except ValueError or Exception:
             pass
 
@@ -566,7 +540,7 @@ class SMMGUI(QMainWindow):
                                   label="A Sim(" + simulations + ")")
         self.main_canvas.draw()
 
-    def sim_results_update(self, theta, phi, mat, thick, lmb, ref, trn):
+    def sim_results_update(self, layer_list, theta, phi, lmb, ref, trn):
         """
         Update the simulation results
         """
@@ -574,8 +548,8 @@ class SMMGUI(QMainWindow):
         ident_string = "S" + str(len(self.sim_results) + 1) + "(" + str(
             int(math.degrees(theta))) + "," + str(
             int(math.degrees(phi))) + ") "
-        for mat_i, thick_i in zip(mat, thick):
-            ident_string += "|" + mat_i[:5] + "(" + str(thick_i) + ")"
+        for layer in layer_list:
+            ident_string += "|"+layer.name[:5]+"("+str(layer.thickness)+")"
         self.sim_results.append((ident_string, lmb, ref, trn))
         self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
 
@@ -795,7 +769,7 @@ class SMMGUI(QMainWindow):
             self.main_canvas.draw()
             theta, phi, pol, _, _ = self.get_sim_data()
             ref_medium, trn_medium = self.get_medium_config(self.opt_config)
-            thick, e_array, _ = self.get_material_config(lmb,
+            thick, layer_list = self.get_material_config(lmb,
                                                          self.opt_config,
                                                          tab="opt")
             # Create a new worker thread to do the optimization
@@ -811,7 +785,7 @@ class SMMGUI(QMainWindow):
                                               ref_medium,
                                               trn_medium,
                                               thick,
-                                              e_array,
+                                              layer_list,
                                               (ref_check,
                                                   trn_check,
                                                   abs_check))
@@ -859,7 +833,6 @@ class SMMGUI(QMainWindow):
     """ Generic function to import data from file """
 
     def get_data_from_file(self, filepath):
-        # TODO: Move to a file outside <11-10-21, Miguel> #
         """
         Get data from file and return it as numpy array
         """

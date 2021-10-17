@@ -148,7 +148,8 @@ class Layer1D():
         u_array: Permeability data (1 as default)
     """
 
-    def __init__(self, thickness, lmb, n_val, k_val):
+    def __init__(self, name, thickness, lmb, n_val, k_val):
+        self.name = name
         self.thickness = thickness
         self.lmb = lmb
         self.n = n_val
@@ -173,7 +174,8 @@ class Layer3D():
         u_array: Permeability data (1 as default)
     """
 
-    def __init__(self, thickness, lmb, n_array, k_array, **kwargs):
+    def __init__(self, name, thickness, lmb, n_array, k_array, **kwargs):
+        self.name = name
         self.lmb = [np.min(lmb), np.max(lmb)]
         self.thickness = thickness
         self.n = interp1d(lmb, n_array, **kwargs)
@@ -247,7 +249,8 @@ def _field_power(fields, kx, ky, kz):
     return abs(Ex)**2 + abs(Ey)**2 + abs(Ez)**2
 
 
-def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med):
+def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
+                  override_thick=None):
     """
     SMM for broadband simulation
     Args:
@@ -256,9 +259,16 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med):
         lmb: Array with wavelengths for simulation
         pol: Tuple with the TM/TE polarization components
         i_med/t_med: Data for the reflection and transmission media
+        **override_thick: Override the built thickness of the layers
     Returns:
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
+    if override_thick is not None:
+        if len(override_thick) == len(layer_list):
+            for thick_i, layer in zip(override_thick, layer_list):
+                layer.thickness = thick_i
+        else:
+            raise Exception("Override Thickness does not match Layer List")
     k0, kx, ky, V0, p, S_Global = _initialize_smm(
         theta, phi, lmb, pol, i_med, t_med)
     kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
@@ -270,11 +280,11 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med):
     for lmb_i, k0_i, layer_data in zip(lmb, k0, layer_data.T):
         S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
         S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
-        S_Global_i = S_Global
+        S_Global_i = S_ref
         for index, layer in enumerate(layer_list):
             S_Layer = SMM(V0, k0_i, kx, ky, layer.thickness, layer_data[index])
             S_Global_i *= S_Layer
-        S_Global_i = S_ref * S_Global_i * S_trn
+        S_Global_i = S_Global_i * S_trn
         E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
             S_Global_i, p, [0, 0], kx, ky, kz_ref, kz_trn)
         R.append(abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2)
@@ -328,8 +338,6 @@ def smm_abs_layer_i(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
                 k_layer = np.sqrt(layer.e_value(lmb_i) - kx**2 - ky**2)
                 layer_k = layer.k(lmb_i)
             S_Global_lmb *= S_Layer
-            # if layer_index == layer_i:
-            #     S_Global_After = S_Global_lmb
         S_Global_lmb *= S_trn
         E_ref, _, _, _ = _e_fields(
             S_Global_lmb, p, [0, 0], kx, ky, kz_ref, kz_trn)
@@ -337,43 +345,24 @@ def smm_abs_layer_i(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
         c_left_m = inv(S_Global_Before.S_12)@(E_ref - S_Global_Before.S_11@p)
         c_left_p = S_Global_Before.S_21@p + S_Global_Before.S_22@c_left_m
         # Calculate the internal fields
-        c_ext = np.concatenate((c_left_p, c_left_m))
-        A = np.zeros((4, 4), dtype=np.complex128)
-        A[:2] = np.concatenate((np.eye(2), np.eye(2)), axis=1)
-        A[2:] = np.concatenate((V_Layer, -V_Layer), axis=1)
-        B = np.zeros((4, 4), dtype=np.complex128)
-        B[:2] = np.concatenate((np.eye(2), np.eye(2)), axis=1)
-        B[2:] = np.concatenate((V0, -V0), axis=1)
-        c_int = inv(A)@B@c_ext
+        a_matrix = np.eye(2) + inv(V_Layer)@V0
+        b_matrix = np.eye(2) - inv(V_Layer)@V0
+        c_int_p = 1/2 * (a_matrix@c_left_p + b_matrix@c_left_m)
+        c_int_m = 1/2 * (b_matrix@c_left_p + a_matrix@c_left_m)
         if layer_i == 0:
             z = np.linspace(0, thick_list[layer_i], 100)
         else:
             z = np.linspace(thick_list[layer_i-1], thick_list[layer_i], 100)
-        field = []
-        ex = []
-        for z_i in z:
-            fields = _int_field(A, c_int, Omega_Layer, k0_i, z_i)
-            ex.append(fields[0])
-            power = _field_power(fields, kx, ky, k_layer)
-            field.append(0.5*power*layer_k*w)
-        abs.append(trapz(np.array(field), z))
-        plt.plot(z, ex)
-        plt.show()
-        # Determine the mode coefficients just after the layer
-        # c_right_m = inv(S_Global_After.S_12)@(E_ref - S_Global_After.S_11@p)
-        # c_right_p = S_Global_After.S_21@p + S_Global_After.S_22@c_right_m
-        # # The z components of the electric field
-        # np.append(c_left_m, -(kx*c_left_m[0]+ky*c_left_m[1])/kz_vac)
-        # np.append(c_left_p, -(kx*c_left_p[0]+ky*c_left_p[1])/kz_vac)
-        # np.append(c_right_m, -(kx*c_right_m[0]+ky*c_right_m[1])/kz_vac)
-        # np.append(c_right_p, -(kx*c_right_p[0]+ky*c_right_p[1])/kz_vac)
-        # p_right_m = np.sum(np.abs(c_right_m)**2)
-        # p_right_p = np.sum(np.abs(c_right_p)**2)
-        # p_left_m = np.sum(np.abs(c_left_m)**2)
-        # p_left_p = np.sum(np.abs(c_left_p)**2)
-        # t_power = np.sum(np.abs(c_left_p)**2)*np.real(kz_vac/kz_ref)
-        # print(p_left_p, "|", p_right_m, "|", p_left_m, "|", p_right_p, "|", t_power)
-        # abs.append(1 - (p_left_m+p_right_p)/(p_left_p+p_right_m))
+        # field = []
+        # ex = []
+        # for z_i in z:
+        #     fields = _int_field(A, c_int, Omega_Layer, k0_i, z_i)
+        #     ex.append(fields[0])
+        #     power = _field_power(fields, kx, ky, k_layer)
+        #     field.append(0.5*power*layer_k*w)
+        # abs.append(trapz(np.array(field), z))
+        # plt.plot(z, ex)
+        # plt.show()
     return np.array(abs)
 
 
