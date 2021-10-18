@@ -27,8 +27,12 @@ class PltFigure(FigureCanvasQTAgg):
         super(PltFigure, self).__init__(fig)
         parent.addWidget(self)
 
-    def draw_axes(self):
+    def draw_axes(self, xlabel=None, ylabel=None):
         """Draw x/y labels"""
+        if xlabel:
+            self.xlabel = xlabel
+        if ylabel:
+            self.ylabel = ylabel
         self.axes.yaxis.grid(True, linestyle="--")
         self.axes.xaxis.grid(True, linestyle="--")
         self.axes.set_ylabel(self.ylabel)

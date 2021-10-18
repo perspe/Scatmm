@@ -152,6 +152,9 @@ class SMMGUI(QMainWindow):
             self.ui.opt_tab_sim_mat_size_max1,
             self.ui.opt_tab_sim_mat_size_max2
         ]
+        self.sim_check = [
+            self.ui.sim_tab_sim_check1, self.ui.sim_tab_sim_check2
+        ]
         # Check if last plot was from simulation or optimization
         self.last_plot_sim = True
         # List to store the previous simulation results
@@ -163,6 +166,7 @@ class SMMGUI(QMainWindow):
             self.global_properties = json.load(config)
         # Initialize main dictionaries for simulations
         self.sim_config = {
+            "check": self.sim_check,
             "materials": self.sim_mat,
             "size": self.sim_mat_size,
             "ref_n": self.ui.sim_tab_ref_n,
@@ -180,6 +184,8 @@ class SMMGUI(QMainWindow):
             "trn_k": self.ui.opt_tab_trn_k
         }
         self.sim_data = {
+            "lmb_check": self.ui.sim_param_check_lmb,
+            "angle_check": self.ui.sim_param_check_angle,
             "lmb_min": self.ui.sim_param_lmb_min,
             "lmb_max": self.ui.sim_param_lmb_max,
             "theta": self.ui.sim_param_theta,
@@ -206,6 +212,12 @@ class SMMGUI(QMainWindow):
             lambda: self.rmv_layer("sim"))
         self.ui.opt_tab_rem_layer_button.clicked.connect(
             lambda: self.rmv_layer("opt"))
+        for checkbox in self.sim_check:
+            checkbox.stateChanged.connect(self.plot_abs_i)
+        self.ui.sim_param_check_angle.stateChanged.connect(
+                self.sim_angle)
+        self.ui.sim_param_check_lmb.stateChanged.connect(
+                self.sim_lmb)
         self.ui.sim_tab_sim_button.clicked.connect(self.simulate)
         self.ui.sim_tab_clear_button.clicked.connect(self.clear_sim_buffer)
         self.ui.sim_tab_export_button.clicked.connect(self.export_simulation)
@@ -229,6 +241,46 @@ class SMMGUI(QMainWindow):
             "the transfer matrix method (using scattering"\
             f"matrices\n\nAuthor: Miguel Alexandre\n\nVersion: {VERSION}"
         QMessageBox.about(self, title, msg)
+
+    """ Simulation Configuration (lmb or angle) """
+
+    def sim_angle(self, int):
+        """ Change simulation to angle simulation """
+        if self.ui.sim_param_check_lmb.isChecked() and int > 0:
+            self.ui.sim_param_check_lmb.setChecked(False)
+            self.main_canvas.reinit()
+            self.main_canvas.draw_axes(xlabel="Angle (θ)")
+            self.main_canvas.draw()
+            # Disable non-necessary text-boxes
+            self.sim_data["lmb_max"].setDisabled(True)
+            self.sim_data["theta"].setDisabled(True)
+        elif not self.ui.sim_param_check_lmb.isChecked() and int == 0:
+            self.ui.sim_param_check_lmb.setChecked(True)
+            self.main_canvas.reinit()
+            self.main_canvas.draw_axes(xlabel="Wavelength (nm)")
+            self.main_canvas.draw()
+            # Enable non-necessary text-boxes
+            self.sim_data["lmb_max"].setDisabled(False)
+            self.sim_data["theta"].setDisabled(False)
+
+    def sim_lmb(self, int):
+        """ Change simulation to broadband simulation """
+        if self.ui.sim_param_check_angle.isChecked() and int > 0:
+            self.ui.sim_param_check_angle.setChecked(False)
+            self.main_canvas.reinit()
+            self.main_canvas.draw_axes(xlabel="Wavelength (nm)")
+            self.main_canvas.draw()
+            # Enable non-necessary text-boxes
+            self.sim_data["lmb_max"].setDisabled(False)
+            self.sim_data["theta"].setDisabled(False)
+        elif not self.ui.sim_param_check_angle.isChecked() and int == 0:
+            self.ui.sim_param_check_angle.setChecked(True)
+            self.main_canvas.reinit()
+            self.main_canvas.draw_axes(xlabel="Angle (θ)")
+            self.main_canvas.draw()
+            # Disable non-necessary text-boxes
+            self.sim_data["lmb_max"].setDisabled(True)
+            self.sim_data["theta"].setDisabled(True)
 
     """ Properties Button and associated functions """
 
@@ -298,6 +350,13 @@ class SMMGUI(QMainWindow):
         font = QtGui.QFont()
         font.setPointSize(11)
         if tab == "sim":
+            # Add a new CheckBox
+            self.sim_check.append(
+                QtWidgets.QCheckBox(self.ui.sim_tab_sim_frame))
+            self.sim_check[-1].setText("")
+            self.ui.gridLayout_2.addWidget(self.sim_check[-1],
+                                           len(self.sim_check), 0, 1, 1)
+            self.sim_check[-1].stateChanged.connect(self.plot_abs_i)
             # Add a new combobox
             self.sim_mat.append(QtWidgets.QComboBox(self.ui.sim_tab_sim_frame))
             sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
@@ -311,7 +370,7 @@ class SMMGUI(QMainWindow):
             self.sim_mat[-1].setObjectName(
                 f"sim_tab_sim_mat{len(self.sim_mat)+1}")
             self.ui.gridLayout_2.addWidget(self.sim_mat[-1], len(self.sim_mat),
-                                           0, 1, 1)
+                                           1, 1, 1)
             self.sim_mat[-1].addItems(self.database.content)
             self.sim_mat_size.append(
                 QtWidgets.QLineEdit(self.ui.sim_tab_sim_frame))
@@ -327,7 +386,7 @@ class SMMGUI(QMainWindow):
             self.sim_mat_size[-1].setObjectName(
                 f"sim_tab_sim_mat_size{len(self.sim_mat_size)+1}")
             self.ui.gridLayout_2.addWidget(self.sim_mat_size[-1],
-                                           len(self.sim_mat_size), 2, 1, 1)
+                                           len(self.sim_mat_size), 3, 1, 1)
         else:
             # Add combobox for the material
             self.opt_mat.append(QtWidgets.QComboBox(self.ui.opt_tab_sim_frame))
@@ -393,6 +452,9 @@ class SMMGUI(QMainWindow):
             self.ui.gridLayout_2.removeWidget(self.sim_mat_size[-1])
             self.sim_mat_size[-1].deleteLater()
             del self.sim_mat_size[-1]
+            self.ui.gridLayout_2.removeWidget(self.sim_check[-1])
+            self.sim_check[-1].deleteLater()
+            del self.sim_check[-1]
         else:
             if len(self.opt_mat) == 1:
                 QMessageBox.warning(self, "Error: Number of Layers",
@@ -560,6 +622,11 @@ class SMMGUI(QMainWindow):
         self.sim_results = []
         self.main_canvas.reinit()
         self.clear_button.setText("Clear")
+
+    def plot_abs_i(self, int):
+        """"""
+        print("Here")
+        return
 
     """ Export button and associated functions """
 
@@ -846,6 +913,8 @@ class SMMGUI(QMainWindow):
                                 QMessageBox.Close)
             raise ValueError
         return data
+
+    """ Drag and Drop Functionality """
 
     def dragEnterEvent(self, event):
         """ Check for correct datatype to accept drops """
