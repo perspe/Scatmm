@@ -8,18 +8,20 @@ import sys
 import math
 import webbrowser
 import json
+from enum import Enum, auto
 
 import matplotlib.style as mstyle
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+import pandas as pd
 import numpy as np
 from numpy.linalg import norm
-import pandas as pd
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 
 from Database.database import Database
 from modules.pso import particle_swarm
-from modules.scattering_matrix import smm_broadband, Layer3D
+from modules.scattering_matrix import smm_broadband, Layer3D, smm_angle
 from modules.fig_class import PltFigure, FigWidget
 from smm_export_window import Ui_ExportWindow
 from smm_main_window import Ui_SMM_Window
@@ -27,16 +29,22 @@ from smm_properties_ui import Ui_Properties
 from db_window import DBWindow
 
 VERSION = "2.0.0"
-# TODO: Reorganize code layout in module <11-10-21, Miguel> #
 
 # Default plot properties
 mstyle.use("smm_style")
+
+
+class SType(Enum):
+    """ Enum to for the different Simulation types """
+    WVL = auto()
+    ANGLE = auto()
 
 
 class OptimizeWorkder(QtCore.QThread):
     """
     Worker thread to perform the optimization algorithm
     """
+    # Connections with widgets from the main thread
     updateValueSignal = QtCore.pyqtSignal(int)
     updateTextSignal = QtCore.pyqtSignal(str)
     updateOptButton = QtCore.pyqtSignal(bool)
@@ -45,6 +53,7 @@ class OptimizeWorkder(QtCore.QThread):
                  theta, phi, pol, ref_medium, trn_medium, thickness,
                  layer_list, checks):
         super().__init__()
+        """ Initialize variables and aliases """
         self.figure_canvas = figure_handler
         self.figure = self.figure_canvas.axes
         self.smm_args = {"lmb": lmb, "theta": theta, "phi": phi, "pol": pol,
@@ -65,6 +74,7 @@ class OptimizeWorkder(QtCore.QThread):
         self.updateOptButton.emit(False)
 
         def optimize_function(**thicknesses):
+            """ Optimization function """
             t_array = np.stack([thick_i for thick_i in thicknesses.values()])
             ref, trn = np.apply_along_axis(
                 lambda thick: smm_broadband(self.layer_list,
@@ -88,6 +98,7 @@ class OptimizeWorkder(QtCore.QThread):
             "thick_" + str(i): [thick_i[0], thick_i[1]]
             for i, thick_i in enumerate(self.thickness)
         }
+        # Particle swarm algorithm
         lowest_error, best_thick, _, _ = particle_swarm(
             optimize_function,
             thick,
@@ -119,7 +130,8 @@ class OptimizeWorkder(QtCore.QThread):
 class SMMGUI(QMainWindow):
     def __init__(self):
         """
-        Initialize necessary variables for the GUI
+        Initialize necessary variables for the GUI and aliases to the important
+        structures
         """
         super(SMMGUI, self).__init__()
         self.ui = Ui_SMM_Window()
@@ -155,8 +167,6 @@ class SMMGUI(QMainWindow):
         self.sim_check = [
             self.ui.sim_tab_sim_check1, self.ui.sim_tab_sim_check2
         ]
-        # Check if last plot was from simulation or optimization
-        self.last_plot_sim = True
         # List to store the previous simulation results
         self.sim_results = []
         # Store imported data
@@ -202,7 +212,7 @@ class SMMGUI(QMainWindow):
 
     def initializeUI(self):
         """
-        Associate all UI elements with specific functions
+        Associate all UI elements with action functions
         """
         self.ui.sim_tab_add_layer_button.clicked.connect(
             lambda: self.add_layer("sim"))
@@ -215,9 +225,9 @@ class SMMGUI(QMainWindow):
         for checkbox in self.sim_check:
             checkbox.stateChanged.connect(self.plot_abs_i)
         self.ui.sim_param_check_angle.stateChanged.connect(
-                self.sim_angle)
+            self.sim_angle)
         self.ui.sim_param_check_lmb.stateChanged.connect(
-                self.sim_lmb)
+            self.sim_lmb)
         self.ui.sim_tab_sim_button.clicked.connect(self.simulate)
         self.ui.sim_tab_clear_button.clicked.connect(self.clear_sim_buffer)
         self.ui.sim_tab_export_button.clicked.connect(self.export_simulation)
@@ -242,7 +252,7 @@ class SMMGUI(QMainWindow):
             f"matrices\n\nAuthor: Miguel Alexandre\n\nVersion: {VERSION}"
         QMessageBox.about(self, title, msg)
 
-    """ Simulation Configuration (lmb or angle) """
+    """ Simulation Configuration (wavelength or angle) """
 
     def sim_angle(self, int):
         """ Change simulation to angle simulation """
@@ -254,6 +264,8 @@ class SMMGUI(QMainWindow):
             # Disable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
+            for checkbox in self.sim_check:
+                checkbox.setDisabled(True)
         elif not self.ui.sim_param_check_lmb.isChecked() and int == 0:
             self.ui.sim_param_check_lmb.setChecked(True)
             self.main_canvas.reinit()
@@ -262,6 +274,8 @@ class SMMGUI(QMainWindow):
             # Enable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
+            for checkbox in self.sim_check:
+                checkbox.setDisabled(False)
 
     def sim_lmb(self, int):
         """ Change simulation to broadband simulation """
@@ -273,6 +287,8 @@ class SMMGUI(QMainWindow):
             # Enable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
+            for checkbox in self.sim_check:
+                checkbox.setDisabled(False)
         elif not self.ui.sim_param_check_angle.isChecked() and int == 0:
             self.ui.sim_param_check_angle.setChecked(True)
             self.main_canvas.reinit()
@@ -281,6 +297,8 @@ class SMMGUI(QMainWindow):
             # Disable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
+            for checkbox in self.sim_check:
+                checkbox.setDisabled(True)
 
     """ Properties Button and associated functions """
 
@@ -526,42 +544,34 @@ class SMMGUI(QMainWindow):
         """
         Get material configuration
         """
-        try:
-            thick = []
-            layer_list = []
-            # Get results depending on the respective tab
-            if tab == "sim":
-                for material, thickness in zip(material_structure["materials"],
-                                               material_structure["size"]):
-                    mat_i = material.currentText()
-                    db_data = self.database[mat_i]
-                    layer_list.append(
-                        Layer3D(mat_i, float(thickness.text()),
-                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
-                                kind='cubic'))
-            else:
-                for material, low_t, upp_t in zip(
-                        material_structure["materials"],
-                        material_structure["size_low"],
-                        material_structure["size_high"]):
-                    thick.append([float(low_t.text()), float(upp_t.text())])
-                    mat_i = material.currentText()
-                    db_data = self.database[mat_i]
-                    layer_list.append(
-                        Layer3D(mat_i, float(low_t.text()),
-                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
-                                kind='cubic'))
-            thick = np.array(thick)
-            return thick, layer_list
-        except ValueError:
-            title = "Error: Material Out of Bounds"
-            message = "One of the materials in the simulation is"\
-                "undefined for the defined wavelength range"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
-                                QMessageBox.Close)
-            raise ValueError
+        thick = []
+        layer_list = []
+        # Get results depending on the respective tab
+        if tab == "sim":
+            for material, thickness in zip(material_structure["materials"],
+                                           material_structure["size"]):
+                mat_i = material.currentText()
+                db_data = self.database[mat_i]
+                layer_list.append(
+                    Layer3D(mat_i, float(thickness.text()),
+                            db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                            kind='cubic'))
+        else:
+            for material, low_t, upp_t in zip(
+                    material_structure["materials"],
+                    material_structure["size_low"],
+                    material_structure["size_high"]):
+                thick.append([float(low_t.text()), float(upp_t.text())])
+                mat_i = material.currentText()
+                db_data = self.database[mat_i]
+                layer_list.append(
+                    Layer3D(mat_i, float(low_t.text()),
+                            db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                            kind='cubic'))
+        thick = np.array(thick)
+        return thick, layer_list
 
-    """ Simulate and plot simulation data """
+    """ Simulation and associated funcitons """
 
     def simulate(self):
         """
@@ -576,14 +586,27 @@ class SMMGUI(QMainWindow):
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
             _, layer_list = self.get_material_config(
                 lmb, self.sim_config)
-            ref, trn = smm_broadband(
-                layer_list, theta, phi, lmb, pol, ref_medium, trn_medium)
-            self.sim_results_update(layer_list, theta, phi, lmb, ref, trn)
-            self.sim_plot_data(lmb, ref, trn)
-        except ValueError or Exception:
-            pass
+            if self.sim_data["lmb_check"].isChecked():
+                ref, trn = smm_broadband(
+                    layer_list, theta, phi, lmb, pol, ref_medium, trn_medium)
+                self.sim_plot_data(lmb, ref, trn)
+                self.sim_results_update(layer_list, theta, phi, lmb, ref, trn)
+            else:
+                theta = np.linspace(
+                    0, 89, self.global_properties["sim_points"][1])
+                ref, trn = smm_angle(layer_list, np.radians(theta), phi,
+                                     lmb_min, pol, ref_medium, trn_medium)
+                self.sim_plot_data(theta, ref, trn)
+                self.sim_results_update(layer_list, theta, phi,
+                                        lmb_min, ref, trn, type=SType.ANGLE)
+        except Exception:
+            title = "Error: Material Out of Bounds"
+            message = "One of the materials in the simulation is"\
+                "undefined for the defined wavelength range"
+            QMessageBox.warning(self, title, message, QMessageBox.Close,
+                                QMessageBox.Close)
 
-    def sim_plot_data(self, lmb, ref, trn):
+    def sim_plot_data(self, x, ref, trn):
         """
         Verify which checkboxes are toggled and plot data accordingly
         """
@@ -594,25 +617,33 @@ class SMMGUI(QMainWindow):
         simulations = str(len(self.sim_results))
         # Plot according to the checkboxes
         if ref_check:
-            self.main_figure.plot(lmb, ref, label="R Sim(" + simulations + ")")
+            self.main_figure.plot(x, ref, label="R Sim(" + simulations + ")")
         if trn_check:
-            self.main_figure.plot(lmb, trn, label="T Sim(" + simulations + ")")
+            self.main_figure.plot(x, trn, label="T Sim(" + simulations + ")")
         if abs_check:
-            self.main_figure.plot(lmb, 1 - ref - trn,
+            self.main_figure.plot(x, 1 - ref - trn,
                                   label="A Sim(" + simulations + ")")
         self.main_canvas.draw()
 
-    def sim_results_update(self, layer_list, theta, phi, lmb, ref, trn):
+    def sim_results_update(self, layer_list, theta, phi, lmb, ref, trn,
+                           type=SType.WVL):
         """
         Update the simulation results
         """
         # The identifier string is of the form S(sim)(theta,phi)|Layer_config|
-        ident_string = "S" + str(len(self.sim_results) + 1) + "(" + str(
-            int(math.degrees(theta))) + "," + str(
-            int(math.degrees(phi))) + ") "
+        if type == SType.WVL:
+            ident_string = "W" + str(len(self.sim_results) + 1) + "(" + str(
+                int(math.degrees(theta))) + "," + str(
+                int(math.degrees(phi))) + ") "
+        elif type == SType.ANGLE:
+            ident_string = "A" + str(len(self.sim_results) + 1) + "(" + str(
+                int(lmb)) + "," + str(
+                int(math.degrees(phi))) + ") "
+        else:
+            raise Exception("Unknown Simulation Type")
         for layer in layer_list:
             ident_string += "|"+layer.name[:5]+"("+str(layer.thickness)+")"
-        self.sim_results.append((ident_string, lmb, ref, trn))
+        self.sim_results.append((ident_string, type, theta, lmb, ref, trn))
         self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
 
     def clear_sim_buffer(self):
@@ -645,7 +676,8 @@ class SMMGUI(QMainWindow):
             self.export_ui.transmission_checkbox,
             self.export_ui.absorption_checkbox
         ]
-        export_names = [sim_name for sim_name, _, _, _ in self.sim_results]
+        export_names = [sim_name for sim_name,
+                        _, _, _, _, _ in self.sim_results]
         self.chosen_sim.addItems(export_names)
         self.export_ui.export_all_button.clicked.connect(self.export_all)
         self.export_ui.export_button.clicked.connect(self.export)
@@ -661,47 +693,38 @@ class SMMGUI(QMainWindow):
         ref_check = self.export_checks[0].isChecked()
         trn_check = self.export_checks[1].isChecked()
         abs_check = self.export_checks[2].isChecked()
+        header = ""
         if savepath[0] == "":
             return
-        for name, lmb, ref, trn in self.sim_results:
+        for name, type, theta, lmb, ref, trn in self.sim_results:
             if name == sim_choice:
-                if ref_check and trn_check and abs_check:
-                    export_array = np.stack((lmb, ref, trn, 1 - ref - trn),
-                                            axis=-1)
-                    np.savetxt(savepath[0],
-                               export_array,
-                               header='Wavelength Ref Trn Abs')
-                elif ref_check and trn_check and not abs_check:
-                    export_array = np.stack((lmb, ref, trn), axis=-1)
-                    np.savetxt(savepath[0],
-                               export_array,
-                               header='Wavelength Ref Trn')
-                elif ref_check and not trn_check and not abs_check:
-                    export_array = np.stack((lmb, ref), axis=-1)
-                    np.savetxt(savepath[0],
-                               export_array,
-                               header='Wavelength Ref')
-                elif not ref_check and trn_check and abs_check:
-                    export_array = np.stack((lmb, trn, 1 - ref - trn), axis=-1)
-                    np.savetxt(savepath[0],
-                               export_array,
-                               header='Wavelength Trn Abs')
-                elif not ref_check and not trn_check and abs_check:
-                    export_array = np.stack((lmb, 1 - ref - trn), axis=-1)
-                    np.savetxt(savepath[0],
-                               export_array,
-                               header='Wavelength Abs')
-                elif not ref_check and trn_check and not abs_check:
-                    export_array = np.stack((lmb, trn), axis=-1)
-                    np.savetxt(savepath[0],
-                               export_array,
-                               header='Wavelength Trn')
-        self.export_window.raise_()
-        self.export_window.setFocus(True)
-        self.export_window.activateWindow()
+                # Start building the export array
+                if type == SType.WVL:
+                    export_array = lmb
+                    header += "Wavelength(nm)"
+                elif type == SType.ANGLE:
+                    export_array = theta
+                    header += "Angle"
+                export_array = export_array[:, np.newaxis]
+                if ref_check:
+                    export_array = np.concatenate(
+                        (export_array, ref[:, np.newaxis]), axis=1)
+                    header += " Ref"
+                if trn_check:
+                    export_array = np.concatenate(
+                        (export_array, trn[:, np.newaxis]), axis=1)
+                    header += " Trn"
+                if abs_check:
+                    export_array = np.concatenate(
+                        (export_array, (1-ref-trn)[:, np.newaxis]), axis=1)
+                    header += " Abs"
+                np.savetxt(savepath[0], export_array, header=header)
         QMessageBox.information(self, "Successful Export",
                                 "Results Exported Successfully!",
                                 QMessageBox.Ok, QMessageBox.Ok)
+        self.export_window.raise_()
+        self.export_window.setFocus(True)
+        self.export_window.activateWindow()
 
     def export_all(self):
         """
@@ -716,50 +739,30 @@ class SMMGUI(QMainWindow):
         ref_check = self.export_checks[0].isChecked()
         trn_check = self.export_checks[1].isChecked()
         abs_check = self.export_checks[2].isChecked()
-        if ref_check and trn_check and abs_check:
-            for i, (_, lmb, ref, trn) in enumerate(self.sim_results):
-                export_path = os.path.join(export_dir,
-                                           "Sim" + str(i) + "_" + export_name)
-                export_array = np.stack((lmb, ref, trn, 1 - ref - trn),
-                                        axis=-1)
-                np.savetxt(export_path,
-                           export_array,
-                           header='Wavelength Ref Trn Abs')
-        elif ref_check and trn_check and not abs_check:
-            for i, (_, lmb, ref, trn) in enumerate(self.sim_results):
-                export_path = os.path.join(export_dir,
-                                           "Sim" + str(i) + "_" + export_name)
-                export_array = np.stack((lmb, ref, trn), axis=-1)
-                np.savetxt(export_path,
-                           export_array,
-                           header='Wavelength Ref Trn')
-        elif ref_check and not trn_check and not abs_check:
-            for i, (_, lmb, ref, trn) in enumerate(self.sim_results):
-                export_path = os.path.join(export_dir,
-                                           "Sim" + str(i) + "_" + export_name)
-                export_array = np.stack((lmb, ref), axis=-1)
-                np.savetxt(export_path, export_array, header='Wavelength Ref')
-        elif not ref_check and trn_check and abs_check:
-            for i, (_, lmb, ref, trn) in enumerate(self.sim_results):
-                export_path = os.path.join(export_dir,
-                                           "Sim" + str(i) + "_" + export_name)
-                export_array = np.stack((lmb, trn, 1 - ref - trn), axis=-1)
-                np.savetxt(export_path,
-                           export_array,
-                           header='Wavelength Trn Abs')
-        elif not ref_check and not trn_check and abs_check:
-            for i, (_, lmb, ref, trn) in enumerate(self.sim_results):
-                export_path = os.path.join(export_dir,
-                                           "Sim" + str(i) + "_" + export_name)
-                export_array = np.stack((lmb, 1 - ref - trn), axis=-1)
-                np.savetxt(export_path, export_array, header='Wavelength Abs')
-        elif not ref_check and trn_check and not abs_check:
-            for i, (_, lmb, ref, trn) in enumerate(self.sim_results):
-                export_path = os.path.join(export_dir,
-                                           "Sim" + str(i) + "_" + export_name)
-                export_array = np.stack((lmb, trn), axis=-1)
-                np.savetxt(export_path, export_array, header='Wavelength Trn')
-
+        header = ""
+        for name, type, theta, lmb, ref, trn in self.sim_results:
+            # Start building the export array
+            if type == SType.WVL:
+                export_array = lmb
+                header += "Wavelength(nm)"
+            elif type == SType.ANGLE:
+                export_array = theta
+                header += "Angle"
+            export_array = export_array[:, np.newaxis]
+            if ref_check:
+                export_array = np.concatenate(
+                    (export_array, ref[:, np.newaxis]), axis=1)
+                header += " Ref"
+            if trn_check:
+                export_array = np.concatenate(
+                    (export_array, trn[:, np.newaxis]), axis=1)
+                header += " Trn"
+            if abs_check:
+                export_array = np.concatenate(
+                    (export_array, (1-ref-trn)[:, np.newaxis]), axis=1)
+                header += " Abs"
+            export_path = os.path.join(export_dir, export_name+name+".txt")
+            np.savetxt(export_path, export_array, header=header)
         self.export_window.close()
         QMessageBox.information(self, "Successful Export",
                                 "Results Exported Successfully!",
@@ -771,14 +774,20 @@ class SMMGUI(QMainWindow):
         """
         sim_choice = self.chosen_sim.currentText()
         self.preview_window = FigWidget(f"Preview {sim_choice}")
-        self.preview_fig = PltFigure(self.preview_window.layout,
-                                     "Wavelength (nm)", "R/T/Abs", width=7)
-        self.preview_window.show()
-        for name, lmb, ref, trn in self.sim_results:
+        for name, type, theta, lmb, ref, trn in self.sim_results:
             if name == sim_choice:
-                self.preview_fig.axes.plot(lmb, ref, label="Ref")
-                self.preview_fig.axes.plot(lmb, trn, label="Trn")
-                self.preview_fig.axes.plot(lmb, 1-ref-trn, label="Abs")
+                if type == SType.WVL:
+                    xlabel = "Wavelength (nm)"
+                    xdata = lmb
+                elif type == SType.ANGLE:
+                    xlabel = "Angle (θ)"
+                    xdata = theta
+                self.preview_fig = PltFigure(self.preview_window.layout,
+                                             xlabel, "R/T/Abs", width=7)
+                self.preview_window.show()
+                self.preview_fig.axes.plot(xdata, ref, label="Ref")
+                self.preview_fig.axes.plot(xdata, trn, label="Trn")
+                self.preview_fig.axes.plot(xdata, 1-ref-trn, label="Abs")
         self.preview_fig.axes.legend(bbox_to_anchor=(1, 1), loc="upper left")
         self.preview_fig.draw()
 
@@ -827,6 +836,12 @@ class SMMGUI(QMainWindow):
         """
         Perform Results Optimization (Splits into a new worker thread)
         """
+        if self.ui.sim_param_check_angle.isChecked():
+            QMessageBox.warning(self, "Invalid Simulation Mode",
+                                "Optimization only available for Wavelength " +
+                                "type simulations",
+                                QMessageBox.Close, QMessageBox.Close)
+            return
         try:
             # Get the data for optimization
             lmb = self.imported_data[:, 0].T

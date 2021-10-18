@@ -1,13 +1,14 @@
 """
 File with the optimized version of the Scattering Matrix Script
 
-Has 2 main functions:
+Class:
+    Layer1D: Define a SMM Layer for 1 wavelength
+    Layer3D: Define a broadband SMM Layer material
+Functions:
     smm - Calculates R and T for a specific wavelength
     smm_broadband - Calculates R and T for a wavelength range
+    smm_angle - Calculates R and T for a angle range
 """
-# TODO: Rebuild this portion of the code  <11-10-21, Miguel> #
-
-# Basic modules
 from enum import Enum, auto
 import numpy as np
 from numpy.linalg import inv
@@ -41,7 +42,7 @@ class SMMBase():
         return SMMBase(S_11_AB, S_12_AB, S_21_AB, S_22_AB)
 
     def __imul__(self, other):
-        """ Implement Syntax Sugar to perform the Redheffer Product """
+        """ Syntax Sugar for *= Operation """
         return self * other
 
     def __repr__(self):
@@ -62,6 +63,7 @@ class SMM(SMMBase):
     """ Base class to perform SMM calculations """
 
     def __init__(self, V0, k0, kx, ky, thickness, e, u=1, type=SMMType.NORM):
+        """ Initialize variables """
         self.thickness = thickness
         self.e = e
         self.u = u
@@ -92,7 +94,7 @@ class SMM(SMMBase):
         return Omega_i, V_i
 
     def _smm_norm(self, V0):
-        """ Calculate the normal smm """
+        """ Scattering matrix for a standard layer """
         Omega_i, Vi = self._mat_properties()
         iVi_V0 = inv(Vi) @ V0
         Ai = np.eye(2) + iVi_V0
@@ -106,7 +108,7 @@ class SMM(SMMBase):
         return S_11, S_12, S_12, S_11
 
     def _smm_trn(self, V0):
-        """ Calculate the smm for the transmission region """
+        """ Calculate the smm for the transmission layer """
         _, V_trn = self._mat_properties()
         iV_0_V_trn = inv(V0) @ V_trn
         A_trn = np.eye(2) + iV_0_V_trn
@@ -119,7 +121,7 @@ class SMM(SMMBase):
         return S_11, S_12, S_21, S_22
 
     def _smm_ref(self, V0):
-        """Calculate the smm for the reflection region"""
+        """Calculate the smm for the reflection layer"""
         _, V_ref = self._mat_properties()
         iV_0_V_ref = inv(V0) @ V_ref
         A_ref = np.eye(2) + iV_0_V_ref
@@ -136,11 +138,9 @@ class Layer1D():
     """
     Layer for single wavelength materials
     Args:
-        name (str): Name for the layer
+        name (str): Identifier for the layer
         thickness (float - nm): Layer thickness
-        lmb (nm)/n_array/k_array (array): Arrays with the
-                                          basic info for each layer
-        u_array: Permeability data (1 as default)
+        lmb (nm)/n_val/k_val (array): Material info for the layer
     """
 
     def __init__(self, name, thickness, lmb, n_val, k_val):
@@ -151,7 +151,7 @@ class Layer1D():
         self.k = k_val
 
     def e_value(self, lmb):
-        """ Calculate e_values for a range of wavelengths """
+        """ Return e_value for specific wavelength """
         if lmb != self.lmb:
             raise Exception(
                 "Material defined outside provided wavelength value")
@@ -162,11 +162,11 @@ class Layer3D():
     """
     Layer for single wavelength materials
     Args:
-        name (str): Name for the layer
+        name (str): Identifier for the layer
         thickness (float - nm): Layer thickness
         lmb (nm)/n_array/k_array (array): Arrays with the
                                           basic info for each layer
-        u_array: Permeability data (1 as default)
+        **kwargs: Pass extra arguments for interpolation function
     """
 
     def __init__(self, name, thickness, lmb, n_array, k_array, **kwargs):
@@ -187,7 +187,7 @@ class Layer3D():
 
 
 def _initialize_smm(theta, phi, lmb, pol, inc_medium, trn_medium):
-    """ Initialize the parameters necessary for the smm calculation """
+    """ Initialize the parameters necessary for the smm calculations """
     if np.size(lmb) > 1 and np.size(theta) > 1:
         raise Exception("Only wavelength or theta can be an array")
     # Wavevector for the incident wave
@@ -228,6 +228,39 @@ def _e_fields(S_Global, inc_p_l, inc_p_r, kx, ky, kz_ref, kz_trn):
     return E_ref, E_trn, Ez_ref, Ez_trn
 
 
+def smm(layer_list, theta, phi, lmb, pol, i_med, t_med):
+    """
+    SMM for a single point simulation
+    Args:
+        layer_list: List of Layer objects with the info for all layers
+        theta/phi: Incidence angles
+        lmb: Wavelength for a particular simulation
+        pol: Tuple with the TM/TE polarization components
+        i_med/t_med: Data for the reflection and transmission media
+    Returns:
+        R, T: Arrays with the Reflection and transmission for the layer setup
+    """
+    # Inicialize necessary values
+    k0, kx, ky, V0, p, S_Global = _initialize_smm(
+        theta, phi, lmb, pol, i_med, t_med)
+    S_trn = SMM(V0, k0, kx, ky, 0,
+                t_med[0], t_med[1], SMMType.TRN)
+    S_ref = SMM(V0, k0, kx, ky, 0,
+                i_med[0], i_med[1], SMMType.REF)
+    for layer in layer_list:
+        S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
+        S_Global *= S_Layer
+    S_Global = S_ref * S_Global * S_trn
+    kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
+    kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
+    E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
+        S_Global, p, [0, 0], kx, ky, kz_ref, kz_trn)
+    R = abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2
+    T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
+        (kz_trn * i_med[1]) / (kz_ref * t_med[1]))
+    return R, T
+
+
 def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
                   override_thick=None):
     """
@@ -238,7 +271,7 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
         lmb: Array with wavelengths for simulation
         pol: Tuple with the TM/TE polarization components
         i_med/t_med: Data for the reflection and transmission media
-        **override_thick: Override the built thickness of the layers
+        override_thick: Override the built thickness of the layers
     Returns:
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
@@ -256,6 +289,7 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
     layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
     R = []
     T = []
+    # Loop through all wavelengths and layers
     for lmb_i, k0_i, layer_data in zip(lmb, k0, layer_data.T):
         S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
         S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
@@ -266,6 +300,50 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
         S_Global_i = S_Global_i * S_trn
         E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
             S_Global_i, p, [0, 0], kx, ky, kz_ref, kz_trn)
+        R.append(abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2)
+        T.append(
+                (
+                    abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2
+                ) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1])))
+    return np.array(R), np.array(T)
+
+
+def smm_angle(layer_list, theta, phi, lmb, pol, i_med, t_med,
+              override_thick=None):
+    """
+    SMM for broad angle simulations
+    Args:
+        layer_list: List of layers for the device
+        theta: array with the incidence angles
+        phi: Polar incidence angle
+        lmb: Single wavelength for the simulation
+        pol: Incident polarization
+        i_med/t_med (tuple): Incidence and transmission region properties
+    Returns:
+        R, T: Arrays with the Reflection and transmission for the layer setup
+    """
+    if override_thick is not None:
+        if len(override_thick) == len(layer_list):
+            for thick_i, layer in zip(override_thick, layer_list):
+                layer.thickness = thick_i
+        else:
+            raise Exception("Override Thickness does not match Layer List")
+    R, T = [], []
+    for theta_i in theta:
+        k0, kx, ky, V0, p, S_Global = _initialize_smm(
+            theta_i, phi, lmb, pol, i_med, t_med)
+        S_trn = SMM(V0, k0, kx, ky, 0,
+                    t_med[0], t_med[1], SMMType.TRN)
+        S_ref = SMM(V0, k0, kx, ky, 0,
+                    i_med[0], i_med[1], SMMType.REF)
+        for layer in layer_list:
+            S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
+            S_Global *= S_Layer
+        S_Global = S_ref * S_Global * S_trn
+        kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
+        kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
+        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
+            S_Global, p, [0, 0], kx, ky, kz_ref, kz_trn)
         R.append(abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2)
         T.append(
                 (
@@ -340,64 +418,29 @@ def smm_abs_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
     return calc
 
 
-def smm_angle(layer_list, theta, phi, lmb, pol, ref_medium, trn_medium):
-    """ SMM for broad angle simulations """
-    pass
-
-
-def smm(layer_list, theta, phi, lmb, pol, i_med, t_med):
-    """
-    SMM for a single point simulation
-    Args:
-        layer_list: List of Layer objects with the info for all layers
-        theta/phi: Incidence angles
-        lmb: Wavelength for a particular simulation
-        pol: Tuple with the TM/TE polarization components
-        i_med/t_med: Data for the reflection and transmission media
-    Returns:
-        R, T: Arrays with the Reflection and transmission for the layer setup
-    """
-    # Inicialize necessary values
-    k0, kx, ky, V0, p, S_Global = _initialize_smm(
-        theta, phi, lmb, pol, i_med, t_med)
-    S_trn = SMM(V0, k0, kx, ky, 0,
-                t_med[0], t_med[1], SMMType.TRN)
-    S_ref = SMM(V0, k0, kx, ky, 0,
-                i_med[0], i_med[1], SMMType.REF)
-    for layer in layer_list:
-        S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
-        S_Global *= S_Layer
-    S_Global = S_ref * S_Global * S_trn
-    kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
-    kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
-    E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
-        S_Global, p, [0, 0], kx, ky, kz_ref, kz_trn)
-    R = abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2
-    T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
-        (kz_trn * i_med[1]) / (kz_ref * t_med[1]))
-    return R, T
-
-
 if __name__ == '__main__':
     n_comp = 5
     lmb = 0.7
-    theta = np.radians(np.random.randint(0, 89))
+    theta = np.radians(np.linspace(0, 89))
     phi = np.radians(23)
     p = (1, 0)
-    inc_medium = (np.random.rand()*2+1, 1)
-    trn_medium = (np.random.rand()*2+1, 1)
-    layer1 = Layer1D("l1", 0.1, lmb, np.random.rand()
-                     * 3+1, np.random.rand()/100)
-    layer2 = Layer1D("l2", 0.1, lmb, np.random.rand()
-                     * 3+1, np.random.rand()/100)
-    layer3 = Layer1D("l3", 2, lmb, np.random.rand()*3+1, np.random.rand()/100)
+    inc_medium = (1, 1)
+    trn_medium = (1, 1)
+    layer1 = Layer1D("l1", 0.1, lmb, 1.5, 0.1)
+    layer2 = Layer1D("l2", 0.1, lmb, 1.3, 0.03)
+    layer3 = Layer1D("l3", 2, lmb, 2.5, 0.1)
+    # Test angular results
+    R, T = smm_angle([layer1, layer2, layer3], theta, phi, lmb, p,
+                     inc_medium, trn_medium)
+    print(R, T)
+    # Test absorption
     abs1 = smm_abs_layer([layer1, layer2, layer3], 1,
+                         theta[3], phi, lmb, p, inc_medium, trn_medium)
+    abs2 = smm_abs_layer([layer1[3], layer2, layer3], 2,
                          theta, phi, lmb, p, inc_medium, trn_medium)
-    abs2 = smm_abs_layer([layer1, layer2, layer3], 2,
-                         theta, phi, lmb, p, inc_medium, trn_medium)
-    abs3 = smm_abs_layer([layer1, layer2, layer3], 3,
+    abs3 = smm_abs_layer([layer1[3], layer2, layer3], 3,
                          theta, phi, lmb, p, inc_medium, trn_medium)
     print(abs1+abs2+abs3)
-    R, T = smm([layer1, layer2, layer3], theta, phi, lmb, p,
+    R, T = smm([layer1, layer2, layer3], theta[3], phi, lmb, p,
                inc_medium, trn_medium)
     print(1-R-T)
