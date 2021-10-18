@@ -12,11 +12,6 @@ from enum import Enum, auto
 import numpy as np
 from numpy.linalg import inv
 from scipy.interpolate import interp1d
-from scipy.integrate import trapz
-import matplotlib.pyplot as plt
-import scipy.constants as scc
-
-c_nm = scc.c * 1e-9
 
 
 class SMMType(Enum):
@@ -46,7 +41,7 @@ class SMMBase():
         return SMMBase(S_11_AB, S_12_AB, S_21_AB, S_22_AB)
 
     def __imul__(self, other):
-        """ Implement Syntax Sugar to perform the Redhaffer Product """
+        """ Implement Syntax Sugar to perform the Redheffer Product """
         return self * other
 
     def __repr__(self):
@@ -233,22 +228,6 @@ def _e_fields(S_Global, inc_p_l, inc_p_r, kx, ky, kz_ref, kz_trn):
     return E_ref, E_trn, Ez_ref, Ez_trn
 
 
-def _int_field(A, c_int, Omega_Layer, k0, z):
-    """ Calculate the internal fields from the internal mode coefficients """
-    mode_layer = np.zeros((4, 4), dtype=np.complex128)
-    mode_layer[:2, :2] = np.eye(2)*np.exp(Omega_Layer * k0 * z)
-    mode_layer[2:, 2:] = np.eye(2)*np.exp(-Omega_Layer * k0 * z)
-    return A@mode_layer@c_int
-
-
-def _field_power(fields, kx, ky, kz):
-    """ Calculate |E|^2 """
-    Ex = fields[0]
-    Ey = fields[1]
-    Ez = -(kx*Ex + ky*Ey)/kz
-    return abs(Ex)**2 + abs(Ey)**2 + abs(Ez)**2
-
-
 def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
                   override_thick=None):
     """
@@ -295,7 +274,7 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
     return np.array(R), np.array(T)
 
 
-def smm_abs_layer_i(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
+def smm_abs_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
     """
     Determine absorption for a particular layer
     Args:
@@ -313,57 +292,52 @@ def smm_abs_layer_i(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
     layer_i -= 1
     k0, kx, ky, V0, p, S_Global = _initialize_smm(
         theta, phi, lmb, pol, i_med, t_med)
+    S_trn = SMM(V0, k0, kx, ky, 0,
+                t_med[0], t_med[1], SMMType.TRN)
+    S_ref = SMM(V0, k0, kx, ky, 0,
+                i_med[0], i_med[1], SMMType.REF)
+    S_Global = S_ref
+    for layer_index, layer in enumerate(layer_list):
+        if layer_index == layer_i:
+            S_Global_Before = S_Global
+        S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
+        S_Global *= S_Layer
+        if layer_index == layer_i:
+            S_Global_After = S_Global
+    S_Pre_Trn = S_Global
+    S_Global *= S_trn
+    # Determine the total absorption of the device
     kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
     kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
-    # kz_vac = np.sqrt(1 - kx**2 - ky**2)
-    # This is a simplification to determine all the values in beforehand
-    layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
-    thick_list = np.array([layer_i.thickness for layer_i in layer_list])
-    thick_list = np.cumsum(thick_list)
-    abs = []
-    for lmb_i, k0_i, layer_data in zip(lmb, k0, layer_data.T):
-        w = 2*np.pi*c_nm/lmb_i
-        S_trn = SMM(V0, k0, kx, ky, 0,
-                    t_med[0], t_med[1], SMMType.TRN)
-        S_ref = SMM(V0, k0, kx, ky, 0,
-                    i_med[0], i_med[1], SMMType.REF)
-        S_Global_lmb = S_ref
-        for layer_index, layer in enumerate(layer_list):
-            S_Layer = SMM(V0, k0_i, kx, ky, layer.thickness,
-                          layer_data[layer_index])
-            if layer_index == layer_i:
-                S_Global_Before = S_Global_lmb
-                V_Layer = S_Layer.Vi
-                Omega_Layer = S_Layer.Omega_i
-                k_layer = np.sqrt(layer.e_value(lmb_i) - kx**2 - ky**2)
-                layer_k = layer.k(lmb_i)
-            S_Global_lmb *= S_Layer
-        S_Global_lmb *= S_trn
-        E_ref, _, _, _ = _e_fields(
-            S_Global_lmb, p, [0, 0], kx, ky, kz_ref, kz_trn)
-        # Determine the external mode coefficients just before the wanted layer
-        c_left_m = inv(S_Global_Before.S_12)@(E_ref - S_Global_Before.S_11@p)
-        c_left_p = S_Global_Before.S_21@p + S_Global_Before.S_22@c_left_m
-        # Calculate the internal fields
-        a_matrix = np.eye(2) + inv(V_Layer)@V0
-        b_matrix = np.eye(2) - inv(V_Layer)@V0
-        c_int_p = 1/2 * (a_matrix@c_left_p + b_matrix@c_left_m)
-        c_int_m = 1/2 * (b_matrix@c_left_p + a_matrix@c_left_m)
-        if layer_i == 0:
-            z = np.linspace(0, thick_list[layer_i], 100)
-        else:
-            z = np.linspace(thick_list[layer_i-1], thick_list[layer_i], 100)
-        # field = []
-        # ex = []
-        # for z_i in z:
-        #     fields = _int_field(A, c_int, Omega_Layer, k0_i, z_i)
-        #     ex.append(fields[0])
-        #     power = _field_power(fields, kx, ky, k_layer)
-        #     field.append(0.5*power*layer_k*w)
-        # abs.append(trapz(np.array(field), z))
-        # plt.plot(z, ex)
-        # plt.show()
-    return np.array(abs)
+    E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
+        S_Global, p, [0, 0], kx, ky, kz_ref, kz_trn)
+    R = abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2
+    T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
+        (kz_trn * i_med[1]) / (kz_ref * t_med[1]))
+    # Determine the total power inside the device
+    c_ref_m = inv(S_ref.S_12)@(E_ref - S_ref.S_11@p)
+    c_ref_p = S_ref.S_21@p + S_ref.S_22@c_ref_m
+    c_trn_m = inv(S_Pre_Trn.S_12)@(E_ref - S_Pre_Trn.S_11@p)
+    c_trn_p = S_Pre_Trn.S_21@p + S_Pre_Trn.S_22@c_trn_m
+    sum_c_trn_p = np.sum(np.abs(c_trn_p)**2)
+    sum_c_trn_m = np.sum(np.abs(c_trn_m)**2)
+    sum_c_ref_p = np.sum(np.abs(c_ref_p)**2)
+    sum_c_ref_m = np.sum(np.abs(c_ref_m)**2)
+    int_power = sum_c_ref_p - sum_c_ref_m - sum_c_trn_p + sum_c_trn_m
+    # Determine the mode coefficients just before the wanted layer
+    c_left_m = inv(S_Global_Before.S_12)@(E_ref - S_Global_Before.S_11@p)
+    c_left_p = S_Global_Before.S_21@p + S_Global_Before.S_22@c_left_m
+    # Determine the mode coefficients just after the wanted layer
+    c_right_m = inv(S_Global_After.S_12)@(E_ref - S_Global_After.S_11@p)
+    c_right_p = S_Global_After.S_21@p + S_Global_After.S_22@c_right_m
+    # Determine the %abs for a particular layer in regard to the total abs
+    sum_left_p = np.sum(np.abs(c_left_p)**2)
+    sum_left_m = np.sum(np.abs(c_left_m)**2)
+    sum_right_p = np.sum(np.abs(c_right_p)**2)
+    sum_right_m = np.sum(np.abs(c_right_m)**2)
+    calc = (sum_left_p + sum_right_m - sum_left_m - sum_right_p) / int_power
+    calc = calc * (1-R-T)
+    return calc
 
 
 def smm_angle(layer_list, theta, phi, lmb, pol, ref_medium, trn_medium):
@@ -371,7 +345,7 @@ def smm_angle(layer_list, theta, phi, lmb, pol, ref_medium, trn_medium):
     pass
 
 
-def smm(layer_list, lmb, theta, phi, pol, i_med, t_med):
+def smm(layer_list, theta, phi, lmb, pol, i_med, t_med):
     """
     SMM for a single point simulation
     Args:
@@ -406,32 +380,24 @@ def smm(layer_list, lmb, theta, phi, pol, i_med, t_med):
 
 if __name__ == '__main__':
     n_comp = 5
-    lmb = np.linspace(0.5, 1.6, n_comp)
-    theta = np.radians(57)
+    lmb = 0.7
+    theta = np.radians(np.random.randint(0, 89))
     phi = np.radians(23)
     p = (1, 0)
-    n_array = np.random.random((n_comp, 3))*1.5
-    k_array = np.zeros_like(n_array)
-    # k_array = np.array([[0, 0, 0.5], [0, 0.5, 0], [0.5, 0, 0], [0.5, 0.5, 0],
-    #                     [0.5, 0.5, 0.5]])
-    e_array = (n_array+1j*k_array)**2
-    thick = np.array([3, 0.5, 0.1])
-    inc_medium = (1, 1)
-    trn_medium = (1, 1)
-    layer1 = Layer3D(3, lmb, n_array[:, 0], k_array[:, 0])
-    layer2 = Layer3D(0.5, lmb, n_array[:, 1], k_array[:, 1])
-    layer3 = Layer3D(0.1, lmb, n_array[:, 2], k_array[:, 2])
-    abs1 = smm_abs_layer_i([layer1, layer2, layer3], 1,
-                           theta, phi, lmb, p, inc_medium, trn_medium)
-    print(abs1)
-    abs2 = smm_abs_layer_i([layer1, layer2, layer3], 2,
-                           theta, phi, lmb, p, inc_medium, trn_medium)
-    print(abs2)
-    abs3 = smm_abs_layer_i([layer1, layer2, layer3], 3,
-                           theta, phi, lmb, p, inc_medium, trn_medium)
-    print(abs3)
-    print("-------------------------------")
-    print(abs1+abs2+abs3)
-    R, T = smm_broadband([layer1, layer2, layer3],
+    inc_medium = (np.random.rand()*2+1, 1)
+    trn_medium = (np.random.rand()*2+1, 1)
+    layer1 = Layer1D("l1", 0.1, lmb, np.random.rand()
+                     * 3+1, np.random.rand()/100)
+    layer2 = Layer1D("l2", 0.1, lmb, np.random.rand()
+                     * 3+1, np.random.rand()/100)
+    layer3 = Layer1D("l3", 2, lmb, np.random.rand()*3+1, np.random.rand()/100)
+    abs1 = smm_abs_layer([layer1, layer2, layer3], 1,
                          theta, phi, lmb, p, inc_medium, trn_medium)
+    abs2 = smm_abs_layer([layer1, layer2, layer3], 2,
+                         theta, phi, lmb, p, inc_medium, trn_medium)
+    abs3 = smm_abs_layer([layer1, layer2, layer3], 3,
+                         theta, phi, lmb, p, inc_medium, trn_medium)
+    print(abs1+abs2+abs3)
+    R, T = smm([layer1, layer2, layer3], theta, phi, lmb, p,
+               inc_medium, trn_medium)
     print(1-R-T)

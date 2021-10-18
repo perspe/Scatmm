@@ -58,7 +58,8 @@ def particle_swarm(func,
                    n_particles=25,
                    n_iter=50,
                    export=False,
-                   plot=False):
+                   plot=False,
+                   **func_kwargs):
     """Implementation of the particle swarm algorithm
     Args:
         - func: function to be optimized
@@ -112,7 +113,7 @@ def particle_swarm(func,
         param_name: param_space[i]
         for i, param_name in enumerate(param_names)
     }
-    func_results = func(**func_input)
+    func_results = func(**func_input, **func_kwargs)
     if maximize:
         fitness_arg = np.argmax(func_results)
     else:
@@ -142,7 +143,7 @@ def particle_swarm(func,
             param_name: param_space[i]
             for i, param_name in enumerate(param_names)
         }
-        func_results = func(**func_input)
+        func_results = func(**func_input, **func_kwargs)
         if maximize:
             fitness_candidate_ind = np.argmax(func_results)
             if func_results[fitness_candidate_ind] > gfitness:
