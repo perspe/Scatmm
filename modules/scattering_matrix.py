@@ -5,9 +5,10 @@ Class:
     Layer1D: Define a SMM Layer for 1 wavelength
     Layer3D: Define a broadband SMM Layer material
 Functions:
-    smm - Calculates R and T for a specific wavelength
-    smm_broadband - Calculates R and T for a wavelength range
-    smm_angle - Calculates R and T for a angle range
+    smm: Calculates R and T for a specific wavelength
+    smm_broadband: Calculates R and T for a wavelength range
+    smm_angle: Calculates R and T for a angle range
+    smm_layer: Calculate the absorption for a specific layer
 """
 from enum import Enum, auto
 import numpy as np
@@ -352,7 +353,8 @@ def smm_angle(layer_list, theta, phi, lmb, pol, i_med, t_med,
     return np.array(R), np.array(T)
 
 
-def smm_abs_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
+def smm_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med,
+              override_thick=None):
     """
     Determine absorption for a particular layer
     Args:
@@ -363,59 +365,70 @@ def smm_abs_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med):
         pol: Tuple with the TM/TE polarization components
         i_med/t_med: Data for the reflection and transmission media
     Returns:
-        R, T: Arrays with the Reflection and transmission for the layer setup
+        Abs: Absorption for a particular layer
     """
     if layer_i == 0 or layer_i > len(layer_list):
         raise Exception("Invalid Index")
     layer_i -= 1
+    if override_thick is not None:
+        if len(override_thick) == len(layer_list):
+            for thick_i, layer in zip(override_thick, layer_list):
+                layer.thickness = thick_i
+        else:
+            raise Exception("Override Thickness does not match Layer List")
     k0, kx, ky, V0, p, S_Global = _initialize_smm(
         theta, phi, lmb, pol, i_med, t_med)
-    S_trn = SMM(V0, k0, kx, ky, 0,
-                t_med[0], t_med[1], SMMType.TRN)
-    S_ref = SMM(V0, k0, kx, ky, 0,
-                i_med[0], i_med[1], SMMType.REF)
-    S_Global = S_ref
-    for layer_index, layer in enumerate(layer_list):
-        if layer_index == layer_i:
-            S_Global_Before = S_Global
-        S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
-        S_Global *= S_Layer
-        if layer_index == layer_i:
-            S_Global_After = S_Global
-    S_Pre_Trn = S_Global
-    S_Global *= S_trn
-    # Determine the total absorption of the device
     kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
     kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
-    E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
-        S_Global, p, [0, 0], kx, ky, kz_ref, kz_trn)
-    R = abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2
-    T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
-        (kz_trn * i_med[1]) / (kz_ref * t_med[1]))
-    # Determine the total power inside the device
-    c_ref_m = inv(S_ref.S_12)@(E_ref - S_ref.S_11@p)
-    c_ref_p = S_ref.S_21@p + S_ref.S_22@c_ref_m
-    c_trn_m = inv(S_Pre_Trn.S_12)@(E_ref - S_Pre_Trn.S_11@p)
-    c_trn_p = S_Pre_Trn.S_21@p + S_Pre_Trn.S_22@c_trn_m
-    sum_c_trn_p = np.sum(np.abs(c_trn_p)**2)
-    sum_c_trn_m = np.sum(np.abs(c_trn_m)**2)
-    sum_c_ref_p = np.sum(np.abs(c_ref_p)**2)
-    sum_c_ref_m = np.sum(np.abs(c_ref_m)**2)
-    int_power = sum_c_ref_p - sum_c_ref_m - sum_c_trn_p + sum_c_trn_m
-    # Determine the mode coefficients just before the wanted layer
-    c_left_m = inv(S_Global_Before.S_12)@(E_ref - S_Global_Before.S_11@p)
-    c_left_p = S_Global_Before.S_21@p + S_Global_Before.S_22@c_left_m
-    # Determine the mode coefficients just after the wanted layer
-    c_right_m = inv(S_Global_After.S_12)@(E_ref - S_Global_After.S_11@p)
-    c_right_p = S_Global_After.S_21@p + S_Global_After.S_22@c_right_m
-    # Determine the %abs for a particular layer in regard to the total abs
-    sum_left_p = np.sum(np.abs(c_left_p)**2)
-    sum_left_m = np.sum(np.abs(c_left_m)**2)
-    sum_right_p = np.sum(np.abs(c_right_p)**2)
-    sum_right_m = np.sum(np.abs(c_right_m)**2)
-    calc = (sum_left_p + sum_right_m - sum_left_m - sum_right_p) / int_power
-    calc = calc * (1-R-T)
-    return calc
+    # This is a simplification to determine all the values in beforehand
+    layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
+    Abs = []
+    # Loop through all wavelengths and layers
+    for lmb_i, k0_i, layer_data in zip(lmb, k0, layer_data.T):
+        S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
+        S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
+        S_Global_i = S_ref
+        for layer_index, layer in enumerate(layer_list):
+            if layer_index == layer_i:
+                S_Global_Before = S_Global_i
+            S_Layer = SMM(V0, k0_i, kx, ky, layer.thickness,
+                          layer_data[layer_index])
+            S_Global_i *= S_Layer
+            if layer_index == layer_i:
+                S_Global_After = S_Global_i
+        S_Pre_Trn = S_Global_i
+        S_Global_i = S_Global_i * S_trn
+        # Determine the total absorption of the device
+        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
+            S_Global_i, p, [0, 0], kx, ky, kz_ref, kz_trn)
+        R = abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2
+        T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn) **
+             2) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1]))
+
+        # Determine the total power inside the device
+        c_ref_m = inv(S_ref.S_12)@(E_ref - S_ref.S_11@p)
+        c_ref_p = S_ref.S_21@p + S_ref.S_22@c_ref_m
+        c_trn_m = inv(S_Pre_Trn.S_12)@(E_ref - S_Pre_Trn.S_11@p)
+        c_trn_p = S_Pre_Trn.S_21@p + S_Pre_Trn.S_22@c_trn_m
+        sum_c_trn_p = np.sum(np.abs(c_trn_p)**2)
+        sum_c_trn_m = np.sum(np.abs(c_trn_m)**2)
+        sum_c_ref_p = np.sum(np.abs(c_ref_p)**2)
+        sum_c_ref_m = np.sum(np.abs(c_ref_m)**2)
+        int_power = sum_c_ref_p - sum_c_ref_m - sum_c_trn_p + sum_c_trn_m
+        # Determine the mode coefficients just before the wanted layer
+        c_left_m = inv(S_Global_Before.S_12)@(E_ref - S_Global_Before.S_11@p)
+        c_left_p = S_Global_Before.S_21@p + S_Global_Before.S_22@c_left_m
+        # Determine the mode coefficients just after the wanted layer
+        c_right_m = inv(S_Global_After.S_12)@(E_ref - S_Global_After.S_11@p)
+        c_right_p = S_Global_After.S_21@p + S_Global_After.S_22@c_right_m
+        # Determine the %abs for a particular layer in regard to the total abs
+        sum_left_p = np.sum(np.abs(c_left_p)**2)
+        sum_left_m = np.sum(np.abs(c_left_m)**2)
+        sum_right_p = np.sum(np.abs(c_right_p)**2)
+        sum_right_m = np.sum(np.abs(c_right_m)**2)
+        i_abs = (sum_left_p+sum_right_m-sum_left_m-sum_right_p)/int_power
+        Abs.append(i_abs*(1-R-T))
+    return np.array(Abs)
 
 
 if __name__ == '__main__':
@@ -434,12 +447,12 @@ if __name__ == '__main__':
                      inc_medium, trn_medium)
     print(R, T)
     # Test absorption
-    abs1 = smm_abs_layer([layer1, layer2, layer3], 1,
-                         theta[3], phi, lmb, p, inc_medium, trn_medium)
-    abs2 = smm_abs_layer([layer1[3], layer2, layer3], 2,
-                         theta, phi, lmb, p, inc_medium, trn_medium)
-    abs3 = smm_abs_layer([layer1[3], layer2, layer3], 3,
-                         theta, phi, lmb, p, inc_medium, trn_medium)
+    abs1 = smm_layer([layer1, layer2, layer3], 1,
+                     theta[3], phi, lmb, p, inc_medium, trn_medium)
+    abs2 = smm_layer([layer1[3], layer2, layer3], 2,
+                     theta, phi, lmb, p, inc_medium, trn_medium)
+    abs3 = smm_layer([layer1[3], layer2, layer3], 3,
+                     theta, phi, lmb, p, inc_medium, trn_medium)
     print(abs1+abs2+abs3)
     R, T = smm([layer1, layer2, layer3], theta[3], phi, lmb, p,
                inc_medium, trn_medium)

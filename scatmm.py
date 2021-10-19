@@ -8,6 +8,7 @@ import sys
 import math
 import webbrowser
 import json
+import uuid
 from enum import Enum, auto
 
 import matplotlib.style as mstyle
@@ -21,7 +22,7 @@ from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 
 from Database.database import Database
 from modules.pso import particle_swarm
-from modules.scattering_matrix import smm_broadband, Layer3D, smm_angle
+from modules.scattering_matrix import smm_broadband, Layer3D, smm_angle, smm_layer
 from modules.fig_class import PltFigure, FigWidget
 from smm_export_window import Ui_ExportWindow
 from smm_main_window import Ui_SMM_Window
@@ -167,6 +168,10 @@ class SMMGUI(QMainWindow):
         self.sim_check = [
             self.ui.sim_tab_sim_check1, self.ui.sim_tab_sim_check2
         ]
+        # List to record the ploted absorptions
+        self.abs_list = [False, False]
+        self.layer_absorption = [0, 0]
+        self.layer_abs_gid = [None, None]
         # List to store the previous simulation results
         self.sim_results = []
         # Store imported data
@@ -194,8 +199,6 @@ class SMMGUI(QMainWindow):
             "trn_k": self.ui.opt_tab_trn_k
         }
         self.sim_data = {
-            "lmb_check": self.ui.sim_param_check_lmb,
-            "angle_check": self.ui.sim_param_check_angle,
             "lmb_min": self.ui.sim_param_lmb_min,
             "lmb_max": self.ui.sim_param_lmb_max,
             "theta": self.ui.sim_param_theta,
@@ -223,7 +226,7 @@ class SMMGUI(QMainWindow):
         self.ui.opt_tab_rem_layer_button.clicked.connect(
             lambda: self.rmv_layer("opt"))
         for checkbox in self.sim_check:
-            checkbox.stateChanged.connect(self.plot_abs_i)
+            checkbox.stateChanged.connect(self.plot_abs_layer)
         self.ui.sim_param_check_angle.stateChanged.connect(
             self.sim_angle)
         self.ui.sim_param_check_lmb.stateChanged.connect(
@@ -241,6 +244,8 @@ class SMMGUI(QMainWindow):
         self.ui.actionHelp.triggered.connect(lambda: webbrowser.open_new_tab(
             os.path.join("Help", "help.html")))
         self.ui.actionAbout.triggered.connect(self.aboutDialog)
+        self.ui.clear_button.clicked.connect(
+                lambda: self.main_canvas.reinit())
         # Set default value for progress bar
         self.ui.opt_progressBar.setValue(0)
 
@@ -258,14 +263,15 @@ class SMMGUI(QMainWindow):
         """ Change simulation to angle simulation """
         if self.ui.sim_param_check_lmb.isChecked() and int > 0:
             self.ui.sim_param_check_lmb.setChecked(False)
+            # Reinitialize plot
             self.main_canvas.reinit()
             self.main_canvas.draw_axes(xlabel="Angle (θ)")
             self.main_canvas.draw()
             # Disable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
-            for checkbox in self.sim_check:
-                checkbox.setDisabled(True)
+            # Disable absorption checkboxes
+            self.reinit_abs_checkbox(disable=True)
         elif not self.ui.sim_param_check_lmb.isChecked() and int == 0:
             self.ui.sim_param_check_lmb.setChecked(True)
             self.main_canvas.reinit()
@@ -274,8 +280,8 @@ class SMMGUI(QMainWindow):
             # Enable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
-            for checkbox in self.sim_check:
-                checkbox.setDisabled(False)
+            # Enable absorption checkboxes
+            self.reinit_abs_checkbox(disable=False)
 
     def sim_lmb(self, int):
         """ Change simulation to broadband simulation """
@@ -287,8 +293,8 @@ class SMMGUI(QMainWindow):
             # Enable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
-            for checkbox in self.sim_check:
-                checkbox.setDisabled(False)
+            # Enable absorption checkboxes
+            self.reinit_abs_checkbox(disable=False)
         elif not self.ui.sim_param_check_angle.isChecked() and int == 0:
             self.ui.sim_param_check_angle.setChecked(True)
             self.main_canvas.reinit()
@@ -297,8 +303,7 @@ class SMMGUI(QMainWindow):
             # Disable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
-            for checkbox in self.sim_check:
-                checkbox.setDisabled(True)
+            self.reinit_abs_checkbox(disable=True)
 
     """ Properties Button and associated functions """
 
@@ -371,10 +376,13 @@ class SMMGUI(QMainWindow):
             # Add a new CheckBox
             self.sim_check.append(
                 QtWidgets.QCheckBox(self.ui.sim_tab_sim_frame))
+            self.abs_list.append(False)
+            self.layer_absorption.append(None)
+            self.layer_abs_gid.append(None)
             self.sim_check[-1].setText("")
             self.ui.gridLayout_2.addWidget(self.sim_check[-1],
                                            len(self.sim_check), 0, 1, 1)
-            self.sim_check[-1].stateChanged.connect(self.plot_abs_i)
+            self.sim_check[-1].stateChanged.connect(self.plot_abs_layer)
             # Add a new combobox
             self.sim_mat.append(QtWidgets.QComboBox(self.ui.sim_tab_sim_frame))
             sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
@@ -473,6 +481,9 @@ class SMMGUI(QMainWindow):
             self.ui.gridLayout_2.removeWidget(self.sim_check[-1])
             self.sim_check[-1].deleteLater()
             del self.sim_check[-1]
+            del self.abs_list[-1]
+            del self.layer_absorption[-1]
+            del self.layer_abs_gid[-1]
         else:
             if len(self.opt_mat) == 1:
                 QMessageBox.warning(self, "Error: Number of Layers",
@@ -586,7 +597,7 @@ class SMMGUI(QMainWindow):
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
             _, layer_list = self.get_material_config(
                 lmb, self.sim_config)
-            if self.sim_data["lmb_check"].isChecked():
+            if self.ui.sim_param_check_lmb.isChecked():
                 ref, trn = smm_broadband(
                     layer_list, theta, phi, lmb, pol, ref_medium, trn_medium)
                 self.sim_plot_data(lmb, ref, trn)
@@ -599,6 +610,8 @@ class SMMGUI(QMainWindow):
                 self.sim_plot_data(theta, ref, trn)
                 self.sim_results_update(layer_list, theta, phi,
                                         lmb_min, ref, trn, type=SType.ANGLE)
+            # Reinitialize the absorption checkboxes
+            self.reinit_abs_checkbox()
         except Exception:
             title = "Error: Material Out of Bounds"
             message = "One of the materials in the simulation is"\
@@ -653,11 +666,79 @@ class SMMGUI(QMainWindow):
         self.sim_results = []
         self.main_canvas.reinit()
         self.clear_button.setText("Clear")
+        self.reinit_abs_checkbox()
 
-    def plot_abs_i(self, int):
-        """"""
-        print("Here")
+    def plot_abs_layer(self, int):
+        """ Determine whick layer absorption was toggled and
+        plot the cumulative absorption for all checked layers"""
+        # Check if there are simulations
+        if len(self.sim_results) == 0:
+            title = "Error: Need to do a simulation first"
+            message = "To calculate layer absorption it is first necessary"\
+                " to make a simulation"
+            QMessageBox.warning(self, title, message, QMessageBox.Close,
+                                QMessageBox.Close)
+            self.reinit_abs_checkbox()
+            return
+        # Get all data necessary for simulation
+        try:
+            theta, phi, pol, lmb_min, lmb_max = self.get_sim_data()
+            lmb = np.linspace(lmb_min, lmb_max,
+                              self.global_properties["sim_points"][1])
+            # Get all the sim_config_values
+            ref_medium, trn_medium = self.get_medium_config(self.sim_config)
+            _, layer_list = self.get_material_config(
+                lmb, self.sim_config)
+        except Exception:
+            title = "Error: Material Out of Bounds"
+            message = "One of the materials in the simulation is "\
+                "undefined for the defined wavelength range"
+            QMessageBox.warning(self, title, message, QMessageBox.Close,
+                                QMessageBox.Close)
+            return
+        # Check for the different indexes
+        for index, check_index in enumerate(self.sim_check):
+            # Determine which button was clicked and update associated Structs
+            if self.abs_list[index] != check_index.isChecked():
+                self.abs_list[index] = check_index.isChecked()
+                if check_index.isChecked():
+                    abs = smm_layer(layer_list, index+1, theta, phi,
+                                    lmb, pol, ref_medium, trn_medium)
+                    self.layer_absorption[index] = abs
+                    # Determine the cumulative absorption
+                    abs_list = list(filter(
+                        lambda x: x is not None, self.layer_absorption))
+                    abs_tot = np.sum(np.array(abs_list), axis=0)
+                    # Define a random ID for each partiular layer absorption
+                    self.layer_abs_gid[index] = uuid.uuid1()
+                    self.main_figure.plot(
+                        lmb, abs_tot, "--", gid=self.layer_abs_gid[index])
+                    self.main_canvas.draw()
+                else:
+                    self.delete_plot(self.layer_abs_gid[index])
+                    self.main_canvas.draw()
+                    self.layer_abs_gid[index] = None
+                    self.layer_absorption[index] = None
         return
+
+    def reinit_abs_checkbox(self, disable=False):
+        """ Reinit all the absorption checkboxes and components """
+        for index, checkbox in enumerate(self.sim_check):
+            checkbox.blockSignals(True)
+            if disable:
+                checkbox.setDisabled(True)
+            else:
+                checkbox.setDisabled(False)
+            checkbox.setChecked(False)
+            checkbox.blockSignals(False)
+            self.abs_list[index] = False
+            self.layer_absorption[index] = None
+
+    def delete_plot(self, id):
+        """ Delete a specific plot defined by guid """
+        for plt in self.main_figure.lines:
+            if plt.get_gid() == id:
+                plt.remove()
 
     """ Export button and associated functions """
 
@@ -908,8 +989,9 @@ class SMMGUI(QMainWindow):
         except ValueError:
             return
         self.imported_data = data[:, [0, 1]]
+        self.delete_plot("Imported_Data")
         self.main_figure.plot(data[:, 0], data[:, 1],
-                              '--', label="Import Data")
+                              '--', label="Import Data", gid="Imported_Data")
         self.main_canvas.draw()
 
     """ Generic function to import data from file """
@@ -953,9 +1035,11 @@ class SMMGUI(QMainWindow):
                 data = self.get_data_from_file(str(url[0].toLocalFile()))
             except ValueError:
                 return
+            self.delete_plot("Imported_Data")
             self.imported_data = data[:, [0, 1]]
             self.main_figure.plot(
-                data[:, 0], data[:, 1], "--", label="Import Data")
+                data[:, 0], data[:, 1], "--", label="Import Data",
+                gid="Imported_Data")
             self.main_canvas.draw()
 
 
