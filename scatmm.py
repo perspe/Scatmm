@@ -9,9 +9,7 @@ import math
 import webbrowser
 import json
 import uuid
-from enum import Enum, auto
-from dataclasses import dataclass
-from typing import Any
+from modules.structs import SRes, SType
 
 import matplotlib.style as mstyle
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -26,37 +24,16 @@ from Database.database import Database
 from modules.pso import particle_swarm
 from modules.scattering_matrix import smm_broadband, smm_angle, smm_layer
 from modules.scattering_matrix import Layer3D
-from modules.fig_class import PltFigure, FigWidget
-from smm_uis.smm_export_window import Ui_ExportWindow
+from modules.fig_class import PltFigure
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.db_window import DBWindow
+from smm_uis.export_window import ExpWindow
 
 VERSION = "2.0.0"
 
 # Default plot properties
 mstyle.use("smm_style")
-
-
-@dataclass
-class SRes:
-    """ Dataclass to store all simulation related information """
-    ID: str
-    Type: Enum
-    Theta: Any
-    Phi: float
-    Pol: tuple
-    Lmb: Any
-    Ref: Any
-    Trn: Any
-    NLayers: int
-
-
-class SType(Enum):
-    """ Enum to for the different Simulation types """
-    WVL = auto()
-    ANGLE = auto()
-    OPT = auto()
 
 
 class OptimizeWorkder(QtCore.QThread):
@@ -774,140 +751,15 @@ class SMMGUI(QMainWindow):
             if plt.get_gid() == id:
                 plt.remove()
 
-    """ Export button and associated functions """
+    """ Call  Export UI """
 
     def export_simulation(self):
         """
         Open a new window displaying all the simulated results
         Choose outputs and then ask for directory to output information
         """
-        self.export_window = QtWidgets.QTabWidget()
-        self.export_ui = Ui_ExportWindow()
-        self.export_ui.setupUi(self.export_window)
-        self.export_window.show()
-        self.chosen_sim = self.export_ui.simulations_combobox
-        self.export_checks = [
-            self.export_ui.reflection_checkbox,
-            self.export_ui.transmission_checkbox,
-            self.export_ui.absorption_checkbox
-        ]
-        export_names = [sim_name.ID for sim_name in self.sim_results]
-        self.chosen_sim.addItems(export_names)
-        self.export_ui.export_all_button.clicked.connect(self.export_all)
-        self.export_ui.export_button.clicked.connect(self.export)
-        self.export_ui.preview_button.clicked.connect(self.preview_export)
-
-    def export(self):
-        """
-        Export chosen simulation
-        """
-        savepath = QFileDialog.getSaveFileName(self, "Save File", "",
-                                               "Text Files (*.txt)")
-        sim_choice = self.chosen_sim.currentText()
-        ref_check = self.export_checks[0].isChecked()
-        trn_check = self.export_checks[1].isChecked()
-        abs_check = self.export_checks[2].isChecked()
-        header = ""
-        if savepath[0] == "":
-            return
-        for result in self.sim_results:
-            if result.ID == sim_choice:
-                # Start building the export array
-                if result.Type == SType.WVL:
-                    export_array = result.Lmb
-                    header += "Wavelength(nm)"
-                elif result.Type == SType.ANGLE:
-                    export_array = result.Theta
-                    header += "Angle"
-                export_array = export_array[:, np.newaxis]
-                if ref_check:
-                    export_array = np.concatenate(
-                        (export_array, result.Ref[:, np.newaxis]), axis=1)
-                    header += " Ref"
-                if trn_check:
-                    export_array = np.concatenate(
-                        (export_array, result.Trn[:, np.newaxis]), axis=1)
-                    header += " Trn"
-                if abs_check:
-                    export_array = np.concatenate(
-                        (export_array,
-                            (1-result.Ref-result.Trn)[:, np.newaxis]), axis=1)
-                    header += " Abs"
-                np.savetxt(savepath[0], export_array, header=header)
-        QMessageBox.information(self, "Successful Export",
-                                "Results Exported Successfully!",
-                                QMessageBox.Ok, QMessageBox.Ok)
-        self.export_window.raise_()
-        self.export_window.setFocus(True)
-        self.export_window.activateWindow()
-
-    def export_all(self):
-        """
-        Export all simulations
-        """
-        savepath = QFileDialog.getSaveFileName(self, "Save File", "",
-                                               "Text Files (*.txt)")
-        if savepath[0] == '':
-            return
-        export_name = os.path.basename(savepath[0])
-        export_dir = os.path.dirname(savepath[0])
-        ref_check = self.export_checks[0].isChecked()
-        trn_check = self.export_checks[1].isChecked()
-        abs_check = self.export_checks[2].isChecked()
-        header = ""
-        for result in self.sim_results:
-            # Start building the export array
-            if result.Type == SType.WVL:
-                export_array = result.Lmb
-                header += "Wavelength(nm)"
-            elif result.Type == SType.ANGLE:
-                export_array = result.Theta
-                header += "Angle"
-            export_array = export_array[:, np.newaxis]
-            if ref_check:
-                export_array = np.concatenate(
-                    (export_array, result.Ref[:, np.newaxis]), axis=1)
-                header += " Ref"
-            if trn_check:
-                export_array = np.concatenate(
-                    (export_array, result.Trn[:, np.newaxis]), axis=1)
-                header += " Trn"
-            if abs_check:
-                export_array = np.concatenate(
-                    (export_array,
-                        (1-result.Ref-result.Trn)[:, np.newaxis]), axis=1)
-                header += " Abs"
-            export_path = os.path.join(export_dir,
-                                       export_name+result.ID+".txt")
-            np.savetxt(export_path, export_array, header=header)
-        self.export_window.close()
-        QMessageBox.information(self, "Successful Export",
-                                "Results Exported Successfully!",
-                                QMessageBox.Ok, QMessageBox.Ok)
-
-    def preview_export(self):
-        """
-        Preview the selected simulation chosen in the combobox
-        """
-        sim_choice = self.chosen_sim.currentText()
-        self.preview_window = FigWidget(f"Preview {sim_choice}")
-        for result in self.sim_results:
-            if result.ID == sim_choice:
-                if result.Type == SType.WVL:
-                    xlabel = "Wavelength (nm)"
-                    xdata = result.Lmb
-                elif result.Type == SType.ANGLE:
-                    xlabel = "Angle (θ)"
-                    xdata = result.Theta
-                self.preview_fig = PltFigure(self.preview_window.layout,
-                                             xlabel, "R/T/Abs", width=7)
-                self.preview_window.show()
-                self.preview_fig.axes.plot(xdata, result.Ref, label="Ref")
-                self.preview_fig.axes.plot(xdata, result.Trn, label="Trn")
-                self.preview_fig.axes.plot(xdata, 1-result.Ref-result.Trn,
-                                           label="Abs")
-        self.preview_fig.axes.legend(bbox_to_anchor=(1, 1), loc="upper left")
-        self.preview_fig.draw()
+        self.export_ui = ExpWindow(self, self.sim_results)
+        self.export_ui.show()
 
     """ Optimization functions """
 
