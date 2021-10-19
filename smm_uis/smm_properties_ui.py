@@ -2,13 +2,11 @@
 
 # Form implementation generated from reading ui file 'Designer_UIs/properties_ui.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.1
+# Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
-
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_Properties(object):
     def setupUi(self, Properties):
@@ -130,3 +128,4 @@ class Ui_Properties(object):
         self.save_default_button.setText(_translate("Properties", "Save as default"))
         self.properties_apply_button.setText(_translate("Properties", "Apply"))
         self.properties_close_button.setText(_translate("Properties", "Close"))
+

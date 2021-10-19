@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'smm_uis/Designer_UIs/export_gui.ui'
+# Form implementation generated from reading ui file 'Designer_UIs/export_gui.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -13,7 +13,7 @@ class Ui_ExportWindow(object):
         ExportWindow.setObjectName("ExportWindow")
         ExportWindow.resize(579, 322)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("../logo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("logo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         ExportWindow.setWindowIcon(icon)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(ExportWindow)
         self.horizontalLayout_2.setContentsMargins(15, 15, 15, 15)

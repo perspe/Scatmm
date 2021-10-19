@@ -774,8 +774,14 @@ class SMMGUI(QMainWindow):
         Open a new window displaying all the simulated results
         Choose outputs and then ask for directory to output information
         """
-        self.export_ui = ExpWindow(self, self.sim_results)
-        self.export_ui.show()
+        if len(self.sim_results) > 0:
+            self.export_ui = ExpWindow(self, self.sim_results)
+            self.export_ui.show()
+        else:
+            QMessageBox.warning(self, "Simulation Required",
+                                "No Simulation available to export!!",
+                                QMessageBox.Close,
+                                QMessageBox.Close)
 
     """ Optimization functions """
 

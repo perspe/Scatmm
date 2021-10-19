@@ -2,13 +2,11 @@
 
 # Form implementation generated from reading ui file 'Designer_UIs/import_db_mat.ui'
 #
-# Created by: PyQt5 UI code generator 5.14.1
+# Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
-
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_ImportDB(object):
     def setupUi(self, ImportDB):
@@ -97,3 +95,4 @@ class Ui_ImportDB(object):
         self.units_label.setText(_translate("ImportDB", "Units:"))
         self.import_button.setText(_translate("ImportDB", "Import"))
         self.preview_button.setText(_translate("ImportDB", "Preview"))
+

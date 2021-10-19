@@ -10,6 +10,8 @@ This script implements a graphical interface (on PyQt5) to interact with the tra
 The program has a database of materials (easily expanded with new materials), that is used to perform the calculations.
 This program allows for:
 * Calculation of Reflection/Transmission/Absorption for arbitrarily sized stacks of planar materials
+* Calculation of Absoprtion for a particular layer in the stack
+* Calculation of Reflection/Transmission/Absorption for broad-angle/broadband simulations
 * Export the results of simulations to text files
 * Import data to compare with simulations
 * Thickness fitting from imported data (using a particle swarm algorithm to find the thickness combination for all layers that minimizes the error between the simulation algorithm and the imported data.
