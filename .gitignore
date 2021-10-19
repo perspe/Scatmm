@@ -1,7 +1,7 @@
 Test_Results
 *.gp
 logo.svg
-Designer_UIs
+*Designer_UIs*
 Database/Backup
 Video
 .ipynb_checkpoints

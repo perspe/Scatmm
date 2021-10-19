@@ -2,10 +2,12 @@
 import os
 import numpy as np
 from scipy.interpolate import interp1d
-from smm_database_window import Ui_Database
-from smm_import_db_mat import Ui_ImportDB
+
 from PyQt5.QtWidgets import QWidget, QTableWidget, QMessageBox, QFileDialog
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
+
+from .smm_database_window import Ui_Database
+from .smm_import_db_mat import Ui_ImportDB
 from modules.fig_class import PltFigure, FigWidget
 
 
