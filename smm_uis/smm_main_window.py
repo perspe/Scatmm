@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Designer_UIs/main.ui'
+# Form implementation generated from reading ui file 'smm_uis/Designer_UIs/main.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -990,7 +990,7 @@ class Ui_SMM_Window(object):
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.optimizatio_tab), _translate("SMM_Window", "Optimization"))
         self.simulation_label.setText(_translate("SMM_Window", "Simulation"))
         self.sim_param_pte.setStatusTip(_translate("SMM_Window", "TE polarization vector component (non-normalized)"))
-        self.sim_param_pte.setText(_translate("SMM_Window", "0"))
+        self.sim_param_pte.setText(_translate("SMM_Window", "1"))
         self.sim_param_lmb_min_label.setText(_translate("SMM_Window", "λ min (nm)"))
         self.sim_param_theta.setStatusTip(_translate("SMM_Window", "Polar incidence angle"))
         self.sim_param_theta.setText(_translate("SMM_Window", "0"))
@@ -1002,7 +1002,7 @@ class Ui_SMM_Window(object):
         self.sim_param_lmb_max.setStatusTip(_translate("SMM_Window", "Upper wavelength bound for simulation"))
         self.sim_param_lmb_max.setText(_translate("SMM_Window", "900"))
         self.sim_param_ptm.setStatusTip(_translate("SMM_Window", "TM polarization vector component (non-normalized)"))
-        self.sim_param_ptm.setText(_translate("SMM_Window", "1"))
+        self.sim_param_ptm.setText(_translate("SMM_Window", "0"))
         self.sim_param_phi_label.setText(_translate("SMM_Window", "φ"))
         self.sim_param_lmb_min.setStatusTip(_translate("SMM_Window", "Lower wavelength bound to simulate"))
         self.sim_param_lmb_min.setText(_translate("SMM_Window", "300"))

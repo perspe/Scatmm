@@ -24,6 +24,7 @@ from Database.database import Database
 from modules.pso import particle_swarm
 from modules.scattering_matrix import smm_broadband, smm_angle, smm_layer
 from modules.scattering_matrix import Layer3D
+from modules.scattering_matrix import MatOutsideBounds
 from modules.fig_class import PltFigure
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
@@ -371,6 +372,8 @@ class SMMGUI(QMainWindow):
             # Add a new CheckBox
             self.sim_check.append(
                 QtWidgets.QCheckBox(self.ui.sim_tab_sim_frame))
+            if self.ui.sim_param_check_angle.isChecked():
+                self.sim_check[-1].setDisabled(True)
             self.abs_list.append(False)
             self.layer_absorption.append(None)
             self.layer_abs_gid.append(None)
@@ -525,7 +528,7 @@ class SMMGUI(QMainWindow):
             message = "Not valid incidence angle - θ is multiple of 90º"
             QMessageBox.warning(self, title, message, QMessageBox.Close,
                                 QMessageBox.Close)
-            raise ValueError
+            raise Exception
 
     def get_medium_config(self, data_structure):
         """
@@ -553,28 +556,35 @@ class SMMGUI(QMainWindow):
         thick = []
         layer_list = []
         # Get results depending on the respective tab
-        if tab == "sim":
-            for material, thickness in zip(material_structure["materials"],
-                                           material_structure["size"]):
-                mat_i = material.currentText()
-                db_data = self.database[mat_i]
-                layer_list.append(
-                    Layer3D(mat_i, float(thickness.text()),
-                            db_data[:, 0], db_data[:, 1], db_data[:, 2],
-                            kind='cubic'))
-        else:
-            for material, low_t, upp_t in zip(
-                    material_structure["materials"],
-                    material_structure["size_low"],
-                    material_structure["size_high"]):
-                thick.append([float(low_t.text()), float(upp_t.text())])
-                mat_i = material.currentText()
-                db_data = self.database[mat_i]
-                layer_list.append(
-                    Layer3D(mat_i, float(low_t.text()),
-                            db_data[:, 0], db_data[:, 1], db_data[:, 2],
-                            kind='cubic'))
-        thick = np.array(thick)
+        try:
+            if tab == "sim":
+                for material, thickness in zip(material_structure["materials"],
+                                               material_structure["size"]):
+                    mat_i = material.currentText()
+                    db_data = self.database[mat_i]
+                    layer_list.append(
+                        Layer3D(mat_i, float(thickness.text()),
+                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                                kind='cubic'))
+            else:
+                for material, low_t, upp_t in zip(
+                        material_structure["materials"],
+                        material_structure["size_low"],
+                        material_structure["size_high"]):
+                    thick.append([float(low_t.text()), float(upp_t.text())])
+                    mat_i = material.currentText()
+                    db_data = self.database[mat_i]
+                    layer_list.append(
+                        Layer3D(mat_i, float(low_t.text()),
+                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                                kind='cubic'))
+            thick = np.array(thick)
+        except ValueError:
+            title = "Error: Invalid parameter"
+            message = "Improperly defined layer for simulation"
+            QMessageBox.warning(self, title, message, QMessageBox.Close,
+                                QMessageBox.Close)
+            raise ValueError
         return thick, layer_list
 
     """ Simulation and associated funcitons """
@@ -592,12 +602,18 @@ class SMMGUI(QMainWindow):
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
             _, layer_list = self.get_material_config(
                 lmb, self.sim_config)
+        except ValueError:
+            return
+        except Exception:
+            return
+
+        try:
             if self.ui.sim_param_check_lmb.isChecked():
                 ref, trn = smm_broadband(
                     layer_list, theta, phi, lmb, pol, ref_medium, trn_medium)
                 self.sim_plot_data(lmb, ref, trn)
                 self.sim_results_update(layer_list, theta, phi, pol,
-                                        lmb, ref, trn)
+                                        lmb, ref, trn, ref_medium, trn_medium)
             else:
                 theta = np.linspace(
                     0, 89, self.global_properties["sim_points"][1])
@@ -605,14 +621,14 @@ class SMMGUI(QMainWindow):
                                      lmb_min, pol, ref_medium, trn_medium)
                 self.sim_plot_data(theta, ref, trn)
                 self.sim_results_update(layer_list, theta, phi, pol,
-                                        lmb_min, ref, trn, type=SType.ANGLE)
+                                        lmb_min, ref, trn,
+                                        ref_medium, trn_medium,
+                                        type=SType.ANGLE)
             # Reinitialize the absorption checkboxes
             self.reinit_abs_checkbox()
-        except Exception:
-            title = "Error: Material Out of Bounds"
-            message = "One of the materials in the simulation is"\
-                "undefined for the defined wavelength range"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
+        except MatOutsideBounds as message:
+            title = "Error: Material Outside of Bounds"
+            QMessageBox.warning(self, title, str(message), QMessageBox.Close,
                                 QMessageBox.Close)
 
     def sim_plot_data(self, x, ref, trn):
@@ -635,7 +651,7 @@ class SMMGUI(QMainWindow):
         self.main_canvas.draw()
 
     def sim_results_update(self, layer_list, theta, phi, pol, lmb, ref, trn,
-                           type=SType.WVL):
+                           i_med, t_med, type=SType.WVL):
         """
         Update the simulation results
         """
@@ -652,8 +668,8 @@ class SMMGUI(QMainWindow):
             raise Exception("Unknown Simulation Type")
         for layer in layer_list:
             ident_string += "|"+layer.name[:5]+"("+str(layer.thickness)+")"
-        res_struct = SRes(ident_string, type,
-                          theta, phi, pol, lmb, ref, trn, len(layer_list))
+        res_struct = SRes(ident_string, type, layer_list, len(layer_list),
+                          theta, phi, pol, lmb, i_med, t_med, ref, trn)
         self.sim_results.append(res_struct)
         self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
 
@@ -697,7 +713,7 @@ class SMMGUI(QMainWindow):
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
             _, layer_list = self.get_material_config(
                 lmb, self.sim_config)
-        except Exception:
+        except MatOutsideBounds:
             title = "Error: Material Out of Bounds"
             message = "One of the materials in the simulation is "\
                 "undefined for the defined wavelength range"
@@ -809,10 +825,14 @@ class SMMGUI(QMainWindow):
         Perform Results Optimization (Splits into a new worker thread)
         """
         if self.ui.sim_param_check_angle.isChecked():
-            QMessageBox.warning(self, "Invalid Simulation Mode",
-                                "Optimization only available for Wavelength " +
-                                "type simulations",
-                                QMessageBox.Close, QMessageBox.Close)
+            message = "Optimization only available for Wavelength type" +\
+                "simulations\n\n Change?"
+            change = QMessageBox.question(self, "Invalid Simulation Mode",
+                                          message,
+                                          QMessageBox.Yes | QMessageBox.No,
+                                          defaultButton=QMessageBox.Yes)
+            if change == QMessageBox.Yes:
+                self.ui.sim_param_check_lmb.setChecked(True)
             return
         try:
             # Get the data for optimization
@@ -858,6 +878,12 @@ class SMMGUI(QMainWindow):
                                 "Missing data to perform optimization",
                                 QMessageBox.Close, QMessageBox.Close)
             self.ui.opt_res_text.append("Optimization Failed")
+        except MatOutsideBounds:
+            title = "Error: Material Out of Bounds"
+            message = "One of the materials in the simulation is "\
+                "undefined for the defined wavelength range"
+            QMessageBox.warning(self, title, message, QMessageBox.Close,
+                                QMessageBox.Close)
 
     """ Open the Database Window """
 

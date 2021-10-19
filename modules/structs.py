@@ -8,13 +8,16 @@ class SRes:
     """ Dataclass to store all simulation related information """
     ID: str
     Type: Enum
+    Layers: list
+    NLayers: int
     Theta: Any
     Phi: float
     Pol: tuple
     Lmb: Any
+    INC_MED: tuple
+    TRN_MED: tuple
     Ref: Any
     Trn: Any
-    NLayers: int
 
 
 class SType(Enum):

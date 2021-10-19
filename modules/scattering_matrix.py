@@ -16,6 +16,15 @@ from numpy.linalg import inv
 from scipy.interpolate import interp1d
 
 
+class MatOutsideBounds(Exception):
+    """ Exception for material outside bounds """
+
+    def __init__(self, material, wavelength):
+        self.message = f"Simulation wavelength ({wavelength}) is outside " +\
+            f"the defined oustide bounds for '{material}'"
+        super().__init__(self.message)
+
+
 class SMMType(Enum):
     """ Type to differenciate the different smm types """
     TRN = auto()
@@ -154,8 +163,7 @@ class Layer1D():
     def e_value(self, lmb):
         """ Return e_value for specific wavelength """
         if lmb != self.lmb:
-            raise Exception(
-                "Material defined outside provided wavelength value")
+            raise MatOutsideBounds(self.name, lmb)
         return (self.n + 1j*self.k)**2
 
 
@@ -182,8 +190,8 @@ class Layer3D():
         try:
             e_data = (self.n(lmb) + 1j * self.k(lmb))**2
         except ValueError:
-            raise Exception(
-                "Material defined outside provided wavelength range")
+            raise MatOutsideBounds(self.name, f"{lmb.min()}, {lmb.max()}")
+            return
         return e_data
 
 
