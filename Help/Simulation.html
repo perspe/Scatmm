@@ -20,25 +20,82 @@
   <![endif]-->
 </head>
 <body>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>header</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="custom_style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<h1 id="contents">Contents</h1>
+<hr />
+<p><a href="help.html">Help</a><br />
+<a href="Interface.html">Interface</a><br />
+<a href="Simulation.html">Simulation</a><br />
+<a href="Optimization.html">Optimization</a><br />
+<a href="Manage%20Database.html">Manage Database</a><br />
+<a href="Import.html">Importing Data</a><br />
+</p>
+<hr />
+</body>
+</html>
 <header id="title-block-header">
 <h1 class="title">Simulation</h1>
 </header>
-<h1 id="starting-a-simulation">Starting a Simulation</h1>
-<p>A simulation is defined by the following parameters:</p>
+<nav id="TOC" role="doc-toc">
 <ul>
-<li>min/max wavelength (wavelength range)</li>
-<li>incidence angle (phi/theta)</li>
-<li>incident light polarization (te/tm)</li>
+<li><a href="#starting-a-simulation">Starting a Simulation</a></li>
+<li><a href="#simulation">Simulation</a></li>
+<li><a href="#multiple-simulations">Multiple Simulations</a></li>
+<li><a href="#exporting-data">Exporting Data</a></li>
+</ul>
+</nav>
+<h2 id="starting-a-simulation">Starting a Simulation</h2>
+<p>The program allows for 2 different modes of simulations. <em>Wavelngth</em> and <em>Angle</em> Simulations. Most parameters are shared between modes, with only a few changing with the mode. As such, a simulation is defined by the following parameters:</p>
+<blockquote>
+<ul>
+<li>min/max wavelength (for <em>Wavelength</em> simulations)</li>
+<li>single wavelength (for <em>Angle</em> simulations)</li>
+<li>incidence angle (phi/theta) (theta is only available in <em>Wavelength</em> simulations)</li>
+<li>incident light polarization (TE/TM)</li>
 <li>layer setup (reflection medium/device/transmission medium)</li>
 <li>measurables (reflection/transmission/reflection)</li>
 </ul>
-<h1 id="simulation">Simulation</h1>
-<p>When the “simulate” button is clicked the program will gather the aforementioned information and use it to perform the simulation and then plot the results. The plot will show the results for the different measurables chosen, for instance is reflection/transmission/absorption are all checked then the simulation will plot the results for all three values.</p>
-<h1 id="multiple-simulation">Multiple Simulation</h1>
-<p>Multiple simulations can be done sequentially and the results will be plotted on the same plot and stored internally. The number of simulations stored are shown in the clear button (“clear(10)” means there are 10 simulations stored in memory). Clicking the clear button will flush all the results and clear all the open plots.</p>
-<h1 id="exporting-data">Exporting Data</h1>
-<p>The export button can be used to export simulation results to files. When clicked it will open the following interface.</p>
-<p>On the left it is possible to choose with measurables to export. On the right all the simulations are shown with the name describing the simulation setup ((theta, phi)/material name(material thickness)/material name(material thickness)) and then it is possible to preview the respective simulation, export that particular simulation or export all simulations stored</p>
+</blockquote>
+<h2 id="simulation">Simulation</h2>
+<p>When the “simulate” button is clicked the program will gather the aforementioned information, use it to perform the simulation and then plot the results. The plot will show the results for the different measurables chosen, for instance is reflection/transmission/absorption are all checked then the simulation will plot the results for all three values, if only reflection is chosen then only the reflection will be plotted…</p>
+<h2 id="multiple-simulations">Multiple Simulations</h2>
+<p>Multiple simulations can be done sequentially and the results will be added to the <em>Results Preview</em> region and stored internally. The number of simulations stored are shown in the clear button (“clear(10)” means there are 10 simulations stored in memory). Clicking the clear button will flush all the results and clear all the open plots.</p>
+<figure>
+<img src="stored_sims.png" style="width:100.0%" alt="Multiple Simulations" /><figcaption aria-hidden="true">Multiple Simulations</figcaption>
+</figure>
+<h2 id="exporting-data">Exporting Data</h2>
+<p>The export button can be used to export simulation results to files. When clicked it will open the bellow shown interface.</p>
+<p>On the left it is possible to choose with measurables to export (reflection/transmission/absorption) and if the absorption for each layer should also be exported along with the simulated data. On the right all the simulations are shown with a shortcut name briefly summarizing the simulation setup</p>
+<blockquote>
+<p>(<span class="math inline"><em>A</em>/<em>W</em></span>) (<em><span class="math inline"><em>S</em><em>N</em></span></em>) (theta, phi) |material name(material thickness)|…<br />
+</p>
+<ul>
+<li><span class="math inline"><em>A</em>/<em>W</em></span> indicates if the simulation was Angle or Wavelength, respectivelly</li>
+<li><span class="math inline"><em>S</em><em>N</em></span> indicates the number of the simulation</li>
+</ul>
+</blockquote>
+<p>Upon selecting a particular simulation, the tex box bellow will be filled with all the simulation details, providing a full report of the simulation conditions. Having chosen a specific simulation, the absorption/reflection/transmission profiles can be previewed (<em>Preview</em> button) or exported (<em>Export</em> button). A <em>Export All</em> button is also provided as a shortcut to export all the stored simulations.</p>
 <figure>
 <img src="export.png" alt="Export" /><figcaption aria-hidden="true">Export</figcaption>
 </figure>

@@ -153,7 +153,7 @@ class Layer1D():
         lmb (nm)/n_val/k_val (array): Material info for the layer
     """
 
-    def __init__(self, name, thickness, lmb, n_val, k_val):
+    def __init__(self, name, thickness, n_val, k_val):
         self.name = name
         self.thickness = thickness
         self.lmb = lmb
@@ -162,9 +162,9 @@ class Layer1D():
 
     def e_value(self, lmb):
         """ Return e_value for specific wavelength """
-        if lmb != self.lmb:
-            raise MatOutsideBounds(self.name, lmb)
-        return (self.n + 1j*self.k)**2
+        res = np.zeros_like(lmb, dtype=np.complex128)
+        res += (self.n + 1j * self.k)**2
+        return res
 
 
 class Layer3D():
@@ -441,27 +441,27 @@ def smm_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med,
 
 if __name__ == '__main__':
     n_comp = 5
-    lmb = 0.7
+    lmb = np.linspace(0.5, 1.5, 100)
     theta = np.radians(np.linspace(0, 89))
     phi = np.radians(23)
     p = (1, 0)
     inc_medium = (1, 1)
     trn_medium = (1, 1)
-    layer1 = Layer1D("l1", 0.1, lmb, 1.5, 0.1)
-    layer2 = Layer1D("l2", 0.1, lmb, 1.3, 0.03)
-    layer3 = Layer1D("l3", 2, lmb, 2.5, 0.1)
+    layer1 = Layer1D("l1", 0.1, 1.5, 0.1)
+    layer2 = Layer1D("l2", 0.1, 1.3, 0.03)
+    layer3 = Layer1D("l3", 2, 2.5, 0.1)
     # Test angular results
-    R, T = smm_angle([layer1, layer2, layer3], theta, phi, lmb, p,
+    R, T = smm_angle([layer1, layer2, layer3], theta, phi, lmb[0], p,
                      inc_medium, trn_medium)
     print(R, T)
     # Test absorption
     abs1 = smm_layer([layer1, layer2, layer3], 1,
                      theta[3], phi, lmb, p, inc_medium, trn_medium)
-    abs2 = smm_layer([layer1[3], layer2, layer3], 2,
-                     theta, phi, lmb, p, inc_medium, trn_medium)
-    abs3 = smm_layer([layer1[3], layer2, layer3], 3,
+    abs2 = smm_layer([layer1, layer2, layer3], 2,
+                     theta[3], phi, lmb, p, inc_medium, trn_medium)
+    abs3 = smm_layer([layer1, layer2, layer3], 3,
                      theta, phi, lmb, p, inc_medium, trn_medium)
     print(abs1+abs2+abs3)
-    R, T = smm([layer1, layer2, layer3], theta[3], phi, lmb, p,
+    R, T = smm([layer1, layer2, layer3], theta[3], phi, lmb[0], p,
                inc_medium, trn_medium)
     print(1-R-T)

@@ -1,24 +1,84 @@
+h1, h2 { color: #fff; padding-bottom: 2px}
+h1 { text-align: center; font-size: 1.5em; color: #D7D7AF}
+h2 {
+    text-align: left;
+    font-size: 1.35em;
+    padding-top: 1em;
+    color: #87AFD7;
+    border-bottom: 1px dashed;
+    border-color: #87AFD7
+}
+
 body {
     color: White;
-    background: #181818;
+    background: #262626;
     font-family: DejaVu Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-    font-size: 1.3em;
-    max-width: 900px;
+    font-size: 1.1em;
+    line-height: 1.3em;
+    max-width: 1000px;
     margin-left: auto;
     margin-right: auto;
+    text-align: justify;
+}
+
+#title-block-header {
     text-align: center;
 }
 
+p {
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
 a {
-    color: #2EB1FF;
+    color: #87AFD7;
 }
 
 ul {
-    padding: 1em 2em;
-    line-height: 1.5em;
-    text-align: left;
+    padding: 0em 1em;
+    line-height: 1.3em;
+    text-align: justify;
 }
 
 figure{
     color: Grey;
+    text-align: center;
+}
+
+blockquote {
+  background: #262630;
+  border-left: 5px solid #2B96E7;
+  margin: 2em 5px;
+  padding: 0.5em 10px;
+}
+
+blockquote:before {
+  color: #2B96E7;
+  font-size: 4em;
+  line-height: 0.1em;
+  margin-right: 0.25em;
+  vertical-align: -0.4em;
+}
+
+blockquote p {
+  display: inline;
+}
+
+#TOC {
+    background: #262626 none repeat scroll 0 0;
+    border: 1px solid Grey;
+    display: table;
+    font-size: 95%;
+    margin-bottom: 1em;
+    padding: 5px;
+    width: auto;
+}
+
+.toc_title {
+    font-weight: 700;
+    text-align: center;
+}
+
+#TOC li, #TOC ul, #TOC ul li{
+    list-style: outside none none !important;
 }

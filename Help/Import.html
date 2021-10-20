@@ -20,52 +20,101 @@
   <![endif]-->
 </head>
 <body>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>header</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="custom_style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<h1 id="contents">Contents</h1>
+<hr />
+<p><a href="help.html">Help</a><br />
+<a href="Interface.html">Interface</a><br />
+<a href="Simulation.html">Simulation</a><br />
+<a href="Optimization.html">Optimization</a><br />
+<a href="Manage%20Database.html">Manage Database</a><br />
+<a href="Import.html">Importing Data</a><br />
+</p>
+<hr />
+</body>
+</html>
 <header id="title-block-header">
 <h1 class="title">Importing Data</h1>
 </header>
-<h1 id="how-data-should-be-formated">How Data Should be Formated</h1>
-<p>Data should be imported from text files. The import functionality has a limited range of applications, thus leaving the burden to the user to adequately prepare the data for importing. The data should have a tabular format of numeric-only entries separated either by spaces or commas. Any non-numeric data should be commented with # (see Example 3 bellow). Furthermore, when importing the data the program does not check the number of columns in the file. For the case of optimizations, only the first two columns will be used and will be assumed to be wavelength (in nm) and either absorption/reflection/transmission (<a href="Optimization.html">Optimization</a>). To import materials to the database 3 columns will be used and assumed to be wavelength/real refractive index/complex refractive index (<a href="Manage%20Database.html">Manage Database</a>). Below are provided 3 examples of possible data to be imported.</p>
-<h1 id="examples">Examples</h1>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#how-data-should-be-formated">How Data Should be Formated</a></li>
+<li><a href="#examples">Examples</a></li>
+</ul>
+</nav>
+<h2 id="how-data-should-be-formated">How Data Should be Formated</h2>
+<p>Data should be imported from text files. The import functionality has a limited range of applications, thus leaving the burden for the user to adequately prepare the data before importing. The data should have a tabular format of numeric-only entries separated either by either space|,|tab|;. Any non-numeric data should be commented with # (see Example 3 bellow). Furthermore, when importing the data the program does not check the number of columns in the file. For the case of optimizations (<em>Import button</em>), only the first two columns will be used and will be assumed to be wavelength (in nm) and either absorption/reflection/transmission (<a href="Optimization.html">Optimization</a>). To import materials to the database 3 columns will be used and assumed to be wavelength/real refractive index/complex refractive index (<a href="Manage%20Database.html">Manage Database</a>). Below are provided 3 examples of possible data to be imported.</p>
+<h2 id="examples">Examples</h2>
 <ul>
 <li>Example 1:</li>
 </ul>
-<p>251.57 2.31717213 0.577801613</p>
-<p>253.16 2.33168536 0.569701795</p>
-<p>254.75 2.34626565 0.560078808</p>
-<p>256.34 2.36067795 0.548891345</p>
-<p>257.93 2.37467908 0.536140733</p>
-<p>259.52 2.38802531 0.521875087</p>
-<p>261.12 2.40048438 0.506187696</p>
-<p>262.71 2.41184546 0.489213773</p>
-<p>264.3 2.42192779 0.471124947</p>
-<p>265.89 2.43058781 0.45212117</p>
+<blockquote>
+<p>251.57 2.31717213 0.577801613<br />
+253.16 2.33168536 0.569701795<br />
+254.75 2.34626565 0.560078808<br />
+256.34 2.36067795 0.548891345<br />
+257.93 2.37467908 0.536140733<br />
+259.52 2.38802531 0.521875087<br />
+261.12 2.40048438 0.506187696<br />
+262.71 2.41184546 0.489213773<br />
+264.3 2.42192779 0.471124947<br />
+265.89 2.43058781 0.45212117<br />
+</p>
+</blockquote>
 <ul>
 <li>Example 2:</li>
 </ul>
-<p>251.57,2.31717213,0.577801613</p>
-<p>253.16,2.33168536,0.569701795</p>
-<p>254.75,2.34626565,0.560078808</p>
-<p>256.34,2.36067795,0.548891345</p>
-<p>257.93,2.37467908,0.536140733</p>
-<p>259.52,2.38802531,0.521875087</p>
-<p>261.12,2.40048438,0.506187696</p>
-<p>262.71,2.41184546,0.489213773</p>
-<p>264.3,2.42192779,0.471124947</p>
-<p>265.89,2.43058781,0.45212117</p>
+<blockquote>
+<p>251.57,2.31717213,0.577801613<br />
+253.16,2.33168536,0.569701795<br />
+254.75,2.34626565,0.560078808<br />
+256.34,2.36067795,0.548891345<br />
+257.93,2.37467908,0.536140733<br />
+259.52,2.38802531,0.521875087<br />
+261.12,2.40048438,0.506187696<br />
+262.71,2.41184546,0.489213773<br />
+264.3,2.42192779,0.471124947<br />
+265.89,2.43058781,0.45212117<br />
+</p>
+</blockquote>
 <ul>
 <li>Example 3:</li>
 </ul>
-<p>#Column1 Column2 Column3</p>
-<p>251.57 2.31717213 0.577801613</p>
-<p>253.16 2.33168536 0.569701795</p>
-<p>254.75 2.34626565 0.560078808</p>
-<p>256.34 2.36067795 0.548891345</p>
-<p>257.93 2.37467908 0.536140733</p>
-<p>259.52 2.38802531 0.521875087</p>
-<p>261.12 2.40048438 0.506187696</p>
-<p>262.71 2.41184546 0.489213773</p>
-<p>264.3 2.42192779 0.471124947</p>
-<p>265.89 2.43058781 0.45212117</p>
+<blockquote>
+<p>#Column1 Column2 Column3<br />
+251.57 2.31717213 0.577801613<br />
+253.16 2.33168536 0.569701795<br />
+254.75 2.34626565 0.560078808<br />
+256.34 2.36067795 0.548891345<br />
+257.93 2.37467908 0.536140733<br />
+259.52 2.38802531 0.521875087<br />
+261.12 2.40048438 0.506187696<br />
+262.71 2.41184546 0.489213773<br />
+264.3 2.42192779 0.471124947<br />
+265.89 2.43058781 0.45212117<br />
+</p>
+</blockquote>
 <p><a href="help.html">Return to Home page</a></p>
 </body>
 </html>

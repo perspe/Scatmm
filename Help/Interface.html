@@ -20,31 +20,101 @@
   <![endif]-->
 </head>
 <body>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>header</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="custom_style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<h1 id="contents">Contents</h1>
+<hr />
+<p><a href="help.html">Help</a><br />
+<a href="Interface.html">Interface</a><br />
+<a href="Simulation.html">Simulation</a><br />
+<a href="Optimization.html">Optimization</a><br />
+<a href="Manage%20Database.html">Manage Database</a><br />
+<a href="Import.html">Importing Data</a><br />
+</p>
+<hr />
+</body>
+</html>
 <header id="title-block-header">
 <h1 class="title">Interface</h1>
 </header>
-<h1 id="main-interface">Main Interface</h1>
-<p>When the program is opened it will show the following interface</p>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#main_interface">Main Interface</a></li>
+<li><a href="#simulation-region">Simulation Region</a></li>
+<li><a href="#sim_properties">Simulation Properties</a></li>
+<li><a href="#sim_type">Other Buttons</a></li>
+</ul>
+</nav>
+<h2 id="main_interface">Main Interface</h2>
+<p>The initial interface of the program is shown in the following image. There are 4 main sections for the interface:</p>
+<blockquote>
+<ul>
+<li><strong>Action menus (top)</strong>: Provide some configurations and access to the database<br />
+</li>
+<li><strong>Simulation/Optimization region (left)</strong>: Where the materials/properties for the simulation are defined<br />
+</li>
+<li><strong>Simulation properties (center)</strong>: Where the exact simulation configurations are defined<br />
+</li>
+<li><strong>Results Preview (right)</strong>: Where the results of the simulation are plotted for visualization<br />
+</li>
+</ul>
+</blockquote>
 <figure>
-<img src="basic_gui.png" width="800" alt="Basic GUI" /><figcaption aria-hidden="true">Basic GUI</figcaption>
+<img src="basic_gui.png" style="width:100.0%" alt="Basic GUI" /><figcaption aria-hidden="true">Basic GUI</figcaption>
 </figure>
-<p>On the topmost part of the interface there’s the File/Database/Help menus. The File menu has the properties menu, where some of the basic simulation/optimization parameters can be changed from their default values and the Database menu can be used to manipulate the database materials (either to add/preview/remove materials)</p>
-<p>The rightmost panel is the region where the several profiles (simulated or imported) will be plotted</p>
-<h1 id="simulation-properties">Simulation Properties</h1>
-<p>On the middle there’s the Simulation properties (image bellow). The different simulation properties are the minimum and maximum simulation wavelength (that essentially define the simulation range), the incident angles (theta and phi) and 2 light polarization components (TE and TM). These values correspond to the basic simulation conditions for the setup. Lastly, on the bottom most part of the simulation properties are the different possible results that can be obtained (Reflection, Transmission and Absorption). For a simulation, checking one of these parameters indicates to the program that the respective result should be showed when doing a simulation (more on <a href="Simulation.html">Simulation</a>)</p>
+<h2 id="simulation-region">Simulation Region</h2>
+<p>The simulation is defined by 3 main regions. Firstly, the reflection region (the topmost region) that defines the medium above the device (from where light comes). Secondly, the transmission region that defines the medium after light passes through the device. Here, both the media are defined in terms of their non-dispersive real and complex refractive indexes (the default values are for air medium). Lastly, in the middle, the device can be defined (by default a 2-layer material is defined as seen in the image bellow). Layers can be added/removed to/from the bottom of the stack by clicking the respective buttons (Add Layer and Remove Layer). Each layer is composed of 3 parts:</p>
+<blockquote>
+<ul>
+<li><strong>Layer Absorption (left):</strong> This checkbox allows adds the absorption of a particular layer to the simulation (it requires a previous simulation to work). These checkboxes calculate the absorption cumulatively. For example, if a two layer simulation is run, clicking on the absorption checkbox of the first material will add the absorption for that material. Clicking on the checkbox for the second material, the absorption of both layers will be plotted (that, for the referred case, is the total absorption of the device).<br />
+</li>
+<li><strong>Layer Material (center)</strong>: Select the material for a particular layer. The materials provided are stored in the internal Database. More materials can be added (<a href="Manage%20Database.html">Database</a>)<br />
+</li>
+<li><strong>Layer thickness (right)</strong>: Define the thickness of a particular layer</li>
+</ul>
+</blockquote>
 <figure>
-<img src="simulation_properties.png" alt="Simulation Properties" /><figcaption aria-hidden="true">Simulation Properties</figcaption>
+<img src="mat_setup.png" style="width:100.0%" alt="Layers" /><figcaption aria-hidden="true">Layers</figcaption>
 </figure>
-<p>The program can be used either to do fast simulations of 1D layered devices or to try and determine the thickness of different layers from input data. Each possible use can be chosen by selecting the respective tab (simulation/optimization) in the interface.</p>
+<h2 id="sim_properties">Simulation Properties</h2>
+<p>The middle section has the Simulation properties (image bellow). On the topmost part, it is possible to select the preferred simulation mode (Wavelength/Angle). Bellow, the various variables for the simulation can be chosen, depending on the simulation mode. The simulation variables are as follows:<br />
+</p>
+<blockquote>
+<ul>
+<li><strong>Wavelength (λ)</strong>: For Wavelength simulations, the minimum and maximum wavelength can be chosen to define the simulation range. In Angle simulation only the minimum value can be chosen, as the single wavelength to perform the simulation</li>
+<li><strong>Angle (θ)</strong>: Polar angle for the incident wave (only available in wavelength simulations, as, in angle simulations, it is defined from 0-90<br />
+</li>
+<li><strong>Phi (Φ)</strong>: Azimuth angle for the incident wave<br />
+</li>
+<li><strong>Polarization (TE/TM)</strong>: Polarization components for the incident wave</li>
+<li><strong>Reflection/Transmission/Absorption</strong>: Checkboxes to define which variables should be simulated</li>
+</ul>
+</blockquote>
 <figure>
-<img src="sim_opt_tabs.png" alt="Use Tabs" /><figcaption aria-hidden="true">Use Tabs</figcaption>
+<img src="simulation_properties.png" style="width:100.0%" alt="Simulation Properties" /><figcaption aria-hidden="true">Simulation Properties</figcaption>
 </figure>
-<h1 id="simulation-region">Simulation Region</h1>
-<p>The simulation is defined by 3 main regions. Firstly, the reflection region (the topmost region) that defines the medium above the device and from where light comes. Secondly the transmission region that defines the medium after light passes through the device. Both the media are defined in terms of their non-dispersive real and complex refractive indexes (the default values are for an air medium). Lastly, in the middle the device can be defined (by default a 2-layer material is defined as seen in the image bellow). Layers can be added/removed to/from the bottom of the stack by clicking the respective buttons (Add Layer and Remove Layer). Each layer is composed of 2 parts. On the left the material for the layer can be chosen from the available materials stored in the database (<a href="Manage%20Database.html">Database</a>), and on the right the thickness of the layer can be chosen.</p>
-<figure>
-<img src="mat_setup.png" alt="Layers" /><figcaption aria-hidden="true">Layers</figcaption>
-</figure>
-<p>On the bottom right of the interface there is a import button that can be used to import data from a file (<a href="Import.html">Import</a>). This data can be used to compare external results/measurements with those of the simulation, or they can be used as fitting measure for the optimization.</p>
+<h2 id="sim_type">Other Buttons</h2>
+<p>In the middle part of the interface, 2 buttons (<em>Import</em> and <em>Clear Plots</em>) are also provided to help during the simulation process. The first one allows for the user to import external data that can be compared with current simulations, or, more importantly, to fit using the optimization tab (<a href="Optimization.html">Optimization</a>). The <em>Clear Plots</em> button will clear all the plots present in the <em>Results Preview</em> region (it is important to note that any stored simulation will not be cleared)</p>
 <p><a href="help.html">Return to Home page</a></p>
 </body>
 </html>

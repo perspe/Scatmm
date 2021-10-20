@@ -2,64 +2,68 @@
 title: Interface
 ---
 
-# Main Interface
+## Main Interface {#main_interface}
 
-When the program is opened it will show the following interface
-
-![Basic GUI](basic_gui.png){width=800px}
-
-On the topmost part of the interface there's the File/Database/Help menus. The
-File menu has the properties menu, where some of the basic
-simulation/optimization parameters can be changed from their default values and
-the Database menu can be used to manipulate the database materials (either to
-add/preview/remove materials)
-
-The rightmost panel is the region where the several profiles (simulated or
-imported) will be plotted
+The initial interface of the program is shown in the following image.
+There are 4 main sections for the interface:
  
-# Simulation Properties
+> * __Action menus (top)__: Provide some configurations and access to the database\
+> * __Simulation/Optimization region (left)__: Where the materials/properties for the simulation are defined\
+> * __Simulation properties (center)__: Where the exact simulation configurations are defined\
+> * __Results Preview (right)__: Where the results of the simulation are plotted for visualization\
 
-On the middle there's the Simulation properties (image bellow). The different
-simulation properties are the minimum and maximum simulation wavelength (that
-essentially define the simulation range), the incident angles (theta and phi)
-and 2 light polarization components (TE and TM). These values correspond to the
-basic simulation conditions for the setup. Lastly, on the bottom most part of
-the simulation properties are the different possible results that can be
-obtained (Reflection, Transmission and Absorption). For a simulation, checking
-one of these parameters indicates to the program that the respective result
-should be showed when doing a simulation (more on
-[Simulation](Simulation.html))
+![Basic GUI](basic_gui.png){width=100%}
 
-![Simulation Properties](simulation_properties.png)
-
-
-The program can be used either to do fast simulations of 1D layered devices or
-to try and determine the thickness of different layers from input data. Each
-possible use can be chosen by selecting the respective tab
-(simulation/optimization) in the interface.
-
-![Use Tabs](sim_opt_tabs.png)
-
-# Simulation Region
+## Simulation Region
 
 The simulation is defined by 3 main regions. Firstly, the reflection region
-(the topmost region) that defines the medium above the device and from where
-light comes. Secondly the transmission region that defines the medium after
-light passes through the device. Both the media are defined in terms of their
+(the topmost region) that defines the medium above the device (from where light
+comes). Secondly, the transmission region that defines the medium after light
+passes through the device. Here, both the media are defined in terms of their
 non-dispersive real and complex refractive indexes (the default values are for
-an air medium). Lastly, in the middle the device can be defined (by default a
+air medium). Lastly, in the middle, the device can be defined (by default a
 2-layer material is defined as seen in the image bellow). Layers can be
 added/removed to/from the bottom of the stack by clicking the respective
-buttons (Add Layer and Remove Layer). Each layer is composed of 2 parts. On the
-left the material for the layer can be chosen from the available materials
-stored in the database ([Database](Manage Database.html)), and on the right the
-thickness of the layer can be chosen.
+buttons (Add Layer and Remove Layer). Each layer is composed of 3 parts:
 
-![Layers](mat_setup.png)
+> * __Layer Absorption (left):__ This checkbox allows adds the absorption of a particular
+> layer to the simulation (it requires a previous simulation to work). These checkboxes
+> calculate the absorption cumulatively. For example, if a two layer simulation is run,
+> clicking on the absorption checkbox of the first material will add the absorption for
+> that material. Clicking on the checkbox for the second material, the absorption of
+> both layers will be plotted (that, for the referred case, is the total absorption of
+> the device).\
+> * __Layer Material (center)__: Select the material for a particular layer. The materials
+> provided are stored in the internal Database. More materials can be added ([Database](Manage Database.md))\
+> * __Layer thickness (right)__: Define the thickness of a particular layer
 
-On the bottom right of the interface there is a import button that can be used
-to import data from a file ([Import](Import.html)). This data can be used to
-compare external results/measurements with those of the simulation, or they can
-be used as fitting measure for the optimization.
+![Layers](mat_setup.png){width=100%}
 
-[Return to Home page](help.html)
+## Simulation Properties {#sim_properties}
+
+The middle section has the Simulation properties (image bellow). On the topmost part,
+it is possible to select the preferred simulation mode (Wavelength/Angle). Bellow, the
+various variables for the simulation can be chosen, depending on the simulation mode.
+The simulation variables are as follows:\
+
+> * __Wavelength (λ)__: For Wavelength simulations, the minimum and maximum wavelength can be chosen
+> to define the simulation range. In Angle simulation only the minimum value can be chosen,
+> as the single wavelength to perform the simulation
+> * __Angle (θ)__: Polar angle for the incident wave (only available in wavelength simulations,
+> as, in angle simulations, it is defined from 0-90\
+> * __Phi (Φ)__: Azimuth angle for the incident wave\
+> * __Polarization (TE/TM)__: Polarization components for the incident wave
+> * __Reflection/Transmission/Absorption__: Checkboxes to define which variables should be simulated
+
+![Simulation Properties](simulation_properties.png){width=100%}
+
+
+## Other Buttons {#sim_type}
+
+In the middle part of the interface, 2 buttons (*Import* and *Clear Plots*) are also provided
+to help during the simulation process. The first one allows for the user to import external data
+that can be compared with current simulations, or, more importantly, to fit using the optimization tab
+([Optimization](Optimization.md)). The *Clear Plots* button will clear all the plots present in the
+*Results Preview* region (it is important to note that any stored simulation will not be cleared)
+
+[Return to Home page](help.md)

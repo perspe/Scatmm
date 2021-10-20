@@ -1,6 +1,7 @@
 Test_Results
 *.gp
-logo.svg
+*.svg
+*.xcf
 *Designer_UIs*
 Database/Backup
 Video

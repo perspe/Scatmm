@@ -20,32 +20,82 @@
   <![endif]-->
 </head>
 <body>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>header</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="custom_style.css" />
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<h1 id="contents">Contents</h1>
+<hr />
+<p><a href="help.html">Help</a><br />
+<a href="Interface.html">Interface</a><br />
+<a href="Simulation.html">Simulation</a><br />
+<a href="Optimization.html">Optimization</a><br />
+<a href="Manage%20Database.html">Manage Database</a><br />
+<a href="Import.html">Importing Data</a><br />
+</p>
+<hr />
+</body>
+</html>
 <header id="title-block-header">
 <h1 class="title">Manage Database</h1>
 </header>
-<h1 id="accessing-the-database">Accessing the Database</h1>
-<p>The database can be accessed by the Main interface Database → Manage Database menu, that will open the following window</p>
-<p>Each database material’s most relevant properties are shown in 3 different columns, “Material”, “Min Wav”, “Max Wav”. The first shows the material name, and the next two provide the wavelength range where the stored database values are defined. These last values are particularly useful to guarantee that the material is adequately defined for a possible simulation range. Simulations and optimizations are limited to the wavelength range where all materials in that particular simulation/optimization are defined.</p>
-<h1 id="database-actions">Database Actions</h1>
-<p>The database provides three different interactions:</p>
+<nav id="TOC" role="doc-toc">
 <ul>
-<li>Add Material: To add a new material to the database (see more below)</li>
-<li>Remove Material: Select one of the materials in the database to be removed</li>
-<li>View Material: Preview the stored real refractive index and complex refractive index values and their respective interpolations for a particular material</li>
+<li><a href="#accessing-the-database">Accessing the Database</a></li>
+<li><a href="#database-actions">Database Actions</a></li>
+<li><a href="#adding-new-materials">Adding New Materials</a></li>
 </ul>
+</nav>
+<h2 id="accessing-the-database">Accessing the Database</h2>
+<p>The database can be accessed by the Main interface Database → Manage Database menu, opening a new window where the database materials can be controled.</p>
+<p>Each of the most important information for each database material is shown in 3 different columns, “Material”, “Min Wav”, “Max Wav”. The first shows the material name, and the next two provide the wavelength range where the stored database values are defined. These last values are particularly useful to guarantee that the material is adequately defined for a possible simulation range. Simulations and optimizations are limited to the wavelength range where all materials in that particular simulation/optimization are defined.</p>
+<h2 id="database-actions">Database Actions</h2>
+<p>The database provides three different interactions:</p>
+<blockquote>
+<ul>
+<li><strong>Add Material</strong>: To add a new material to the database (see more below)<br />
+</li>
+<li><strong>Remove Material</strong>: Remove the currently selected material from the database<br />
+</li>
+<li><strong>View Material</strong>: Preview the stored real refractive index, complex<br />
+refractive index and their respective interpolations for a particular<br />
+material<br />
+</li>
+</ul>
+</blockquote>
 <figure>
 <img src="manage_database.png" alt="Manage Database" /><figcaption aria-hidden="true">Manage Database</figcaption>
 </figure>
-<h1 id="adding-new-materials">Adding New Materials</h1>
+<h2 id="adding-new-materials">Adding New Materials</h2>
 <p>When “Add Material” is clicked, a new interface will open (shown bellow) to provide the necessary information to import the material information.</p>
 <p>The procedure to add a material is as follows:</p>
-<ul>
+<blockquote>
+<ol type="1">
 <li>First choose the file with the material data (should adhere to the format explained in <a href="Import.html">Importing Data</a>). Only three columns of the file will be considered and they should be on the following order Wavelength/Real Refractive Index/Imaginary Refractive Index.</li>
 <li>Secondly choose a name to identify the material in the database.</li>
 <li>Choose the provided wavelength units</li>
 <li>(Optional) Click preview to check if all the data if begin imported adequately</li>
 <li>Lastly click “Import” to finalize importing the material</li>
-</ul>
+</ol>
+</blockquote>
 <figure>
 <img src="add_database.png" alt="Add Material" /><figcaption aria-hidden="true">Add Material</figcaption>
 </figure>
