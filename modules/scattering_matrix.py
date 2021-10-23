@@ -2,7 +2,7 @@
 File with the optimized version of the Scattering Matrix Script
 
 Class:
-    Layer1D: Define a SMM Layer for 1 wavelength
+    Layer1D: Define a SMM Layer for materials with constant properties
     Layer3D: Define a broadband SMM Layer material
 Functions:
     smm: Calculates R and T for a specific wavelength
@@ -11,18 +11,30 @@ Functions:
     smm_layer: Calculate the absorption for a specific layer
 """
 from enum import Enum, auto
+from typing import List, Union, Tuple, Any
+
 import numpy as np
+import numpy.typing as npt
 from numpy.linalg import inv
 from scipy.interpolate import interp1d
 
 
 class MatOutsideBounds(Exception):
     """ Exception for material outside bounds """
-
     def __init__(self, material, wavelength):
         self.message = f"Simulation wavelength ({wavelength}) is outside " +\
             f"the defined oustide bounds for '{material}'"
         super().__init__(self.message)
+
+
+class InvalidParameter(Exception):
+    pass
+
+
+# Alias to associate type for scattering matrix
+S_Matrix = npt.NDArray[np.complex128]
+C_Matrix = npt.NDArray[np.complex128]
+Prop_Type = Union[npt.NDArray[np.float64], Union[complex, float]]
 
 
 class SMMType(Enum):
@@ -32,14 +44,14 @@ class SMMType(Enum):
     NORM = auto()
 
 
-class SMMBase():
-    """ Base class to store the SMM elements and do necessary operations """
-
-    def __init__(self, S_11, S_12, S_21, S_22):
-        self.S_11 = S_11
-        self.S_12 = S_12
-        self.S_21 = S_21
-        self.S_22 = S_22
+class SMMBase:
+    """ Base class to store the SMM elements and do fundamental operations """
+    def __init__(self, S_11: S_Matrix, S_12: S_Matrix, S_21: S_Matrix,
+                 S_22: S_Matrix) -> None:
+        self.S_11: S_Matrix = S_11
+        self.S_12: S_Matrix = S_12
+        self.S_21: S_Matrix = S_21
+        self.S_22: S_Matrix = S_22
 
     def __mul__(self, other):
         """ Implement Syntax Sugar to perform the Redheffer Product """
@@ -55,31 +67,39 @@ class SMMBase():
         """ Syntax Sugar for *= Operation """
         return self * other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """ SMM representation """
         line_1 = f"{self.S_11[0, 0]} {self.S_11[0, 1]} | "\
             f"{self.S_12[0, 0]} {self.S_12[0, 1]}\n"
         line_2 = f"{self.S_11[1, 0]} {self.S_11[1, 1]} | "\
             f"{self.S_12[1, 0]} {self.S_12[1, 1]}\n"
-        line_3 = "-"*len(line_1)+"\n"
+        line_3 = "-" * len(line_1) + "\n"
         line_4 = f"{self.S_21[0, 0]} {self.S_21[0, 1]} | "\
             f"{self.S_22[0, 0]} {self.S_22[0, 1]}\n"
         line_5 = f"{self.S_21[1, 0]} {self.S_21[1, 1]} | "\
             f"{self.S_22[1, 0]} {self.S_22[1, 1]}\n"
-        return line_1+line_2+line_3+line_4+line_5
+        return line_1 + line_2 + line_3 + line_4 + line_5
 
 
-class SMM(SMMBase):
-    """ Base class to perform SMM calculations """
-
-    def __init__(self, V0, k0, kx, ky, thickness, e, u=1, type=SMMType.NORM):
+class SMatrix(SMMBase):
+    """ Calculate and store the SMatrix for normal layer or ref/trn layer """
+    def __init__(self,
+                 V0: C_Matrix,
+                 k0: float,
+                 kx: float,
+                 ky: float,
+                 thickness: float,
+                 e: complex,
+                 u: complex = 1,
+                 type: SMMType = SMMType.NORM):
         """ Initialize variables """
-        self.thickness = thickness
-        self.e = e
-        self.u = u
-        self.k0 = k0
-        self.kx = kx
-        self.ky = ky
+        self.thickness: float = thickness
+        self.e: complex = e
+        self.u: complex = u
+        self.k0: float = k0
+        self.kx: float = kx
+        self.ky: float = ky
+        self._mat_properties()
         if type == SMMType.NORM:
             S_11, S_12, S_21, S_22 = self._smm_norm(V0)
         elif type == SMMType.TRN:
@@ -90,26 +110,23 @@ class SMM(SMMBase):
             raise Exception("Invalid SMM type. Allowed: NORM/TRN/REF")
         super().__init__(S_11, S_12, S_21, S_22)
 
-    def _mat_properties(self):
+    def _mat_properties(self) -> None:
         """ Determine the material properties for a particular layer"""
         mu_eps = self.e * self.u
-        Q_i = (1 / self.u) * np.array([[self.kx * self.ky,
-                                        mu_eps - self.kx**2],
-                                       [self.ky**2 - mu_eps,
-                                        - self.kx * self.ky]])
+        Q_i = (1 / self.u) * np.array([[
+            self.kx * self.ky, mu_eps - self.kx**2
+        ], [self.ky**2 - mu_eps, -self.kx * self.ky]])
         Omega_i = 1j * np.sqrt(mu_eps - self.kx**2 - self.ky**2) * np.eye(2)
-        V_i = Q_i @ inv(Omega_i)
-        self.Vi = V_i
-        self.Omega_i = Omega_i
-        return Omega_i, V_i
+        Vi = Q_i @ inv(Omega_i)
+        self.Vi: C_Matrix = Vi
+        self.Omega_i: C_Matrix = Omega_i
 
-    def _smm_norm(self, V0):
+    def _smm_norm(self, V0: C_Matrix):
         """ Scattering matrix for a standard layer """
-        Omega_i, Vi = self._mat_properties()
-        iVi_V0 = inv(Vi) @ V0
+        iVi_V0 = inv(self.Vi) @ V0
         Ai = np.eye(2) + iVi_V0
         Bi = np.eye(2) - iVi_V0
-        Xi = np.eye(2) * np.exp(Omega_i * self.k0 * self.thickness)
+        Xi = np.eye(2) * np.exp(self.Omega_i * self.k0 * self.thickness)
         iAi = inv(Ai)
         X_BiA_X = Xi @ Bi @ iAi @ Xi
         inv_fact = inv(Ai - X_BiA_X @ Bi)
@@ -117,10 +134,9 @@ class SMM(SMMBase):
         S_12 = inv_fact @ Xi @ (Ai - Bi @ iAi @ Bi)
         return S_11, S_12, S_12, S_11
 
-    def _smm_trn(self, V0):
+    def _smm_trn(self, V0: C_Matrix):
         """ Calculate the smm for the transmission layer """
-        _, V_trn = self._mat_properties()
-        iV_0_V_trn = inv(V0) @ V_trn
+        iV_0_V_trn = inv(V0) @ self.Vi
         A_trn = np.eye(2) + iV_0_V_trn
         B_trn = np.eye(2) - iV_0_V_trn
         iA_trn = inv(A_trn)
@@ -130,10 +146,9 @@ class SMM(SMMBase):
         S_22 = -iA_trn @ B_trn
         return S_11, S_12, S_21, S_22
 
-    def _smm_ref(self, V0):
+    def _smm_ref(self, V0: C_Matrix):
         """Calculate the smm for the reflection layer"""
-        _, V_ref = self._mat_properties()
-        iV_0_V_ref = inv(V0) @ V_ref
+        iV_0_V_ref = inv(V0) @ self.Vi
         A_ref = np.eye(2) + iV_0_V_ref
         B_ref = np.eye(2) - iV_0_V_ref
         iA_ref = inv(A_ref)
@@ -152,17 +167,16 @@ class Layer1D():
         thickness (float - nm): Layer thickness
         lmb (nm)/n_val/k_val (array): Material info for the layer
     """
+    def __init__(self, name: str, thickness: float, n_val: float,
+                 k_val: float) -> None:
+        self.name: str = name
+        self.thickness: float = thickness
+        self.n: float = n_val
+        self.k: float = k_val
 
-    def __init__(self, name, thickness, n_val, k_val):
-        self.name = name
-        self.thickness = thickness
-        self.lmb = lmb
-        self.n = n_val
-        self.k = k_val
-
-    def e_value(self, lmb):
+    def e_value(self, lmb: npt.ArrayLike) -> npt.ArrayLike:
         """ Return e_value for specific wavelength """
-        res = np.zeros_like(lmb, dtype=np.complex128)
+        res: npt.ArrayLike = np.zeros_like(lmb, dtype=np.complex128)
         res += (self.n + 1j * self.k)**2
         return res
 
@@ -177,21 +191,31 @@ class Layer3D():
                                           basic info for each layer
         **kwargs: Pass extra arguments for interpolation function
     """
-
-    def __init__(self, name, thickness, lmb, n_array, k_array, **kwargs):
-        self.name = name
-        self.lmb = [np.min(lmb), np.max(lmb)]
-        self.thickness = thickness
+    def __init__(self, name: str, thickness: float,
+                 lmb: npt.NDArray[np.float64],
+                 n_array: npt.NDArray[np.float64],
+                 k_array: npt.NDArray[np.float64], **kwargs) -> None:
+        self.name: str = name
+        self.lmb: list = [np.min(lmb), np.max(lmb)]
+        self.thickness: float = thickness
         self.n = interp1d(lmb, n_array, **kwargs)
         self.k = interp1d(lmb, k_array, **kwargs)
 
-    def e_value(self, lmb):
+    def e_value(self, lmb: npt.ArrayLike) -> npt.ArrayLike:
         """ Calculate e_values for a range of wavelengths """
         try:
-            e_data = (self.n(lmb) + 1j * self.k(lmb))**2
+            e_data: npt.ArrayLike = (self.n(lmb) + 1j * self.k(lmb))**2
         except ValueError:
-            raise MatOutsideBounds(self.name, f"{lmb.min()}, {lmb.max()}")
+            if isinstance(lmb, float):
+                raise MatOutsideBounds(self.name, f"{lmb}")
+            elif isinstance(lmb, np.ndarray):
+                raise MatOutsideBounds(self.name, f"{lmb.min()}, {lmb.max()}")
+            else:
+                raise Exception("Invalid wavelength value")
         return e_data
+
+
+Layer_Type = Union[Layer1D, Layer3D]
 
 
 def _initialize_smm(theta, phi, lmb, pol, inc_medium):
@@ -233,7 +257,9 @@ def _e_fields(S_Global, inc_p_l, inc_p_r, kx, ky, kz_ref, kz_trn):
     return E_ref, E_trn, Ez_ref, Ez_trn
 
 
-def smm(layer_list, theta, phi, lmb, pol, i_med, t_med):
+def smm(layer_list: List[Layer_Type], theta: float, phi: float, lmb: float,
+        pol: Tuple[complex, complex], i_med: Tuple[complex, complex],
+        t_med: Tuple[complex, complex]) -> Tuple[float, float]:
     """
     SMM for a single point simulation
     Args:
@@ -245,30 +271,37 @@ def smm(layer_list, theta, phi, lmb, pol, i_med, t_med):
     Returns:
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
+    if not isinstance(lmb, float) or not isinstance(
+            theta, float) or not isinstance(phi, float):
+        raise InvalidParameter("Invalid Input parameter")
     # Inicialize necessary values
-    k0, kx, ky, V0, p = _initialize_smm(
-        theta, phi, lmb, pol, i_med)
-    S_trn = SMM(V0, k0, kx, ky, 0,
-                t_med[0], t_med[1], SMMType.TRN)
-    S_ref = SMM(V0, k0, kx, ky, 0,
-                i_med[0], i_med[1], SMMType.REF)
+    k0, kx, ky, V0, p = _initialize_smm(theta, phi, lmb, pol, i_med)
+    S_trn = SMatrix(V0, k0, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
+    S_ref = SMatrix(V0, k0, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
     S_Global = S_ref
     for layer in layer_list:
-        S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
+        e_value: Any = layer.e_value(lmb)
+        S_Layer = SMatrix(V0, k0, kx, ky, layer.thickness, e_value)
         S_Global *= S_Layer
     S_Global = S_Global * S_trn
-    kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
-    kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
-    E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
-        S_Global, p, [0, 0], kx, ky, kz_ref, kz_trn)
+    kz_ref = np.sqrt(i_med[0] * i_med[1] - kx**2 - ky**2)
+    kz_trn = np.sqrt(t_med[0] * t_med[1] - kx**2 - ky**2)
+    E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(S_Global, p, [0, 0], kx, ky,
+                                             kz_ref, kz_trn)
     R = abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2
     T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
         (kz_trn * i_med[1]) / (kz_ref * t_med[1]))
     return R, T
 
 
-def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
-                  override_thick=None):
+def smm_broadband(layer_list: List[Layer_Type],
+                  theta: float,
+                  phi: float,
+                  lmb: npt.NDArray[np.float64],
+                  pol: Tuple[complex, complex],
+                  i_med: Tuple[complex, complex],
+                  t_med: Tuple[complex, complex],
+                  override_thick=None) -> Tuple[np.ndarray, np.ndarray]:
     """
     SMM for broadband simulation
     Args:
@@ -281,40 +314,48 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
     Returns:
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
+    if not isinstance(theta, float) or not isinstance(phi, float):
+        raise InvalidParameter("Invalid Input parameter")
     if override_thick is not None:
         if len(override_thick) == len(layer_list):
             for thick_i, layer in zip(override_thick, layer_list):
                 layer.thickness = thick_i
         else:
-            raise Exception("Override Thickness does not match Layer List")
-    k0, kx, ky, V0, p = _initialize_smm(
-        theta, phi, lmb, pol, i_med)
-    kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
-    kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
+            raise InvalidParameter(
+                "Override Thickness does not match Layer List")
+    k0, kx, ky, V0, p = _initialize_smm(theta, phi, lmb, pol, i_med)
+    kz_ref = np.sqrt(i_med[0] * i_med[1] - kx**2 - ky**2)
+    kz_trn = np.sqrt(t_med[0] * t_med[1] - kx**2 - ky**2)
     # This is a simplification to determine all the values in beforehand
     layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
     R = []
     T = []
     # Loop through all wavelengths and layers
     for k0_i, layer_data in zip(k0, layer_data.T):
-        S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
-        S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
+        S_trn = SMatrix(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
+        S_ref = SMatrix(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
         S_Global_i = S_ref
         for index, layer in enumerate(layer_list):
-            S_Layer = SMM(V0, k0_i, kx, ky, layer.thickness, layer_data[index])
+            S_Layer = SMatrix(V0, k0_i, kx, ky, layer.thickness,
+                              layer_data[index])
             S_Global_i *= S_Layer
         S_Global_i = S_Global_i * S_trn
-        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
-            S_Global_i, p, [0, 0], kx, ky, kz_ref, kz_trn)
+        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(S_Global_i, p, [0, 0], kx, ky,
+                                                 kz_ref, kz_trn)
         R.append(abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2)
         T.append(
-                (
-                    abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2
-                ) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1])))
+            (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
+                (kz_trn * i_med[1]) / (kz_ref * t_med[1])))
     return np.array(R), np.array(T)
 
 
-def smm_angle(layer_list, theta, phi, lmb, pol, i_med, t_med,
+def smm_angle(layer_list: List[Layer_Type],
+              theta: np.ndarray,
+              phi: float,
+              lmb: float,
+              pol: Tuple[complex, complex],
+              i_med: Tuple[complex, complex],
+              t_med: Tuple[complex, complex],
               override_thick=None):
     """
     SMM for broad angle simulations
@@ -328,38 +369,45 @@ def smm_angle(layer_list, theta, phi, lmb, pol, i_med, t_med,
     Returns:
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
+    if not isinstance(lmb, float) or not isinstance(phi, float):
+        raise InvalidParameter("Invalid Input parameter")
     if override_thick is not None:
         if len(override_thick) == len(layer_list):
             for thick_i, layer in zip(override_thick, layer_list):
                 layer.thickness = thick_i
         else:
-            raise Exception("Override Thickness does not match Layer List")
+            raise InvalidParameter(
+                "Override Thickness does not match Layer List")
     R, T = [], []
     for theta_i in theta:
-        k0, kx, ky, V0, p = _initialize_smm(
-            theta_i, phi, lmb, pol, i_med)
-        S_trn = SMM(V0, k0, kx, ky, 0,
-                    t_med[0], t_med[1], SMMType.TRN)
-        S_ref = SMM(V0, k0, kx, ky, 0,
-                    i_med[0], i_med[1], SMMType.REF)
+        k0, kx, ky, V0, p = _initialize_smm(theta_i, phi, lmb, pol, i_med)
+        S_trn = SMatrix(V0, k0, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
+        S_ref = SMatrix(V0, k0, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
         S_Global = S_ref
         for layer in layer_list:
-            S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
+            e_value: Any = layer.e_value(lmb)
+            S_Layer = SMatrix(V0, k0, kx, ky, layer.thickness, e_value)
             S_Global *= S_Layer
         S_Global = S_ref * S_Global * S_trn
-        kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
-        kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
-        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
-            S_Global, p, [0, 0], kx, ky, kz_ref, kz_trn)
+        kz_ref = np.sqrt(i_med[0] * i_med[1] - kx**2 - ky**2)
+        kz_trn = np.sqrt(t_med[0] * t_med[1] - kx**2 - ky**2)
+        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(S_Global, p, [0, 0], kx, ky,
+                                                 kz_ref, kz_trn)
         R.append(abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2)
         T.append(
-                (
-                    abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2
-                ) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1])))
+            (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
+                (kz_trn * i_med[1]) / (kz_ref * t_med[1])))
     return np.array(R), np.array(T)
 
 
-def smm_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med,
+def smm_layer(layer_list: List[Layer_Type],
+              layer_i: int,
+              theta: float,
+              phi: float,
+              lmb: npt.NDArray[np.float64],
+              pol: Tuple[complex, complex],
+              i_med: Tuple[complex, complex],
+              t_med: Tuple[complex, complex],
               override_thick=None):
     """
     Determine absorption for a particular layer
@@ -371,71 +419,76 @@ def smm_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med,
         pol: Tuple with the TM/TE polarization components
         i_med/t_med: Data for the reflection and transmission media
     Returns:
-        Abs: Absorption for a particular layer
+        Abs: Absorption fonumpy typing unionr a particular layer
     """
+    if not isinstance(theta, float) or not isinstance(phi, float):
+        raise InvalidParameter("Invalid Input parameter")
     if layer_i == 0 or layer_i > len(layer_list):
-        raise Exception("Invalid Index")
+        raise InvalidParameter("Invalid Layer Index")
     layer_i -= 1
     if override_thick is not None:
         if len(override_thick) == len(layer_list):
             for thick_i, layer in zip(override_thick, layer_list):
                 layer.thickness = thick_i
         else:
-            raise Exception("Override Thickness does not match Layer List")
-    k0, kx, ky, V0, p = _initialize_smm(
-        theta, phi, lmb, pol, i_med)
-    kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
-    kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
+            raise InvalidParameter(
+                "Override Thickness does not match Layer List")
+    k0, kx, ky, V0, p = _initialize_smm(theta, phi, lmb, pol, i_med)
+    kz_ref = np.sqrt(i_med[0] * i_med[1] - kx**2 - ky**2)
+    kz_trn = np.sqrt(t_med[0] * t_med[1] - kx**2 - ky**2)
     # This is a simplification to determine all the values in beforehand
     layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
     Abs = []
     # Loop through all wavelengths and layers
     for k0_i, layer_data in zip(k0, layer_data.T):
-        S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
-        S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
+        S_trn = SMatrix(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
+        S_ref = SMatrix(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
         S_Global_i = S_ref
         S_Global_After = S_ref
         S_Global_Before = S_ref
         for layer_index, layer in enumerate(layer_list):
             if layer_index == layer_i:
                 S_Global_Before = S_Global_i
-            S_Layer = SMM(V0, k0_i, kx, ky, layer.thickness,
-                          layer_data[layer_index])
+            S_Layer = SMatrix(V0, k0_i, kx, ky, layer.thickness,
+                              layer_data[layer_index])
             S_Global_i *= S_Layer
             if layer_index == layer_i:
                 S_Global_After = S_Global_i
         S_Pre_Trn = S_Global_i
         S_Global_i = S_Global_i * S_trn
         # Determine the total absorption of the device
-        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
-            S_Global_i, p, [0, 0], kx, ky, kz_ref, kz_trn)
+        E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(S_Global_i, p, [0, 0], kx, ky,
+                                                 kz_ref, kz_trn)
         R = abs(E_ref[0])**2 + abs(E_ref[1])**2 + abs(Ez_ref)**2
-        T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn) **
-             2) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1]))
+        T = (abs(E_trn[0])**2 + abs(E_trn[1])**2 + abs(Ez_trn)**2) * np.real(
+            (kz_trn * i_med[1]) / (kz_ref * t_med[1]))
 
         # Determine the total power inside the device
-        c_ref_m = inv(S_ref.S_12)@(E_ref - S_ref.S_11@p)
-        c_ref_p = S_ref.S_21@p + S_ref.S_22@c_ref_m
-        c_trn_m = inv(S_Pre_Trn.S_12)@(E_ref - S_Pre_Trn.S_11@p)
-        c_trn_p = S_Pre_Trn.S_21@p + S_Pre_Trn.S_22@c_trn_m
+        c_ref_m = inv(S_ref.S_12) @ (E_ref - S_ref.S_11 @ p)
+        c_ref_p = S_ref.S_21 @ p + S_ref.S_22 @ c_ref_m
+        c_trn_m = inv(S_Pre_Trn.S_12) @ (E_ref - S_Pre_Trn.S_11 @ p)
+        c_trn_p = S_Pre_Trn.S_21 @ p + S_Pre_Trn.S_22 @ c_trn_m
         sum_c_trn_p = np.sum(np.abs(c_trn_p)**2)
         sum_c_trn_m = np.sum(np.abs(c_trn_m)**2)
         sum_c_ref_p = np.sum(np.abs(c_ref_p)**2)
         sum_c_ref_m = np.sum(np.abs(c_ref_m)**2)
         int_power = sum_c_ref_p - sum_c_ref_m - sum_c_trn_p + sum_c_trn_m
         # Determine the mode coefficients just before the wanted layer
-        c_left_m = inv(S_Global_Before.S_12)@(E_ref - S_Global_Before.S_11@p)
-        c_left_p = S_Global_Before.S_21@p + S_Global_Before.S_22@c_left_m
+        c_left_m = inv(
+            S_Global_Before.S_12) @ (E_ref - S_Global_Before.S_11 @ p)
+        c_left_p = S_Global_Before.S_21 @ p + S_Global_Before.S_22 @ c_left_m
         # Determine the mode coefficients just after the wanted layer
-        c_right_m = inv(S_Global_After.S_12)@(E_ref - S_Global_After.S_11@p)
-        c_right_p = S_Global_After.S_21@p + S_Global_After.S_22@c_right_m
+        c_right_m = inv(
+            S_Global_After.S_12) @ (E_ref - S_Global_After.S_11 @ p)
+        c_right_p = S_Global_After.S_21 @ p + S_Global_After.S_22 @ c_right_m
         # Determine the %abs for a particular layer in regard to the total abs
         sum_left_p = np.sum(np.abs(c_left_p)**2)
         sum_left_m = np.sum(np.abs(c_left_m)**2)
         sum_right_p = np.sum(np.abs(c_right_p)**2)
         sum_right_m = np.sum(np.abs(c_right_m)**2)
-        i_abs = (sum_left_p+sum_right_m-sum_left_m-sum_right_p)/int_power
-        Abs.append(i_abs*(1-R-T))
+        i_abs = (sum_left_p + sum_right_m - sum_left_m -
+                 sum_right_p) / int_power
+        Abs.append(i_abs * (1 - R - T))
     return np.array(Abs)
 
 
@@ -462,6 +515,6 @@ if __name__ == '__main__':
     # abs3 = smm_layer([layer1, layer2, layer3], 3,
     #                  theta, phi, lmb, p, inc_medium, trn_medium)
     # print(abs1+abs2+abs3)
-    R, T = smm([layer1, layer2, layer3], theta[3], phi, lmb[0], p,
-               inc_medium, trn_medium)
+    R, T = smm([layer1, layer2, layer3], theta[3], phi, lmb[0], p, inc_medium,
+               trn_medium)
     # print(1-R-T)

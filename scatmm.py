@@ -31,7 +31,7 @@ from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.db_window import DBWindow
 from smm_uis.export_window import ExpWindow
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 # Default plot properties
 mstyle.use("smm_style")
@@ -85,6 +85,8 @@ class OptimizeWorkder(QtCore.QThread):
             elif self.abs_check:
                 point_error = np.sum((1 - ref - trn - self.compare_data)**2,
                                      axis=0)
+            else:
+                raise Exception("Unknown optimization variable")
             self.updateValueSignal.emit(
                 int(self.iterator / self.particle_info["n_iter"] * 100))
             self.iterator += 1
