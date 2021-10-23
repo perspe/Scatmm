@@ -12,7 +12,7 @@ class Database():
         Load all contents in database to variable
         """
         self.db_file = db_file
-        self.prepend_path = os.path.dirname(db_file)
+        self.prepend_path: str = os.path.dirname(db_file)
         with open(self.db_file) as db_file:
             self.content = db_file.read().splitlines()
 

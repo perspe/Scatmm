@@ -191,11 +191,10 @@ class Layer3D():
             e_data = (self.n(lmb) + 1j * self.k(lmb))**2
         except ValueError:
             raise MatOutsideBounds(self.name, f"{lmb.min()}, {lmb.max()}")
-            return
         return e_data
 
 
-def _initialize_smm(theta, phi, lmb, pol, inc_medium, trn_medium):
+def _initialize_smm(theta, phi, lmb, pol, inc_medium):
     """ Initialize the parameters necessary for the smm calculations """
     if np.size(lmb) > 1 and np.size(theta) > 1:
         raise Exception("Only wavelength or theta can be an array")
@@ -222,10 +221,7 @@ def _initialize_smm(theta, phi, lmb, pol, inc_medium, trn_medium):
     p_vector = np.add(pol[1] * ate, pol[0] * atm)
     p = p_vector[[0, 1]]
 
-    # Initialize global SMM
-    SGlobal = SMMBase(np.zeros((2, 2)), np.eye(2), np.eye(2), np.zeros((2, 2)))
-
-    return k0, kx, ky, V0, p, SGlobal
+    return k0, kx, ky, V0, p
 
 
 def _e_fields(S_Global, inc_p_l, inc_p_r, kx, ky, kz_ref, kz_trn):
@@ -250,16 +246,17 @@ def smm(layer_list, theta, phi, lmb, pol, i_med, t_med):
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
     # Inicialize necessary values
-    k0, kx, ky, V0, p, S_Global = _initialize_smm(
-        theta, phi, lmb, pol, i_med, t_med)
+    k0, kx, ky, V0, p = _initialize_smm(
+        theta, phi, lmb, pol, i_med)
     S_trn = SMM(V0, k0, kx, ky, 0,
                 t_med[0], t_med[1], SMMType.TRN)
     S_ref = SMM(V0, k0, kx, ky, 0,
                 i_med[0], i_med[1], SMMType.REF)
+    S_Global = S_ref
     for layer in layer_list:
         S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
         S_Global *= S_Layer
-    S_Global = S_ref * S_Global * S_trn
+    S_Global = S_Global * S_trn
     kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
     kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
     E_ref, E_trn, Ez_ref, Ez_trn = _e_fields(
@@ -290,8 +287,8 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
                 layer.thickness = thick_i
         else:
             raise Exception("Override Thickness does not match Layer List")
-    k0, kx, ky, V0, p, S_Global = _initialize_smm(
-        theta, phi, lmb, pol, i_med, t_med)
+    k0, kx, ky, V0, p = _initialize_smm(
+        theta, phi, lmb, pol, i_med)
     kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
     kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
     # This is a simplification to determine all the values in beforehand
@@ -299,7 +296,7 @@ def smm_broadband(layer_list, theta, phi, lmb, pol, i_med, t_med,
     R = []
     T = []
     # Loop through all wavelengths and layers
-    for lmb_i, k0_i, layer_data in zip(lmb, k0, layer_data.T):
+    for k0_i, layer_data in zip(k0, layer_data.T):
         S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
         S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
         S_Global_i = S_ref
@@ -339,12 +336,13 @@ def smm_angle(layer_list, theta, phi, lmb, pol, i_med, t_med,
             raise Exception("Override Thickness does not match Layer List")
     R, T = [], []
     for theta_i in theta:
-        k0, kx, ky, V0, p, S_Global = _initialize_smm(
-            theta_i, phi, lmb, pol, i_med, t_med)
+        k0, kx, ky, V0, p = _initialize_smm(
+            theta_i, phi, lmb, pol, i_med)
         S_trn = SMM(V0, k0, kx, ky, 0,
                     t_med[0], t_med[1], SMMType.TRN)
         S_ref = SMM(V0, k0, kx, ky, 0,
                     i_med[0], i_med[1], SMMType.REF)
+        S_Global = S_ref
         for layer in layer_list:
             S_Layer = SMM(V0, k0, kx, ky, layer.thickness, layer.e_value(lmb))
             S_Global *= S_Layer
@@ -384,18 +382,20 @@ def smm_layer(layer_list, layer_i, theta, phi, lmb, pol, i_med, t_med,
                 layer.thickness = thick_i
         else:
             raise Exception("Override Thickness does not match Layer List")
-    k0, kx, ky, V0, p, S_Global = _initialize_smm(
-        theta, phi, lmb, pol, i_med, t_med)
+    k0, kx, ky, V0, p = _initialize_smm(
+        theta, phi, lmb, pol, i_med)
     kz_ref = np.sqrt(i_med[0]*i_med[1] - kx**2 - ky**2)
     kz_trn = np.sqrt(t_med[0]*t_med[1] - kx**2 - ky**2)
     # This is a simplification to determine all the values in beforehand
     layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
     Abs = []
     # Loop through all wavelengths and layers
-    for lmb_i, k0_i, layer_data in zip(lmb, k0, layer_data.T):
+    for k0_i, layer_data in zip(k0, layer_data.T):
         S_trn = SMM(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], SMMType.TRN)
         S_ref = SMM(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], SMMType.REF)
         S_Global_i = S_ref
+        S_Global_After = S_ref
+        S_Global_Before = S_ref
         for layer_index, layer in enumerate(layer_list):
             if layer_index == layer_i:
                 S_Global_Before = S_Global_i
@@ -453,15 +453,15 @@ if __name__ == '__main__':
     # Test angular results
     R, T = smm_angle([layer1, layer2, layer3], theta, phi, lmb[0], p,
                      inc_medium, trn_medium)
-    print(R, T)
-    # Test absorption
-    abs1 = smm_layer([layer1, layer2, layer3], 1,
-                     theta[3], phi, lmb, p, inc_medium, trn_medium)
-    abs2 = smm_layer([layer1, layer2, layer3], 2,
-                     theta[3], phi, lmb, p, inc_medium, trn_medium)
-    abs3 = smm_layer([layer1, layer2, layer3], 3,
-                     theta, phi, lmb, p, inc_medium, trn_medium)
-    print(abs1+abs2+abs3)
+    # print(R, T)
+    # # Test absorption
+    # abs1 = smm_layer([layer1, layer2, layer3], 1,
+    #                  theta[3], phi, lmb, p, inc_medium, trn_medium)
+    # abs2 = smm_layer([layer1, layer2, layer3], 2,
+    #                  theta[3], phi, lmb, p, inc_medium, trn_medium)
+    # abs3 = smm_layer([layer1, layer2, layer3], 3,
+    #                  theta, phi, lmb, p, inc_medium, trn_medium)
+    # print(abs1+abs2+abs3)
     R, T = smm([layer1, layer2, layer3], theta[3], phi, lmb[0], p,
                inc_medium, trn_medium)
-    print(1-R-T)
+    # print(1-R-T)

@@ -166,7 +166,7 @@ class SMMGUI(QMainWindow):
         ]
         # List to record the ploted absorptions
         self.abs_list = [False, False]
-        self.layer_absorption = [0, 0]
+        self.layer_absorption = [None, None]
         self.layer_abs_gid = [None, None]
         # List to store the previous simulation results
         self.sim_results = []
@@ -549,7 +549,7 @@ class SMMGUI(QMainWindow):
                                 QMessageBox.Close)
             raise ValueError
 
-    def get_material_config(self, lmb, material_structure, tab="sim"):
+    def get_material_config(self, material_structure, tab="sim"):
         """
         Get material configuration
         """
@@ -600,8 +600,7 @@ class SMMGUI(QMainWindow):
                               self.global_properties["sim_points"][1])
             # Get all the sim_config_values
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
-            _, layer_list = self.get_material_config(
-                lmb, self.sim_config)
+            _, layer_list = self.get_material_config(self.sim_config)
         except ValueError:
             return
         except Exception:
@@ -711,8 +710,7 @@ class SMMGUI(QMainWindow):
                               self.global_properties["sim_points"][1])
             # Get all the sim_config_values
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
-            _, layer_list = self.get_material_config(
-                lmb, self.sim_config)
+            _, layer_list = self.get_material_config(self.sim_config)
         except MatOutsideBounds:
             title = "Error: Material Out of Bounds"
             message = "One of the materials in the simulation is "\
@@ -849,8 +847,7 @@ class SMMGUI(QMainWindow):
             self.main_canvas.draw()
             theta, phi, pol, _, _ = self.get_sim_data()
             ref_medium, trn_medium = self.get_medium_config(self.opt_config)
-            thick, layer_list = self.get_material_config(lmb,
-                                                         self.opt_config,
+            thick, layer_list = self.get_material_config(self.opt_config,
                                                          tab="opt")
             # Create a new worker thread to do the optimization
             self.ui.opt_res_text.clear()

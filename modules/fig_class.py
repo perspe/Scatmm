@@ -17,7 +17,7 @@ class FigWidget(QWidget):
 class PltFigure(FigureCanvasQTAgg):
     """ Class to draw canvas for a particular figure"""
 
-    def __init__(self, parent, xlabel, ylabel, width=6, height=5, dpi=100):
+    def __init__(self, parent, xlabel, ylabel,  width=6, height=5, dpi=100):
         """ Initialize all the figure main elements """
         self.xlabel = xlabel
         self.ylabel = ylabel

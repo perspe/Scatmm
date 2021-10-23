@@ -5,8 +5,6 @@ Functions:
 """
 import os
 from random import random
-
-import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -77,13 +75,6 @@ def particle_swarm(func,
         - pbest: Best parameters for each particle
         - gbest_array: Array with the gfitness value for each iteration
     """
-    # Set the plot defaults
-    if plot:
-        plt.ion()
-        plt.rcParams['font.size'] = 8
-        _, results_plot = plt.subplots(figsize=(4, 3), constrained_layout=True)
-        results_plot.set_xlabel("Iteration", fontsize=10)
-        results_plot.set_ylabel("FoM", fontsize=10)
     # Create directory to deposit the results in case export is true
     isDir = os.path.isdir("PSO_Results")
     if not isDir and export:
@@ -122,8 +113,6 @@ def particle_swarm(func,
     pfitness = func_results
     gbest = param_space[:, fitness_arg].flatten()
     gbest_array = [gfitness]
-    if plot:
-        results_plot.plot(gbest_array)
     pbest = param_space
 
     # Update the optimization arrays
@@ -160,8 +149,6 @@ def particle_swarm(func,
         print(gbest)
         gbest_array.append(gfitness)
         # Update the FoM plot
-        if plot:
-            results_plot.plot(gbest_array)
         pfitness[pfitness_mask] = func_results[pfitness_mask]
         pbest[:, pfitness_mask] = param_space[:, pfitness_mask]
         if export:
