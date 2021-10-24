@@ -43,6 +43,11 @@ class ExpWindow(QWidget):
         """ Update the simulation information in the QText Edit """
         sim_choice = self.chosen_sim.currentText()
         layer_info = "----------------------\nLayers:\n"
+        type = ""
+        phi = ""
+        i_med = ""
+        t_med = ""
+        pol = ""
         for sim in self.sim_results:
             if sim.ID == sim_choice:
                 if sim.Type == SType.WVL:
@@ -53,6 +58,8 @@ class ExpWindow(QWidget):
                     type = "Angular simulation:\n\n"
                     type += f"θ : {sim.Theta.min()} - {sim.Theta.max()}\n"
                     type += f"λ : {sim.Lmb}\n"
+                else:
+                    raise Exception("Invalid SType")
 
                 phi = f"Φ : {sim.Phi}\n"
                 pol = f"Polarization: {sim.Pol} (PTM, PTE)\n"
@@ -88,6 +95,8 @@ class ExpWindow(QWidget):
                 elif result.Type == SType.ANGLE:
                     export_array = result.Theta
                     header += "Angle"
+                else:
+                    raise Exception("Invalid SType")
                 export_array = export_array[:, np.newaxis]
                 if ref_check:
                     export_array = np.concatenate(
@@ -142,6 +151,8 @@ class ExpWindow(QWidget):
             elif result.Type == SType.ANGLE:
                 export_array = result.Theta
                 header += "Angle"
+            else:
+                raise Exception("Invalid SType")
             export_array = export_array[:, np.newaxis]
             if ref_check:
                 export_array = np.concatenate(

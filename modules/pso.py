@@ -56,7 +56,6 @@ def particle_swarm(func,
                    n_particles=25,
                    n_iter=50,
                    export=False,
-                   plot=False,
                    **func_kwargs):
     """Implementation of the particle swarm algorithm
     Args:
