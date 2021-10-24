@@ -34,7 +34,6 @@ class InvalidParameter(Exception):
 # Alias to associate type for scattering matrix
 S_Matrix = npt.NDArray[np.complex128]
 C_Matrix = npt.NDArray[np.complex128]
-Prop_Type = Union[npt.NDArray[np.float64], Union[complex, float]]
 
 
 class SMMType(Enum):
@@ -192,9 +191,9 @@ class Layer3D():
         **kwargs: Pass extra arguments for interpolation function
     """
     def __init__(self, name: str, thickness: float,
-                 lmb: npt.NDArray[np.float64],
-                 n_array: npt.NDArray[np.float64],
-                 k_array: npt.NDArray[np.float64], **kwargs) -> None:
+                 lmb: npt.NDArray,
+                 n_array: npt.NDArray,
+                 k_array: npt.NDArray, **kwargs) -> None:
         self.name: str = name
         self.lmb: list = [np.min(lmb), np.max(lmb)]
         self.thickness: float = thickness
@@ -297,7 +296,7 @@ def smm(layer_list: List[Layer_Type], theta: float, phi: float, lmb: float,
 def smm_broadband(layer_list: List[Layer_Type],
                   theta: float,
                   phi: float,
-                  lmb: npt.NDArray[np.float64],
+                  lmb: npt.NDArray,
                   pol: Tuple[complex, complex],
                   i_med: Tuple[complex, complex],
                   t_med: Tuple[complex, complex],
@@ -404,7 +403,7 @@ def smm_layer(layer_list: List[Layer_Type],
               layer_i: int,
               theta: float,
               phi: float,
-              lmb: npt.NDArray[np.float64],
+              lmb: npt.NDArray,
               pol: Tuple[complex, complex],
               i_med: Tuple[complex, complex],
               t_med: Tuple[complex, complex],

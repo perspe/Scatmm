@@ -10,12 +10,14 @@ import webbrowser
 import json
 import uuid
 from modules.structs import SRes, SType
+from typing import Any
 
 import matplotlib.style as mstyle
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import pandas as pd
 import numpy as np
 from numpy.linalg import norm
+import numpy.typing as npt
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
@@ -168,8 +170,8 @@ class SMMGUI(QMainWindow):
         ]
         # List to record the ploted absorptions
         self.abs_list = [False, False]
-        self.layer_absorption = [None, None]
-        self.layer_abs_gid = [None, None]
+        self.layer_absorption: Any = [None, None]
+        self.layer_abs_gid: Any = [None, None]
         # List to store the previous simulation results
         self.sim_results = []
         # Store imported data
@@ -563,7 +565,7 @@ class SMMGUI(QMainWindow):
                 for material, thickness in zip(material_structure["materials"],
                                                material_structure["size"]):
                     mat_i = material.currentText()
-                    db_data = self.database[mat_i]
+                    db_data: npt.NDArray = self.database[mat_i]
                     layer_list.append(
                         Layer3D(mat_i, float(thickness.text()),
                                 db_data[:, 0], db_data[:, 1], db_data[:, 2],
@@ -683,7 +685,7 @@ class SMMGUI(QMainWindow):
         self.clear_button.setText("Clear")
         self.reinit_abs_checkbox()
 
-    def plot_abs_layer(self, int):
+    def plot_abs_layer(self, _):
         """ Determine whick layer absorption was toggled and
         plot the cumulative absorption for all checked layers"""
         # Check if there are simulations

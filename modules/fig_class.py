@@ -1,16 +1,17 @@
 """ Module with the Main classes to plot the Figures """
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLayout
+from typing import Any
 
 
 class FigWidget(QWidget):
     """ Class to create a new window with Plots """
 
-    def __init__(self, title):
+    def __init__(self, title: str):
         super().__init__()
         self.setWindowTitle(title)
-        self.layout = QVBoxLayout()
+        self.layout: QLayout = QVBoxLayout()
         self.setLayout(self.layout)
 
 
@@ -22,7 +23,7 @@ class PltFigure(FigureCanvasQTAgg):
         self.xlabel = xlabel
         self.ylabel = ylabel
         fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
+        self.axes: Any = fig.add_subplot(111)
         self.draw_axes()
         super(PltFigure, self).__init__(fig)
         parent.addWidget(self)
@@ -30,16 +31,17 @@ class PltFigure(FigureCanvasQTAgg):
     def draw_axes(self, xlabel=None, ylabel=None):
         """Draw x/y labels"""
         if xlabel:
-            self.xlabel = xlabel
+            self.xlabel: str = xlabel
         if ylabel:
-            self.ylabel = ylabel
+            self.ylabel: str = ylabel
         self.axes.yaxis.grid(True, linestyle="--")
         self.axes.xaxis.grid(True, linestyle="--")
         self.axes.set_ylabel(self.ylabel)
         self.axes.set_xlabel(self.xlabel)
 
+
     def reinit(self):
-        """Clean and then reinit the figure elements"""
+        """ Clean and then reinit the figure elements """
         self.axes.clear()
         self.draw_axes()
         self.draw()
