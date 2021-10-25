@@ -11,6 +11,7 @@ import json
 import uuid
 from modules.structs import SRes, SType
 from typing import Any
+import logging
 
 import matplotlib.style as mstyle
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -33,7 +34,7 @@ from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.db_window import DBWindow
 from smm_uis.export_window import ExpWindow
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 
 # Default plot properties
 mstyle.use("smm_style")
@@ -707,21 +708,14 @@ class SMMGUI(QMainWindow):
                                 QMessageBox.Close)
             self.reinit_abs_checkbox()
             return
-        # Get all data necessary for simulation
-        try:
-            theta, phi, pol, lmb_min, lmb_max = self.get_sim_data()
-            lmb = np.linspace(lmb_min, lmb_max,
-                              self.global_properties["sim_points"][1])
-            # Get all the sim_config_values
-            ref_medium, trn_medium = self.get_medium_config(self.sim_config)
-            _, layer_list = self.get_material_config(self.sim_config)
-        except MatOutsideBounds:
-            title = "Error: Material Out of Bounds"
-            message = "One of the materials in the simulation is "\
-                "undefined for the defined wavelength range"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
-                                QMessageBox.Close)
-            return
+        # Get all the data from the last simulations
+        theta = self.sim_results[-1].Theta
+        phi = self.sim_results[-1].Phi
+        pol = self.sim_results[-1].Pol
+        lmb = self.sim_results[-1].Lmb
+        ref_medium = self.sim_results[-1].INC_MED
+        trn_medium = self.sim_results[-1].TRN_MED
+        layer_list = self.sim_results[-1].Layers
         # Check for the different indexes
         for index, check_index in enumerate(self.sim_check):
             # Determine which button was clicked and update associated Structs
@@ -739,7 +733,8 @@ class SMMGUI(QMainWindow):
                     # Define a random ID for each partiular layer absorption
                     self.layer_abs_gid[index] = uuid.uuid1()
                     self.main_figure.plot(
-                        lmb, abs_tot, "--", gid=self.layer_abs_gid[index])
+                        lmb, abs_tot, "--", gid=self.layer_abs_gid[index],
+                        label=f"A{len(self.sim_results)}-Layer:{index}")
                     self.main_canvas.draw()
                 else:
                     check_index.setText("")
