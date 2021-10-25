@@ -465,7 +465,11 @@ def smm_layer(layer_list: List[Layer_Type],
         # Determine the total power inside the device
         c_ref_m = inv(S_ref.S_12) @ (E_ref - S_ref.S_11 @ p)
         c_ref_p = S_ref.S_21 @ p + S_ref.S_22 @ c_ref_m
-        c_trn_m = inv(S_Pre_Trn.S_12) @ (E_ref - S_Pre_Trn.S_11 @ p)
+        # Avoid S_Pre_Trn singular matrix for inv
+        if np.any(S_Pre_Trn.S_12):
+            c_trn_m = inv(S_Pre_Trn.S_12) @ (E_ref - S_Pre_Trn.S_11 @ p)
+        else:
+            c_trn_m = np.array([0, 0])
         c_trn_p = S_Pre_Trn.S_21 @ p + S_Pre_Trn.S_22 @ c_trn_m
         sum_c_trn_p = np.sum(np.abs(c_trn_p)**2)
         sum_c_trn_m = np.sum(np.abs(c_trn_m)**2)
@@ -473,12 +477,18 @@ def smm_layer(layer_list: List[Layer_Type],
         sum_c_ref_m = np.sum(np.abs(c_ref_m)**2)
         int_power = sum_c_ref_p - sum_c_ref_m - sum_c_trn_p + sum_c_trn_m
         # Determine the mode coefficients just before the wanted layer
-        c_left_m = inv(
-            S_Global_Before.S_12) @ (E_ref - S_Global_Before.S_11 @ p)
+        if np.any(S_Global_Before.S_12):
+            c_left_m = inv(
+                S_Global_Before.S_12) @ (E_ref - S_Global_Before.S_11 @ p)
+        else:
+            c_left_m = np.array([0, 0])
         c_left_p = S_Global_Before.S_21 @ p + S_Global_Before.S_22 @ c_left_m
         # Determine the mode coefficients just after the wanted layer
-        c_right_m = inv(
-            S_Global_After.S_12) @ (E_ref - S_Global_After.S_11 @ p)
+        if np.any(S_Global_After.S_12):
+            c_right_m = inv(
+                S_Global_After.S_12) @ (E_ref - S_Global_After.S_11 @ p)
+        else:
+            c_right_m = np.array([0, 0])
         c_right_p = S_Global_After.S_21 @ p + S_Global_After.S_22 @ c_right_m
         # Determine the %abs for a particular layer in regard to the total abs
         sum_left_p = np.sum(np.abs(c_left_p)**2)
