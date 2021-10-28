@@ -8,3 +8,4 @@ Video
 .ipynb_checkpoints
 .virtual_documents
 *__pycache__*
+scatmm.log

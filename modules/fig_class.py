@@ -1,14 +1,17 @@
 """ Module with the Main classes to plot the Figures """
+import logging
+from typing import Any
+
+from PyQt5.QtWidgets import QLayout, QVBoxLayout, QWidget
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLayout
-from typing import Any
 
 
 class FigWidget(QWidget):
     """ Class to create a new window with Plots """
 
     def __init__(self, title: str):
+        logging.info("FigWidget window added to VBOXLayout")
         super().__init__()
         self.setWindowTitle(title)
         self.layout: QLayout = QVBoxLayout()
@@ -20,6 +23,7 @@ class PltFigure(FigureCanvasQTAgg):
 
     def __init__(self, parent, xlabel, ylabel,  width=6, height=5, dpi=100):
         """ Initialize all the figure main elements """
+        logging.info("Initialize Figure Canvas")
         self.xlabel = xlabel
         self.ylabel = ylabel
         fig = Figure(figsize=(width, height), dpi=dpi)
@@ -30,6 +34,7 @@ class PltFigure(FigureCanvasQTAgg):
 
     def draw_axes(self, xlabel=None, ylabel=None):
         """Draw x/y labels"""
+        logging.debug("Draw/Labelling Axis")
         if xlabel:
             self.xlabel: str = xlabel
         if ylabel:
@@ -42,6 +47,7 @@ class PltFigure(FigureCanvasQTAgg):
 
     def reinit(self):
         """ Clean and then reinit the figure elements """
+        logging.debug("Reinitialize the plot")
         self.axes.clear()
         self.draw_axes()
         self.draw()

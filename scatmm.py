@@ -3,38 +3,37 @@
 Main script that combines everything from the SMM method
 """
 
+import json
+import logging
+import math
 import os
 import sys
-import math
-import webbrowser
-import json
-import uuid
-from modules.structs import SRes, SType
 from typing import Any
-import logging
-
-import matplotlib.style as mstyle
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
-import pandas as pd
-import numpy as np
-from numpy.linalg import norm
-import numpy.typing as npt
+import uuid
+import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+import matplotlib.style as mstyle
+import numpy as np
+from numpy.linalg import norm
+import numpy.typing as npt
+import pandas as pd
 
 from Database.database import Database
+from modules.fig_class import PltFigure
 from modules.pso import particle_swarm
-from modules.scattering_matrix import smm_broadband, smm_angle, smm_layer
+from modules.scattering_matrix import smm_angle, smm_broadband, smm_layer
 from modules.scattering_matrix import Layer3D
 from modules.scattering_matrix import MatOutsideBounds
-from modules.fig_class import PltFigure
-from smm_uis.smm_main_window import Ui_SMM_Window
-from smm_uis.smm_properties_ui import Ui_Properties
+from modules.structs import SRes, SType
 from smm_uis.db_window import DBWindow
 from smm_uis.export_window import ExpWindow
+from smm_uis.smm_main_window import Ui_SMM_Window
+from smm_uis.smm_properties_ui import Ui_Properties
 
-VERSION = "2.1.1"
+VERSION = "2.1.2"
 
 # Default plot properties
 mstyle.use("smm_style")
@@ -49,21 +48,29 @@ class OptimizeWorkder(QtCore.QThread):
     updateTextSignal = QtCore.pyqtSignal(str)
     updateOptButton = QtCore.pyqtSignal(bool)
 
-    def __init__(self, figure_handler, particle_info, lmb,
-                 compare_data, theta, phi, pol, ref_medium, trn_medium,
-                 thickness, layer_list, checks):
+    def __init__(self, figure_handler, particle_info, lmb, compare_data, theta,
+                 phi, pol, ref_medium, trn_medium, thickness, layer_list,
+                 checks):
         super().__init__()
         """ Initialize variables and aliases """
         self.figure_canvas = figure_handler
         self.figure = self.figure_canvas.axes
-        self.smm_args = {"lmb": lmb, "theta": theta, "phi": phi, "pol": pol,
-                         "i_med": ref_medium, "t_med": trn_medium}
+        self.smm_args = {
+            "lmb": lmb,
+            "theta": theta,
+            "phi": phi,
+            "pol": pol,
+            "i_med": ref_medium,
+            "t_med": trn_medium
+        }
         self.compare_data = compare_data
         self.thickness = thickness
         self.layer_list = layer_list
         self.ref_check, self.trn_check, self.abs_check = checks
-        self.particle_info = {key: info[1]
-                              for key, info in particle_info.items()}
+        self.particle_info = {
+            key: info[1]
+            for key, info in particle_info.items()
+        }
         self.iterator = 0
 
     def run(self):
@@ -77,9 +84,8 @@ class OptimizeWorkder(QtCore.QThread):
             """ Optimization function """
             t_array = np.stack([thick_i for thick_i in thicknesses.values()])
             ref, trn = np.apply_along_axis(
-                lambda thick: smm_broadband(self.layer_list,
-                                            override_thick=thick,
-                                            **self.smm_args), 0,
+                lambda thick: smm_broadband(
+                    self.layer_list, override_thick=thick, **self.smm_args), 0,
                 t_array)
             if self.ref_check:
                 point_error = np.sum((ref - self.compare_data)**2, axis=0)
@@ -118,14 +124,15 @@ class OptimizeWorkder(QtCore.QThread):
         for i, t_i in enumerate(best_thick):
             self.updateTextSignal.emit(f"thick {i+1} = {t_i:.3f}")
         # Plot the best result
-        ref, trn = smm_broadband(self.layer_list, override_thick=best_thick,
+        ref, trn = smm_broadband(self.layer_list,
+                                 override_thick=best_thick,
                                  **self.smm_args)
         if self.ref_check:
             self.figure.plot(self.smm_args["lmb"], ref, ":")
         elif self.trn_check:
             self.figure.plot(self.smm_args["lmb"], trn, ":")
         elif self.abs_check:
-            self.figure.plot(self.smm_args["lmb"], 1-trn-ref, ":")
+            self.figure.plot(self.smm_args["lmb"], 1 - trn - ref, ":")
         self.figure_canvas.draw()
 
 
@@ -135,10 +142,12 @@ class SMMGUI(QMainWindow):
         Initialize necessary variables for the GUI and aliases to the important
         structures
         """
+        logging.info("Initializing UI/Connecting buttons to functions")
         super(SMMGUI, self).__init__()
         self.ui = Ui_SMM_Window()
         self.ui.setupUi(self)
         # Initialize the Main Figure
+        logging.debug("Initializing variable aliases")
         self.fig_layout = self.ui.figure_layout
         self.main_canvas = PltFigure(self.fig_layout, "Wavelength (nm)",
                                      "R/T/Abs")
@@ -178,6 +187,7 @@ class SMMGUI(QMainWindow):
         # Store imported data
         self.imported_data = []
         # Load simulation default properties
+        logging.debug("Loading default global properties")
         with open("config.json", "r") as config:
             self.global_properties = json.load(config)
         # Initialize main dictionaries for simulations
@@ -212,12 +222,14 @@ class SMMGUI(QMainWindow):
         }
         # Initialize all the UI elements
         self.initializeUI()
+        logging.info("Finalize initializing → Show UI")
         self.show()
 
     def initializeUI(self):
         """
         Associate all UI elements with action functions
         """
+        logging.debug("Connect buttons to functions")
         self.ui.sim_tab_add_layer_button.clicked.connect(
             lambda: self.add_layer("sim"))
         self.ui.opt_tab_add_layer_button.clicked.connect(
@@ -228,10 +240,8 @@ class SMMGUI(QMainWindow):
             lambda: self.rmv_layer("opt"))
         for checkbox in self.sim_check:
             checkbox.stateChanged.connect(self.plot_abs_layer)
-        self.ui.sim_param_check_angle.stateChanged.connect(
-            self.sim_angle)
-        self.ui.sim_param_check_lmb.stateChanged.connect(
-            self.sim_lmb)
+        self.ui.sim_param_check_angle.stateChanged.connect(self.sim_angle)
+        self.ui.sim_param_check_lmb.stateChanged.connect(self.sim_lmb)
         self.ui.sim_tab_sim_button.clicked.connect(self.simulate)
         self.ui.sim_tab_clear_button.clicked.connect(self.clear_sim_buffer)
         self.ui.sim_tab_export_button.clicked.connect(self.export_simulation)
@@ -242,16 +252,17 @@ class SMMGUI(QMainWindow):
         self.ui.actionView_Database.triggered.connect(self.view_database)
         self.ui.actionExit.triggered.connect(self.close)
         self.ui.actionProperties.triggered.connect(self.open_properties)
-        self.ui.actionHelp.triggered.connect(lambda: webbrowser.open_new_tab(
-            os.path.join("Help", "help.html")))
+        self.ui.actionHelp.triggered.connect(
+            lambda: webbrowser.open_new_tab(os.path.join("Help", "help.html")))
         self.ui.actionAbout.triggered.connect(self.aboutDialog)
-        self.ui.clear_button.clicked.connect(
-            lambda: self.main_canvas.reinit())
+        self.ui.clear_button.clicked.connect(lambda: self.main_canvas.reinit())
+        logging.debug("All buttons connected to functions")
         # Set default value for progress bar
         self.ui.opt_progressBar.setValue(0)
 
     def aboutDialog(self):
         """Show the about dialog"""
+        logging.info("Open About Dialog Window")
         title = "About Scatmm"
         msg = "Graphical interface to interact with"\
             "the transfer matrix method (using scattering"\
@@ -262,6 +273,7 @@ class SMMGUI(QMainWindow):
 
     def sim_angle(self, int):
         """ Change simulation to angle simulation """
+        logging.info("Clicked Simulation Type Angle Checkbox")
         if self.ui.sim_param_check_lmb.isChecked() and int > 0:
             self.ui.sim_param_check_lmb.setChecked(False)
             # Reinitialize plot
@@ -286,6 +298,7 @@ class SMMGUI(QMainWindow):
 
     def sim_lmb(self, int):
         """ Change simulation to broadband simulation """
+        logging.info("Clicked Simulation Type Wavelength Checkbox")
         if self.ui.sim_param_check_angle.isChecked() and int > 0:
             self.ui.sim_param_check_angle.setChecked(False)
             self.main_canvas.reinit()
@@ -312,18 +325,24 @@ class SMMGUI(QMainWindow):
         """
         Update all the properties - Linked to Apply button in properties window
         """
+        logging.info("Updating all simulation properties")
         try:
             for key in self.global_properties.keys():
                 if self.global_properties[key][0] == "int":
-                    self.global_properties[key] = ["int", int(
-                        self.propertie_values[key].text())]
+                    self.global_properties[key] = [
+                        "int", int(self.propertie_values[key].text())
+                    ]
                 elif self.global_properties[key][0] == "float":
-                    self.global_properties[key] = ["float", float(
-                        self.propertie_values[key].text())]
+                    self.global_properties[key] = [
+                        "float",
+                        float(self.propertie_values[key].text())
+                    ]
                 else:
                     raise Exception("Unknown type format in config.json")
         except ValueError:
+            logging.warning("Invalid configuration in config file")
             raise Exception("Mistaken type in config file")
+        logging.info("Closing properties window")
         self.properties_window.close()
 
     def save_default_properties(self):
@@ -331,6 +350,7 @@ class SMMGUI(QMainWindow):
         Store default properties in config.json file
         """
         self.update_properties()
+        logging.info("Storing defaults in config file")
         with open("config.json", "w") as config:
             json.dump(self.global_properties, config, indent=2)
 
@@ -339,11 +359,13 @@ class SMMGUI(QMainWindow):
         Open a new window showing the properties
         """
         # Load the properties UI
+        logging.info("Opening properties window")
         self.properties_window = QtWidgets.QTabWidget()
         self.properties_ui = Ui_Properties()
         self.properties_ui.setupUi(self.properties_window)
         self.properties_window.show()
         # Create a dictionary linked to the properties values
+        logging.debug("Aliasing Properties text boxes")
         self.propertie_values = {
             "n_particles": self.properties_ui.prop_num_particles,
             "n_iter": self.properties_ui.prop_iter_num,
@@ -353,11 +375,13 @@ class SMMGUI(QMainWindow):
             "sim_points": self.properties_ui.prop_wav_points
         }
         # Load the properties values from the global properties variable
+        logging.debug("Loading global properties")
         for key in self.global_properties.keys():
-            self.propertie_values[key].setText(str(
-                self.global_properties[key][1]))
+            self.propertie_values[key].setText(
+                str(self.global_properties[key][1]))
 
         # Atribute actions to the different buttons
+        logging.debug("Connect buttons to functions")
         self.properties_ui.properties_close_button.clicked.connect(
             self.properties_window.close)
         self.properties_ui.properties_apply_button.clicked.connect(
@@ -374,6 +398,7 @@ class SMMGUI(QMainWindow):
         font = QtGui.QFont()
         font.setPointSize(11)
         if tab == "sim":
+            logging.info("Adding Sim layer")
             # Add a new CheckBox
             self.sim_check.append(
                 QtWidgets.QCheckBox(self.ui.sim_tab_sim_frame))
@@ -417,6 +442,7 @@ class SMMGUI(QMainWindow):
             self.ui.gridLayout_2.addWidget(self.sim_mat_size[-1],
                                            len(self.sim_mat_size), 3, 1, 1)
         else:
+            logging.info("Adding Optimization layer")
             # Add combobox for the material
             self.opt_mat.append(QtWidgets.QComboBox(self.ui.opt_tab_sim_frame))
             sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
@@ -470,6 +496,7 @@ class SMMGUI(QMainWindow):
         Remove a layer from a specific tab
         """
         if tab == "sim":
+            logging.info("Remove Simulation layer")
             if len(self.sim_mat) == 1:
                 QMessageBox.warning(self, "Error: Number of Layers",
                                     "Minimum number of layers is 1!!",
@@ -488,6 +515,7 @@ class SMMGUI(QMainWindow):
             del self.layer_absorption[-1]
             del self.layer_abs_gid[-1]
         else:
+            logging.info("Remove Optimization layer")
             if len(self.opt_mat) == 1:
                 QMessageBox.warning(self, "Error: Number of Layers",
                                     "Minimum number of layers is 1!!",
@@ -509,6 +537,7 @@ class SMMGUI(QMainWindow):
         """
         Get simulation configuration
         """
+        logging.info("Retrieving Simulation configuration")
         try:
             theta = float(self.sim_data["theta"].text())
             phi = np.radians(float(self.sim_data["phi"].text()))
@@ -516,19 +545,24 @@ class SMMGUI(QMainWindow):
                 raise Exception("Theta not valid")
             theta = np.radians(theta)
             # TODO: Normalize the polarization vector <08-10-21, Miguel> #
-            pol = np.array([complex(self.sim_data["pte"].text()),
-                            complex(self.sim_data["ptm"].text())])
+            pol = np.array([
+                complex(self.sim_data["pte"].text()),
+                complex(self.sim_data["ptm"].text())
+            ])
             pol /= norm(pol)
             lmb_min = float(self.sim_data["lmb_min"].text())
             lmb_max = float(self.sim_data["lmb_max"].text())
+            logging.debug(f"Sim Config: {theta}:{phi}:{lmb_min}:{lmb_max}")
             return theta, phi, pol, lmb_min, lmb_max
         except ValueError:
+            logging.warning("Invalid simulation number")
             title = "Error: Invalid number"
             message = "Invalid simulation parameter"
             QMessageBox.warning(self, title, message, QMessageBox.Close,
                                 QMessageBox.Close)
             raise ValueError
         except Exception:
+            logging.warning("Invalid Simulation angle")
             title = "Error: Invalid number"
             message = "Not valid incidence angle - θ is multiple of 90º"
             QMessageBox.warning(self, title, message, QMessageBox.Close,
@@ -539,6 +573,7 @@ class SMMGUI(QMainWindow):
         """
         Get data for the transmission and reflection media
         """
+        logging.info("Retrieve envolvent medium configuration")
         try:
             ref_medium_n = float(data_structure["ref_n"].text())
             ref_medium_k = float(data_structure["ref_k"].text())
@@ -546,8 +581,10 @@ class SMMGUI(QMainWindow):
             trn_medium_n = float(data_structure["trn_n"].text())
             trn_medium_k = float(data_structure["trn_k"].text())
             trn_medium = ((trn_medium_n + 1j * trn_medium_k)**2, 1)
+            logging.debug(f"Retrieved: {ref_medium}:{trn_medium}")
             return ref_medium, trn_medium
         except ValueError:
+            logging.warning("Invalid medium value")
             title = "Error: Invalid number"
             message = "Invalid parameter in Ref/Transmission regions"
             QMessageBox.warning(self, title, message, QMessageBox.Close,
@@ -558,20 +595,26 @@ class SMMGUI(QMainWindow):
         """
         Get material configuration
         """
+        logging.info("Get material configuration")
         thick = []
         layer_list = []
         # Get results depending on the respective tab
         try:
             if tab == "sim":
+                logging.debug("Simulation type detected")
                 for material, thickness in zip(material_structure["materials"],
                                                material_structure["size"]):
                     mat_i = material.currentText()
                     db_data: npt.NDArray = self.database[mat_i]
                     layer_list.append(
-                        Layer3D(mat_i, float(thickness.text()),
-                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                        Layer3D(mat_i,
+                                float(thickness.text()),
+                                db_data[:, 0],
+                                db_data[:, 1],
+                                db_data[:, 2],
                                 kind='cubic'))
             else:
+                logging.debug("Optimization type detected")
                 for material, low_t, upp_t in zip(
                         material_structure["materials"],
                         material_structure["size_low"],
@@ -580,16 +623,21 @@ class SMMGUI(QMainWindow):
                     mat_i = material.currentText()
                     db_data = self.database[mat_i]
                     layer_list.append(
-                        Layer3D(mat_i, float(low_t.text()),
-                                db_data[:, 0], db_data[:, 1], db_data[:, 2],
+                        Layer3D(mat_i,
+                                float(low_t.text()),
+                                db_data[:, 0],
+                                db_data[:, 1],
+                                db_data[:, 2],
                                 kind='cubic'))
             thick = np.array(thick)
         except ValueError:
+            logging.warning("Invalid Layer Parameter")
             title = "Error: Invalid parameter"
             message = "Improperly defined layer for simulation"
             QMessageBox.warning(self, title, message, QMessageBox.Close,
                                 QMessageBox.Close)
             raise ValueError
+        logging.debug(f"Data:\n{thick}\n{layer_list}")
         return thick, layer_list
 
     """ Simulation and associated funcitons """
@@ -598,6 +646,7 @@ class SMMGUI(QMainWindow):
         """
         Script that outputs all the data necessary to run smm_broadband
         """
+        logging.info("Starting Simulation")
         # Get all the sim_data values
         try:
             theta, phi, pol, lmb_min, lmb_max = self.get_sim_data()
@@ -613,24 +662,32 @@ class SMMGUI(QMainWindow):
 
         try:
             if self.ui.sim_param_check_lmb.isChecked():
-                ref, trn = smm_broadband(
-                    layer_list, theta, phi, lmb, pol, ref_medium, trn_medium)
+                ref, trn = smm_broadband(layer_list, theta, phi, lmb, pol,
+                                         ref_medium, trn_medium)
                 self.sim_plot_data(lmb, ref, trn)
-                self.sim_results_update(layer_list, theta, phi, pol,
-                                        lmb, ref, trn, ref_medium, trn_medium)
+                self.sim_results_update(layer_list, theta, phi, pol, lmb, ref,
+                                        trn, ref_medium, trn_medium)
             else:
-                theta = np.linspace(
-                    0, 89, self.global_properties["sim_points"][1])
+                theta = np.linspace(0, 89,
+                                    self.global_properties["sim_points"][1])
                 ref, trn = smm_angle(layer_list, np.radians(theta), phi,
                                      lmb_min, pol, ref_medium, trn_medium)
                 self.sim_plot_data(theta, ref, trn)
-                self.sim_results_update(layer_list, theta, phi, pol,
-                                        lmb_min, ref, trn,
-                                        ref_medium, trn_medium,
+                self.sim_results_update(layer_list,
+                                        theta,
+                                        phi,
+                                        pol,
+                                        lmb_min,
+                                        ref,
+                                        trn,
+                                        ref_medium,
+                                        trn_medium,
                                         type=SType.ANGLE)
             # Reinitialize the absorption checkboxes
             self.reinit_abs_checkbox()
+            logging.info("Finished Simulation")
         except MatOutsideBounds as message:
+            logging.warning("Material Outside Bounds")
             title = "Error: Material Outside of Bounds"
             QMessageBox.warning(self, title, str(message), QMessageBox.Close,
                                 QMessageBox.Close)
@@ -639,6 +696,7 @@ class SMMGUI(QMainWindow):
         """
         Verify which checkboxes are toggled and plot data accordingly
         """
+        logging.debug("Plotting Simulation Data")
         # Check what data to plot
         ref_check = self.sim_data["ref"].isChecked()
         trn_check = self.sim_data["trn"].isChecked()
@@ -646,41 +704,61 @@ class SMMGUI(QMainWindow):
         simulations = str(len(self.sim_results))
         # Plot according to the checkboxes
         if ref_check:
+            logging.debug("Reflection Checkbox detected")
             self.main_figure.plot(x, ref, label="R Sim(" + simulations + ")")
         if trn_check:
+            logging.debug("Transmission Checkbox detected")
             self.main_figure.plot(x, trn, label="T Sim(" + simulations + ")")
         if abs_check:
-            self.main_figure.plot(x, 1 - ref - trn,
+            logging.debug("Absorption Checkbox detected")
+            self.main_figure.plot(x,
+                                  1 - ref - trn,
                                   label="A Sim(" + simulations + ")")
         self.main_canvas.draw()
 
-    def sim_results_update(self, layer_list, theta, phi, pol, lmb, ref, trn,
-                           i_med, t_med, type=SType.WVL):
+    def sim_results_update(self,
+                           layer_list,
+                           theta,
+                           phi,
+                           pol,
+                           lmb,
+                           ref,
+                           trn,
+                           i_med,
+                           t_med,
+                           type=SType.WVL):
         """
         Update the simulation results
         """
         # The identifier string is of the form S(sim)(theta,phi)|Layer_config|
+        logging.info("Updating simulation results buffer")
         if type == SType.WVL:
+            logging.debug("Wavelength Simulation Detected")
             ident_string = "W" + str(len(self.sim_results) + 1) + "(" + str(
-                int(math.degrees(theta))) + "," + str(
-                int(math.degrees(phi))) + ") "
+                int(math.degrees(theta))) + "," + str(int(
+                    math.degrees(phi))) + ") "
         elif type == SType.ANGLE:
+            logging.debug("Angle Simulation Detected")
             ident_string = "A" + str(len(self.sim_results) + 1) + "(" + str(
-                int(lmb)) + "," + str(
-                int(math.degrees(phi))) + ") "
+                int(lmb)) + "," + str(int(math.degrees(phi))) + ") "
         else:
+            logging.error("Unknown Simulation Type")
             raise Exception("Unknown Simulation Type")
         for layer in layer_list:
-            ident_string += "|"+layer.name[:5]+"("+str(layer.thickness)+")"
+            ident_string += "|" + layer.name[:5] + "(" + str(
+                layer.thickness) + ")"
         res_struct = SRes(ident_string, type, layer_list, len(layer_list),
                           theta, phi, pol, lmb, i_med, t_med, ref, trn)
+        logging.debug("Adding Results to internal list")
         self.sim_results.append(res_struct)
+        logging.debug("Updating Clear Button")
         self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
 
     def clear_sim_buffer(self):
         """
         Clear all stored simulation values and destroy all open plots
         """
+        logging.info("Clearing all results from simulation stack")
         self.sim_results = []
         self.main_canvas.reinit()
         self.clear_button.setText("Clear")
@@ -689,8 +767,10 @@ class SMMGUI(QMainWindow):
     def plot_abs_layer(self, _):
         """ Determine whick layer absorption was toggled and
         plot the cumulative absorption for all checked layers"""
+        logging.info("Plotting absorption for single Layer")
         # Check if there are simulations
         if len(self.sim_results) == 0:
+            logging.warning("No simulation has been made yet")
             title = "Error: Need to do a simulation first"
             message = "To calculate layer absorption it is first necessary"\
                 " to make a simulation with the current number of layers"
@@ -701,6 +781,8 @@ class SMMGUI(QMainWindow):
         # Check if the number of checkboxes is equal to the number of layers
         # of the last simulation
         if self.sim_results[-1].NLayers != len(self.sim_check):
+            logging.warning("Number of checkboxes is different from number"\
+                    "of simulion materials")
             title = "Error: Need to do a simulation first"
             message = "To calculate layer absorption it is first necessary"\
                 " to make a simulation with the current number of layers"
@@ -720,23 +802,30 @@ class SMMGUI(QMainWindow):
         for index, check_index in enumerate(self.sim_check):
             # Determine which button was clicked and update associated Structs
             if self.abs_list[index] != check_index.isChecked():
+                logging.debug(f"Checkbox index: {index} has changed")
                 self.abs_list[index] = check_index.isChecked()
                 if check_index.isChecked():
-                    abs = smm_layer(layer_list, index+1, theta, phi,
-                                    lmb, pol, ref_medium, trn_medium)
+                    logging.debug("Checkbox has been checked")
+                    abs = smm_layer(layer_list, index + 1, theta, phi, lmb,
+                                    pol, ref_medium, trn_medium)
                     self.layer_absorption[index] = abs
                     # Determine the cumulative absorption
-                    abs_list = list(filter(
-                        lambda x: x is not None, self.layer_absorption))
+                    abs_list = list(
+                        filter(lambda x: x is not None, self.layer_absorption))
                     abs_tot = np.sum(np.array(abs_list), axis=0)
                     check_index.setText(str(len(abs_list)))
                     # Define a random ID for each partiular layer absorption
+                    logging.debug(f"Plot Absorption for {layer_list[index]}")
                     self.layer_abs_gid[index] = uuid.uuid1()
                     self.main_figure.plot(
-                        lmb, abs_tot, "--", gid=self.layer_abs_gid[index],
+                        lmb,
+                        abs_tot,
+                        "--",
+                        gid=self.layer_abs_gid[index],
                         label=f"A{len(self.sim_results)}-Layer:{index}")
                     self.main_canvas.draw()
                 else:
+                    logging.debug("Checkbox has been unchecked: Deleting plot")
                     check_index.setText("")
                     self.delete_plot(self.layer_abs_gid[index])
                     self.main_canvas.draw()
@@ -746,7 +835,9 @@ class SMMGUI(QMainWindow):
 
     def reinit_abs_checkbox(self, disable=False):
         """ Reinit all the absorption checkboxes and components """
+        logging.info("Reiniting Absorption checkboxes")
         for index, checkbox in enumerate(self.sim_check):
+            logging.debug(f"Clearing info for checkbox: {index}")
             checkbox.blockSignals(True)
             if disable:
                 checkbox.setDisabled(True)
@@ -762,6 +853,7 @@ class SMMGUI(QMainWindow):
         """ Delete a specific plot defined by guid """
         for plt in self.main_figure.lines:
             if plt.get_gid() == id:
+                logging.debug(f"Plot found with gid: {id}... Deleting...")
                 plt.remove()
 
     """ Call  Export UI """
@@ -771,27 +863,31 @@ class SMMGUI(QMainWindow):
         Open a new window displaying all the simulated results
         Choose outputs and then ask for directory to output information
         """
+        logging.info("Opening Export Simulation Window")
         if len(self.sim_results) > 0:
             self.export_ui = ExpWindow(self, self.sim_results)
             self.export_ui.show()
         else:
+            logging.warning("No Simulation detected...")
             QMessageBox.warning(self, "Simulation Required",
                                 "No Simulation available to export!!",
-                                QMessageBox.Close,
-                                QMessageBox.Close)
+                                QMessageBox.Close, QMessageBox.Close)
 
     """ Optimization functions """
 
     def update_progress_bar(self, value):
         """Connect the progress bar with the worker thread"""
+        logging.debug(f"Updating progress bar to {value}")
         return self.ui.opt_progressBar.setValue(value)
 
     def updateTextBrower(self, text):
         """Connects the textBrowser with the worker thread"""
+        logging.debug("Updating Optimization text browser")
         return self.ui.opt_res_text.append(text)
 
     def updateOptButton(self, status):
         """Connects the Optimization button with the worker thread"""
+        logging.debug(f"Updating Optimization/Simulation button: {status}")
         self.ui.opt_tab_sim_button.setEnabled(status)
         self.ui.sim_tab_sim_button.setEnabled(status)
         return
@@ -800,6 +896,7 @@ class SMMGUI(QMainWindow):
         """
         Perform checks before going into the optimization loop
         """
+        logging.info("Starting pre optimization checks...")
         self.ui.opt_res_text.clear()
         # Check if only one optimization option is chosen
         title = "Bad Optimization option"
@@ -812,11 +909,13 @@ class SMMGUI(QMainWindow):
         abs_check = self.sim_data["abs"].isChecked()
         # Check that only one option of Abs/Ref/Trn is chosen
         if ref_check + trn_check + abs_check > 1:
+            logging.warning("Multiple optimization observables selected")
             QMessageBox.warning(self, title, msg1, QMessageBox.Close,
                                 QMessageBox.Close)
             self.ui.opt_res_text.append("Optimization Failed")
             return
         elif ref_check + trn_check + abs_check == 0:
+            logging.warning("No simulation observables selected")
             QMessageBox.warning(self, title, msg2, QMessageBox.Close,
                                 QMessageBox.Close)
             self.ui.opt_res_text.append("Optimization Failed")
@@ -827,14 +926,18 @@ class SMMGUI(QMainWindow):
         """
         Perform Results Optimization (Splits into a new worker thread)
         """
+        logging.info("Starting Optimization")
         if self.ui.sim_param_check_angle.isChecked():
+            logging.warning("Wrong Simulation type detected")
             message = "Optimization only available for Wavelength type" +\
                 "simulations\n\n Change?"
-            change = QMessageBox.question(self, "Invalid Simulation Mode",
+            change = QMessageBox.question(self,
+                                          "Invalid Simulation Mode",
                                           message,
                                           QMessageBox.Yes | QMessageBox.No,
                                           defaultButton=QMessageBox.Yes)
             if change == QMessageBox.Yes:
+                logging.debug("Changing Simulation Type")
                 self.ui.sim_param_check_lmb.setChecked(True)
             return
         try:
@@ -851,36 +954,29 @@ class SMMGUI(QMainWindow):
             # Create a new worker thread to do the optimization
             self.ui.opt_res_text.clear()
             self.ui.opt_res_text.append("Simulation started...")
-            self.opt_worker = OptimizeWorkder(self.main_canvas,
-                                              self.global_properties,
-                                              lmb,
-                                              compare_data,
-                                              theta,
-                                              phi,
-                                              pol,
-                                              ref_medium,
-                                              trn_medium,
-                                              thick,
-                                              layer_list,
-                                              (ref_check,
-                                                  trn_check,
-                                                  abs_check))
+            self.opt_worker = OptimizeWorkder(
+                self.main_canvas, self.global_properties, lmb, compare_data,
+                theta, phi, pol, ref_medium, trn_medium, thick, layer_list,
+                (ref_check, trn_check, abs_check))
             # Connect the new thread with functions from the main thread
             self.opt_worker.updateValueSignal.connect(self.update_progress_bar)
             self.opt_worker.updateTextSignal.connect(self.updateTextBrower)
             self.opt_worker.updateOptButton.connect(self.updateOptButton)
             # Start worker
             self.opt_worker.start()
+        # The ValueError and Exception are handled inside the calling functions
         except ValueError:
             self.ui.opt_res_text.append("Optimization Failed")
         except Exception:
             self.ui.opt_res_text.append("Optimization Failed")
         except TypeError:
+            logging.warning("Missing Data to perform optimization")
             QMessageBox.warning(self, "Import Data missing",
                                 "Missing data to perform optimization",
                                 QMessageBox.Close, QMessageBox.Close)
             self.ui.opt_res_text.append("Optimization Failed")
         except MatOutsideBounds:
+            logging.warning("Material Outside Bonds")
             title = "Error: Material Out of Bounds"
             message = "One of the materials in the simulation is "\
                 "undefined for the defined wavelength range"
@@ -893,6 +989,7 @@ class SMMGUI(QMainWindow):
         """
         Open a new window to see all the database materials
         """
+        logging.info("Calling the Database Window")
         self.db_ui = DBWindow(self, self.database)
         self.db_ui.show()
 
@@ -902,8 +999,10 @@ class SMMGUI(QMainWindow):
         """
         Function for import button - import data for simulation/optimization
         """
+        logging.info("Import Button Clicked")
         filepath = QFileDialog.getOpenFileName(self, 'Open File')
         if filepath[0] == '':
+            logging.debug("No file provided... Ignoring...")
             return
         try:
             data = self.get_data_from_file(filepath[0])
@@ -911,8 +1010,11 @@ class SMMGUI(QMainWindow):
             return
         self.imported_data = data[:, [0, 1]]
         self.delete_plot("Imported_Data")
-        self.main_figure.plot(data[:, 0], data[:, 1],
-                              '--', label="Import Data", gid="Imported_Data")
+        self.main_figure.plot(data[:, 0],
+                              data[:, 1],
+                              '--',
+                              label="Import Data",
+                              gid="Imported_Data")
         self.main_canvas.draw()
 
     """ Generic function to import data from file """
@@ -921,22 +1023,27 @@ class SMMGUI(QMainWindow):
         """
         Get data from file and return it as numpy array
         """
+        logging.info(f"Importing data from file: {filepath}")
         title = "Invalid Import Format"
         msg = "The imported data has an unacceptable format"
         try:
             data_df = pd.read_csv(filepath, sep="[ ;,:\t]")
             data = data_df.values
         except ValueError:
+            logging.warning("Invalid Import Data format")
             QMessageBox.warning(self, title, msg, QMessageBox.Close,
                                 QMessageBox.Close)
             raise ValueError
+        logging.debug(f"Retrieved Data:\n {data}")
         return data
 
     """ Drag and Drop Functionality """
 
     def dragEnterEvent(self, event):
         """ Check for correct datatype to accept drops """
+        logging.debug("Drag event Detected")
         if event.mimeData().hasUrls:
+            logging.debug("Acceptable event data...")
             event.accept()
         else:
             event.ignore()
@@ -944,13 +1051,14 @@ class SMMGUI(QMainWindow):
     def dropEvent(self, event):
         """ Check if only a single file was imported and then
         import the data from that file """
+        logging.debug("Handling Drop event")
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()
             if len(url) > 1:
+                logging.warning("Invalid number of files dragged..")
                 QMessageBox.warning(self, "Multiple Import",
                                     "Only a single file can be imported!!!",
-                                    QMessageBox.Close,
-                                    QMessageBox.Close)
+                                    QMessageBox.Close, QMessageBox.Close)
                 return
             try:
                 data = self.get_data_from_file(str(url[0].toLocalFile()))
@@ -958,13 +1066,22 @@ class SMMGUI(QMainWindow):
                 return
             self.delete_plot("Imported_Data")
             self.imported_data = data[:, [0, 1]]
-            self.main_figure.plot(
-                data[:, 0], data[:, 1], "--", label="Import Data",
-                gid="Imported_Data")
+            self.main_figure.plot(data[:, 0],
+                                  data[:, 1],
+                                  "--",
+                                  label="Import Data",
+                                  gid="Imported_Data")
             self.main_canvas.draw()
 
 
 if __name__ == "__main__":
+    log_config = {
+        "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
+                '%(lineno)d:%(message)s',
+        "filename": "scatmm.log",
+        "level": logging.INFO
+    }
+    logging.basicConfig(**log_config)
     app = QtWidgets.QApplication(sys.argv)
     SMM = SMMGUI()
     sys.exit(app.exec_())
