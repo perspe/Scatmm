@@ -501,7 +501,6 @@ def smm_layer(layer_list: List[Layer_Type],
         c_ref_p = S_ref.S_21 @ p + S_ref.S_22 @ c_ref_m
         # Avoid S_Pre_Trn singular matrix for inv
         if np.any(S_Pre_Trn.S_12):
-            logging.warning("Non inverteble SMatrix element... considering 0")
             c_trn_m = inv(S_Pre_Trn.S_12) @ (E_ref - S_Pre_Trn.S_11 @ p)
         else:
             c_trn_m = np.array([0, 0])
@@ -513,7 +512,6 @@ def smm_layer(layer_list: List[Layer_Type],
         int_power = sum_c_ref_p - sum_c_ref_m - sum_c_trn_p + sum_c_trn_m
         # Determine the mode coefficients just before the wanted layer
         if np.any(S_Global_Before.S_12):
-            logging.warning("Non inverteble SMatrix element... considering 0")
             c_left_m = inv(
                 S_Global_Before.S_12) @ (E_ref - S_Global_Before.S_11 @ p)
         else:
@@ -521,7 +519,6 @@ def smm_layer(layer_list: List[Layer_Type],
         c_left_p = S_Global_Before.S_21 @ p + S_Global_Before.S_22 @ c_left_m
         # Determine the mode coefficients just after the wanted layer
         if np.any(S_Global_After.S_12):
-            logging.warning("Non inverteble SMatrix element... considering 0")
             c_right_m = inv(
                 S_Global_After.S_12) @ (E_ref - S_Global_After.S_11 @ p)
         else:
