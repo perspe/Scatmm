@@ -176,8 +176,8 @@ class ExpWindow(QWidget):
                         (export_array, abs_i[:, np.newaxis]), axis=1)
                     exp_header = result.Layers[i].name.replace(" ", "_")
                     header += f" Abs_{exp_header}"
-            export_path = os.path.join(export_dir,
-                                       export_name+result.ID+".txt")
+            id = result.ID.replace("|", "_")
+            export_path = os.path.join(export_dir, id + export_name)
             np.savetxt(export_path, export_array, header=header)
         self.close()
         QMessageBox.information(self, "Successful Export",
