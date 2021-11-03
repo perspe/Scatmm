@@ -19,6 +19,14 @@ from numpy.linalg import inv
 import numpy.typing as npt
 from scipy.interpolate import interp1d
 
+sim_config = {
+        "theta": 0.0,
+        "phi": 0.0,
+        "lmb": 500.0,
+        "pol": (1, 0),
+        "i_med": (1, 1),
+        "t_med": (1, 1)
+}
 
 class MatOutsideBounds(Exception):
     """ Exception for material outside bounds """
@@ -284,8 +292,8 @@ def smm(layer_list: List[Layer_Type], theta: float, phi: float, lmb: float,
     """
     logging.debug(f"SMM for {theta}:{phi}:{lmb}:{pol}:{i_med}:{t_med}")
     logging.info(f"SMM... Start...")
-    if not isinstance(lmb, float) or not isinstance(
-            theta, float) or not isinstance(phi, float):
+    if not isinstance(lmb, (float, int)) or not isinstance(
+            theta, (float, int)) or not isinstance(phi, (int, float)):
         logging.warning("Invalid input parameter...")
         raise InvalidParameter("Invalid Input parameter")
     # Inicialize necessary values
@@ -333,7 +341,7 @@ def smm_broadband(layer_list: List[Layer_Type],
     logging.debug(f"SMM for {theta}:{phi}:{pol}:{i_med}:{t_med}")
     logging.debug(f"WVL: {lmb}")
     logging.info(f"SMM... Start...")
-    if not isinstance(theta, float) or not isinstance(phi, float):
+    if not isinstance(theta, (int, float)) or not isinstance(phi, (int, float)):
         raise InvalidParameter("Invalid Input parameter")
     if override_thick is not None:
         logging.info("Overriding Thicknesses")
@@ -395,7 +403,7 @@ def smm_angle(layer_list: List[Layer_Type],
     logging.debug(f"SMM for {phi}:{lmb}:{pol}:{i_med}:{t_med}")
     logging.debug(f"Angle: {theta}")
     logging.info(f"SMM... Start...")
-    if not isinstance(lmb, float) or not isinstance(phi, float):
+    if not isinstance(lmb, (float, int)) or not isinstance(phi, (int, float)):
         raise InvalidParameter("Invalid Input parameter")
     if override_thick is not None:
         if len(override_thick) == len(layer_list):
@@ -451,7 +459,7 @@ def smm_layer(layer_list: List[Layer_Type],
     logging.debug(f"SMM for {theta}:{phi}:{pol}:{i_med}:{t_med}")
     logging.debug(f"WVL: {lmb}")
     logging.info(f"SMM... Start...")
-    if not isinstance(theta, float) or not isinstance(phi, float):
+    if not isinstance(theta, (int, float)) or not isinstance(phi, (int, float)):
         raise InvalidParameter("Invalid Input parameter")
     if layer_i == 0 or layer_i > len(layer_list):
         raise InvalidParameter("Invalid Layer Index")

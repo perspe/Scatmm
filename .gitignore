@@ -9,3 +9,4 @@ Video
 .virtual_documents
 *__pycache__*
 scatmm.log
+*.ipynb
