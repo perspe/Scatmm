@@ -1,11 +1,11 @@
 {
   "n_particles": [
     "int",
-    25
+    60
   ],
   "n_iter": [
     "int",
-    20
+    40
   ],
   "w": [
     "float",

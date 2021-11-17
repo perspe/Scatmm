@@ -24,16 +24,16 @@ import pandas as pd
 from Database.database import Database
 from modules.fig_class import PltFigure
 from modules.pso import particle_swarm
-from modules.scattering_matrix import smm_angle, smm_broadband, smm_layer
-from modules.scattering_matrix import Layer3D
-from modules.scattering_matrix import MatOutsideBounds
+from modules.s_matrix import smm_angle, smm_broadband, smm_layer
+from modules.s_matrix import Layer3D
+from modules.s_matrix import MatOutsideBounds
 from modules.structs import SRes, SType
 from smm_uis.db_window import DBWindow
 from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 
-VERSION = "2.1.2"
+VERSION = "3.0.0"
 
 # Default plot properties
 mstyle.use("smm_style")
@@ -196,7 +196,7 @@ class SMMGUI(QMainWindow):
             "materials": self.sim_mat,
             "size": self.sim_mat_size,
             "ref_n": self.ui.sim_tab_ref_n,
-            "ref_k": self.ui.sim_tab_trn_k,
+            "ref_k": self.ui.sim_tab_ref_k,
             "trn_n": self.ui.sim_tab_trn_n,
             "trn_k": self.ui.sim_tab_trn_k
         }
@@ -205,7 +205,7 @@ class SMMGUI(QMainWindow):
             "size_low": self.opt_mat_size_min,
             "size_high": self.opt_mat_size_max,
             "ref_n": self.ui.opt_tab_ref_n,
-            "ref_k": self.ui.opt_tab_trn_k,
+            "ref_k": self.ui.opt_tab_ref_k,
             "trn_n": self.ui.opt_tab_trn_n,
             "trn_k": self.ui.opt_tab_trn_k
         }

@@ -5,7 +5,7 @@ import os
 from .smm_export_window import Ui_ExportWindow
 from modules.fig_class import FigWidget, PltFigure
 from modules.structs import SType
-from modules.scattering_matrix import smm_layer
+from modules.s_matrix import smm_layer
 
 from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox
 
