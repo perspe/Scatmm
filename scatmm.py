@@ -183,6 +183,7 @@ class SMMGUI(QMainWindow):
         self.layer_absorption: Any = [None, None]
         self.layer_abs_gid: Any = [None, None]
         # List to store the previous simulation results
+        self.export_ui = None
         self.sim_results = []
         # Store imported data
         self.imported_data = []
@@ -691,6 +692,10 @@ class SMMGUI(QMainWindow):
             title = "Error: Material Outside of Bounds"
             QMessageBox.warning(self, title, str(message), QMessageBox.Close,
                                 QMessageBox.Close)
+        print(self.export_ui)
+        if self.export_ui:
+            logging.info("Updating exportUI with new simulation")
+            self.export_ui.update_sims(self.sim_results)
 
     def sim_plot_data(self, x, ref, trn):
         """
@@ -1098,7 +1103,7 @@ if __name__ == "__main__":
         "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
                 '%(lineno)d:%(message)s',
         "filename": "scatmm.log",
-        "level": logging.INFO
+        "level": logging.DEBUG
     }
     logging.basicConfig(**log_config)
     app = QtWidgets.QApplication(sys.argv)

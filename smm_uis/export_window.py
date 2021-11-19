@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 import os
 
 # from scatmm import SType
@@ -38,6 +39,13 @@ class ExpWindow(QWidget):
         self.ui.export_button.clicked.connect(self.export)
         self.ui.preview_button.clicked.connect(self.preview_export)
         self.chosen_sim.activated.connect(self.update_sim_info)
+
+    def update_sims(self, sim_results):
+        logging.info("Updating simulation info in export window")
+        self.sim_results = sim_results
+        export_names = [sim_name.ID for sim_name in self.sim_results]
+        self.chosen_sim.clear()
+        self.chosen_sim.addItems(export_names)
 
     def update_sim_info(self):
         """ Update the simulation information in the QText Edit """
@@ -132,12 +140,11 @@ class ExpWindow(QWidget):
         """
         Export all simulations
         """
-        savepath = QFileDialog.getSaveFileName(self, "Save File", "",
-                                               "Text Files (*.txt)")
-        if savepath[0] == '':
+        export_dir = QFileDialog.getExistingDirectory(self, "Save To:")
+        if not export_dir:
+            logging.debug("No Directry provided... Ignoring")
             return
-        export_name = os.path.basename(savepath[0])
-        export_dir = os.path.dirname(savepath[0])
+        logging.info(f"Export path: {export_dir}")
         ref_check = self.export_checks[0].isChecked()
         trn_check = self.export_checks[1].isChecked()
         abs_check = self.export_checks[2].isChecked()
@@ -146,28 +153,35 @@ class ExpWindow(QWidget):
             header = ""
             # Start building the export array
             if result.Type == SType.WVL:
+                logging.debug("WVL Simulation...")
                 export_array = result.Lmb
                 header += "Wavelength(nm)"
             elif result.Type == SType.ANGLE:
+                logging.debug("ANGLE Simulation...")
                 export_array = result.Theta
                 header += "Angle"
             else:
+                logging.critical("Invalid SType!!!")
                 raise Exception("Invalid SType")
             export_array = export_array[:, np.newaxis]
             if ref_check:
+                logging.debug("Exporting Reflection....")
                 export_array = np.concatenate(
                     (export_array, result.Ref[:, np.newaxis]), axis=1)
                 header += " Ref"
             if trn_check:
+                logging.debug("Exporting Transmission....")
                 export_array = np.concatenate(
                     (export_array, result.Trn[:, np.newaxis]), axis=1)
                 header += " Trn"
             if abs_check:
+                logging.debug("Exporting Absorption....")
                 export_array = np.concatenate(
                     (export_array,
                         (1-result.Ref-result.Trn)[:, np.newaxis]), axis=1)
                 header += " Abs"
             if layers_check and result.Type is not SType.ANGLE:
+                logging.debug("Exporting Layers....")
                 for i in range(result.NLayers):
                     abs_i = smm_layer(result.Layers, i+1, result.Theta,
                                       result.Phi, result.Lmb, result.Pol,
@@ -176,8 +190,10 @@ class ExpWindow(QWidget):
                         (export_array, abs_i[:, np.newaxis]), axis=1)
                     exp_header = result.Layers[i].name.replace(" ", "_")
                     header += f" Abs_{exp_header}"
+            # Replace unwnated " " and "|" from the export name
             id = result.ID.replace("|", "_")
-            export_path = os.path.join(export_dir, id + export_name)
+            id = id.replace(" ", "")
+            export_path = os.path.join(export_dir, id)
             np.savetxt(export_path, export_array, header=header)
         self.close()
         QMessageBox.information(self, "Successful Export",
@@ -207,3 +223,8 @@ class ExpWindow(QWidget):
                                            label="Abs")
         self.preview_fig.axes.legend(bbox_to_anchor=(1, 1), loc="upper left")
         self.preview_fig.draw()
+
+    def closeEvent(self, event):
+        logging.debug("Closing Export Window / Restore export_ui to None")
+        event.accept()
+        self.parent.export_ui = None
