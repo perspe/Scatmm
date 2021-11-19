@@ -692,7 +692,6 @@ class SMMGUI(QMainWindow):
             title = "Error: Material Outside of Bounds"
             QMessageBox.warning(self, title, str(message), QMessageBox.Close,
                                 QMessageBox.Close)
-        print(self.export_ui)
         if self.export_ui:
             logging.info("Updating exportUI with new simulation")
             self.export_ui.update_sims(self.sim_results)
