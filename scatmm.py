@@ -1001,12 +1001,22 @@ class SMMGUI(QMainWindow):
         """
         logging.info("Import Button Clicked")
         filepath = QFileDialog.getOpenFileName(self, 'Open File')
+        title = "Invalid Import Format"
+        msg = "The imported data has an unacceptable format"
         if filepath[0] == '':
             logging.debug("No file provided... Ignoring...")
             return
         try:
             data = self.get_data_from_file(filepath[0])
         except ValueError:
+            logging.warning("Invalid Import Data format")
+            QMessageBox.warning(self, title, msg, QMessageBox.Close,
+                                QMessageBox.Close)
+            return
+        except Exception:
+            logging.warning("Invalid Import Data format")
+            QMessageBox.warning(self, title, msg + " (Directory)",
+                                QMessageBox.Close, QMessageBox.Close)
             return
         self.imported_data = data[:, [0, 1]]
         self.delete_plot("Imported_Data")
@@ -1023,16 +1033,15 @@ class SMMGUI(QMainWindow):
         """
         Get data from file and return it as numpy array
         """
+        if os.path.isdir(filepath):
+            logging.warning("Invalid File Format (Directory)")
+            raise IsADirectoryError
         logging.info(f"Importing data from file: {filepath}")
-        title = "Invalid Import Format"
-        msg = "The imported data has an unacceptable format"
         try:
             data_df = pd.read_csv(filepath, sep="[ ;,:\t]")
             data = data_df.values
         except ValueError:
-            logging.warning("Invalid Import Data format")
-            QMessageBox.warning(self, title, msg, QMessageBox.Close,
-                                QMessageBox.Close)
+            logging.warning("Invalid File Format")
             raise ValueError
         logging.debug(f"Retrieved Data:\n {data}")
         return data
@@ -1052,6 +1061,8 @@ class SMMGUI(QMainWindow):
         """ Check if only a single file was imported and then
         import the data from that file """
         logging.debug("Handling Drop event")
+        title = "Invalid Import Format"
+        msg = "The imported data has an unacceptable format"
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()
             if len(url) > 1:
@@ -1063,6 +1074,14 @@ class SMMGUI(QMainWindow):
             try:
                 data = self.get_data_from_file(str(url[0].toLocalFile()))
             except ValueError:
+                logging.warning("Invalid Import Data format")
+                QMessageBox.warning(self, title, msg, QMessageBox.Close,
+                                    QMessageBox.Close)
+                return
+            except IsADirectoryError:
+                logging.warning("Invalid Import Data format")
+                QMessageBox.warning(self, title, msg + " (Directory)",
+                                    QMessageBox.Close, QMessageBox.Close)
                 return
             self.delete_plot("Imported_Data")
             self.imported_data = data[:, [0, 1]]

@@ -10,5 +10,3 @@ Video
 *__pycache__*
 scatmm.log
 *.ipynb
-*.so
-modules/build/*
