@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Main script that combines everything from the SMM method
 """
@@ -14,8 +14,10 @@ import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
+from PyQt5.QtGui import QPalette
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import matplotlib.style as mstyle
+import matplotlib as mpl
 import numpy as np
 from numpy.linalg import norm
 import numpy.typing as npt
@@ -1102,9 +1104,12 @@ if __name__ == "__main__":
         "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
                 '%(lineno)d:%(message)s',
         "filename": "scatmm.log",
-        "level": logging.DEBUG
+        "level": logging.INFO
     }
     logging.basicConfig(**log_config)
     app = QtWidgets.QApplication(sys.argv)
+    color = app.palette().color(QPalette.Background)
+    mpl.rcParams["axes.facecolor"] = f"{color.name()}"
+    mpl.rcParams["figure.facecolor"] = f"{color.name()}"
     SMM = SMMGUI()
     sys.exit(app.exec_())
