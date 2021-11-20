@@ -2,6 +2,7 @@
 import os
 import numpy as np
 from scipy.interpolate import interp1d
+import logging
 
 from PyQt5.QtWidgets import QWidget, QTableWidget, QMessageBox, QFileDialog
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
@@ -10,10 +11,11 @@ from .smm_database_window import Ui_Database
 from .smm_import_db_mat import Ui_ImportDB
 from modules.fig_class import PltFigure, FigWidget
 
+Units = {"nm": 1e3, "um": 1, "mm": 1e-3}
+
 
 class DBWindow(QWidget):
     """ Main Class for the DB Window """
-
     def __init__(self, parent, database):
         """ Initialize the elements of the main window """
         self.database = database
@@ -69,12 +71,11 @@ class DBWindow(QWidget):
         Open a new UI to manage importing new data
         """
         self.new_mat = np.array([])
-        self.units = {"nm": 1, "um": 1e3, "mm": 1e6}
         self.db_import_window = QTableWidget()
         self.db_import_ui = Ui_ImportDB()
         self.db_import_ui.setupUi(self.db_import_window)
         self.db_import_window.show()
-        self.db_import_ui.unit_combobox.addItems(list(self.units.keys()))
+        self.db_import_ui.unit_combobox.addItems(list(Units.keys()))
         self.db_import_ui.choose_file_button.clicked.connect(
             self.choose_db_mat)
         self.db_import_ui.import_button.clicked.connect(self.import_db_mat)
@@ -138,7 +139,9 @@ class DBWindow(QWidget):
         self.preview_choice = FigWidget(
             f"Preview {self.database.content[choice]}")
         self.preview_choice_fig = PltFigure(self.preview_choice.layout,
-                                            "Wavelength (nm)", "n/k", width=7)
+                                            "Wavelength (nm)",
+                                            "n/k",
+                                            width=7)
         self.n_plot = self.preview_choice_fig.axes
         self.n_plot.set_ylabel("n")
         self.n_plot.plot(lmb, n, "b.", label="n")
@@ -162,6 +165,7 @@ class DBWindow(QWidget):
         if filepath[0] == '':
             return
         chosen_unit = self.db_import_ui.unit_combobox.currentText()
+        logging.debug("Chosen Unit: {chosen_unit}")
         filename = os.path.basename(filepath[0])
         self.db_import_window.raise_()
         self.db_import_window.setFocus(True)
@@ -169,7 +173,7 @@ class DBWindow(QWidget):
         self.new_mat = self.parent.get_data_from_file(filepath[0])
         if self.new_mat.shape[0] == 0:
             return
-        self.new_mat[:, 0] *= self.units[chosen_unit]
+        self.new_mat[:, 0] *= Units[chosen_unit]
         if self.new_mat.shape[1] < 3:
             title = "Incomplete import"
             msg = "The data must have 3 columns (wavelength/n/k)"
@@ -199,10 +203,11 @@ class DBWindow(QWidget):
         interp_k = interp1d(lmb, k)
         # Plot the results
         # Preview chosen material
-        self.preview_import = FigWidget(
-            "Preview New Material")
+        self.preview_import = FigWidget("Preview New Material")
         self.preview_import_fig = PltFigure(self.preview_import.layout,
-                                            "Wavelength (nm)", "n/k", width=7)
+                                            "Wavelength (File Units)",
+                                            "n/k",
+                                            width=7)
         self.n_plot = self.preview_import_fig.axes
         self.n_plot.set_ylabel("n")
         self.n_plot.plot(lmb, n, "b.", label="n")
@@ -237,6 +242,7 @@ class DBWindow(QWidget):
             self.db_import_window.setFocus(True)
             self.db_import_window.activateWindow()
             return
+        unit = self.db_import_ui.unit_combobox.currentText()
         self.database.add_content(mat_name, self.new_mat)
         self.new_mat = np.array([])
         self.db_import_window.close()

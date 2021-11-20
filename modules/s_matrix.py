@@ -329,6 +329,7 @@ def smm_layer(layer_list: List[Layer_Type],
     kz_trn = np.sqrt(t_med[0] * t_med[1] - kx**2 - ky**2)
     # This is a simplification to determine all the values in beforehand
     layer_data = np.array([layer_i.e_value(lmb) for layer_i in layer_list])
+    non_invertable_matrix = False
     Abs = []
     # Loop through all wavelengths and layers
     for k0_i, layer_data in zip(k0, layer_data.T):
@@ -362,6 +363,7 @@ def smm_layer(layer_list: List[Layer_Type],
         if np.any(S_Pre_Trn_12):
             c_trn_m = inv(S_Pre_Trn_12) @ (E_ref - S_Pre_Trn_11 @ p)
         else:
+            non_invertable_matrix = True
             c_trn_m = np.array([0, 0])
         c_trn_p = S_Pre_Trn_21 @ p + S_Pre_Trn_22 @ c_trn_m
         sum_c_trn_p = np.sum(np.abs(c_trn_p)**2)
@@ -374,6 +376,7 @@ def smm_layer(layer_list: List[Layer_Type],
             c_left_m = inv(S_Global_Before_12) @ (E_ref -
                                                   S_Global_Before_11 @ p)
         else:
+            non_invertable_matrix = True
             c_left_m = np.array([0, 0])
         c_left_p = S_Global_Before_21 @ p + S_Global_Before_22 @ c_left_m
         # Determine the mode coefficients just after the wanted layer
@@ -381,6 +384,7 @@ def smm_layer(layer_list: List[Layer_Type],
             c_right_m = inv(S_Global_After_12) @ (E_ref -
                                                   S_Global_After_11 @ p)
         else:
+            non_invertable_matrix = True
             c_right_m = np.array([0, 0])
         c_right_p = S_Global_After_21 @ p + S_Global_After_22 @ c_right_m
         # Determine the %abs for a particular layer in regard to the total abs
@@ -391,4 +395,7 @@ def smm_layer(layer_list: List[Layer_Type],
         i_abs = (sum_left_p + sum_right_m - sum_left_m -
                  sum_right_p) / int_power
         Abs.append(i_abs * (1 - R - T))
+    if non_invertable_matrix:
+        logging.warning(
+            f"Non Invertable Matrix Found in.. Considered 0")
     return np.array(Abs)

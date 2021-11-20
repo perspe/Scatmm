@@ -191,7 +191,7 @@ class SMMGUI(QMainWindow):
         # Variable to store the export window Interface
         self.export_ui = None
         # Store imported data
-        self.imported_data = []
+        self.imported_data: Any = []
         # Load simulation default properties
         logging.debug("Loading default global properties")
         with open("config.json", "r") as config:
