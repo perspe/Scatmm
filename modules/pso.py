@@ -3,7 +3,7 @@ Implementation of the particle swarm optimization algorithm
 Functions:
     - particle_swarm: Implements the algorithm
 """
-import os
+import logging
 from random import random
 
 import numpy as np
@@ -44,9 +44,9 @@ def _update_parameters(param, vel, max_param, min_param, inertia_w, ind_cog,
     mask_min = param_new < min_param
     mask_max = param_new > max_param
     param_new[mask_min] = min_param[mask_min]
-    v_new[mask_min] = - v_new[mask_min]
+    v_new[mask_min] = -v_new[mask_min]
     param_new[mask_max] = max_param[mask_max]
-    v_new[mask_max] = - v_new[mask_max]
+    v_new[mask_max] = -v_new[mask_max]
     return param_new, v_new
 
 
@@ -68,17 +68,14 @@ def particle_swarm(func,
         - n_particles: Number of particles (default: 25)
         - n_iter: Maximum number of iterations (default: 50)
         - export: Export files with the parameter variation with iterations
-        - plot: Wheter to plot best_iter or not
+        - func_kwargs: Extra arguments to pass to the function
     Return:
         - gfitness: Best value obtained
         - gbest: Best parameters
         - pbest: Best parameters for each particle
         - gbest_array: Array with the gfitness value for each iteration
     """
-    # Create directory to deposit the results in case export is true
-    isDir = os.path.isdir("PSO_Results")
-    if not isDir and export:
-        os.mkdir("PSO_Results")
+    logging.info("Starting Particle Swarm Algorithm")
     # Variable initialization
     # Random array with the start value for the parameters
     # Random array with the start value for the velocities
@@ -145,8 +142,8 @@ def particle_swarm(func,
             pfitness_mask = func_results < pfitness
         # Update gbest, pfitness and pbest
         gbest = param_space[:, fitness_candidate_ind].flatten()
-        print(param_space)
-        print(gbest)
+        logging.debug(param_space)
+        logging.debug(gbest)
         gbest_array.append(gfitness)
         # Update the FoM plot
         pfitness[pfitness_mask] = func_results[pfitness_mask]
@@ -168,13 +165,13 @@ if __name__ == "__main__":
         return -np.exp(-x**2) * np.exp(-y**2)
 
     def test_func_2(x, y):
-        return np.sin(x)*np.sin(y)/(x*y)
+        return np.sin(x) * np.sin(y) / (x * y)
 
     fit, gbest, pbest, _ = particle_swarm(test_func_2, {
         "x": [-5, 5],
         "y": [-5, 5]
     },
-                                       maximize=True,
-                                       export=False)
+                                          maximize=True,
+                                          export=False)
     print("----Results-----")
     print(fit, gbest, pbest, sep="\n")

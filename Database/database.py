@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from shutil import copyfile
 from typing import List, Union
+import logging
 import os
 
 
@@ -13,6 +14,7 @@ class Database():
         """
         Load all contents in database to variable
         """
+        logging.info(f"Loading Database '{db_file}'")
         self.db_file: str = db_file
         self.prepend_path: str = os.path.dirname(db_file)
         with open(self.db_file) as file:
@@ -24,6 +26,7 @@ class Database():
             db_file.write(name)
         self.content.append(name)
         np.savetxt(os.path.join(self.prepend_path, name + ".txt"), data)
+        logging.info(f"Added material '{name}' to Database")
 
     def rmv_content(self, name: str) -> int:
         """ Remove material from the Database """
@@ -34,6 +37,7 @@ class Database():
                 if line.strip("\n") != name:
                     db_file.write(line)
         os.remove(os.path.join(self.prepend_path, name + ".txt"))
+        logging.info(f"Remove material '{name}' from Database")
         for index, mat_name in enumerate(self.content):
             if mat_name == name:
                 self.content.pop(index)
@@ -44,6 +48,7 @@ class Database():
         Export content of DB material
         """
         copyfile(os.path.join(self.prepend_path, name + ".txt"), export_path)
+        logging.info(f"Export material '{name}' from Database")
 
     def find_index(self, name: str) -> int:
         """

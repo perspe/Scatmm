@@ -57,7 +57,7 @@ class Layer1D():
         self.thickness: float = thickness
         self.n: float = n_val
         self.k: float = k_val
-        logging.debug(f"Layer: {self} created...")
+        logging.info(f"Layer: {self} created...")
 
     def e_value(self, lmb: npt.ArrayLike) -> npt.ArrayLike:
         """ Return e_value for specific wavelength """
@@ -86,13 +86,14 @@ class Layer3D():
         self.thickness: float = thickness
         self.n = interp1d(lmb, n_array, **kwargs)
         self.k = interp1d(lmb, k_array, **kwargs)
-        logging.debug(f"Layer: {self} created...")
+        logging.info(f"Layer: {self} created...")
 
     def e_value(self, lmb: npt.ArrayLike) -> npt.ArrayLike:
         """ Calculate e_values for a range of wavelengths """
         try:
             e_data: npt.ArrayLike = (self.n(lmb) + 1j * self.k(lmb))**2
         except ValueError:
+            logging.error("Invalid Wavelength Value/Range")
             if isinstance(lmb, float):
                 raise MatOutsideBounds(self.name, f"{lmb}")
             elif isinstance(lmb, np.ndarray):
@@ -105,8 +106,7 @@ class Layer3D():
         return f"{self.name}({self.thickness} nm)"
 
 
-Layer_Type = Union[Layer1D, Layer3D]
-""" Main functions """
+""" Helper functions """
 
 
 def _initialize_smm(theta, phi, lmb, pol, inc_medium):
@@ -140,6 +140,10 @@ def _initialize_smm(theta, phi, lmb, pol, inc_medium):
     return k0, kx, ky, V0, p
 
 
+""" Main functions """
+Layer_Type = Union[Layer1D, Layer3D]
+
+
 def smm(layer_list: List[Layer_Type], theta: float, phi: float, lmb: float,
         pol: Tuple[complex, complex], i_med: Tuple[complex, complex],
         t_med: Tuple[complex, complex]) -> Tuple[float, float]:
@@ -155,17 +159,15 @@ def smm(layer_list: List[Layer_Type], theta: float, phi: float, lmb: float,
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
     logging.debug(f"SMM for {theta}:{phi}:{lmb}:{pol}:{i_med}:{t_med}")
-    logging.info(f"SMM... Start...")
     if not isinstance(lmb, (float, int)) or not isinstance(
             theta, (float, int)) or not isinstance(phi, (int, float)):
-        logging.warning("Invalid input parameter...")
+        logging.error("Invalid input parameter...")
         raise InvalidParameter("Invalid Input parameter")
     # Inicialize necessary values
     k0, kx, ky, V0, p = _initialize_smm(theta, phi, lmb, pol, i_med)
     S_trn = CSMatrix(V0, k0, kx, ky, 0, t_med[0], t_med[1], CSMMType.TRN)
     S_ref = CSMatrix(V0, k0, kx, ky, 0, i_med[0], i_med[1], CSMMType.REF)
     S_Global = S_ref
-    logging.debug("Looping through layers...")
     for layer in layer_list:
         e_value: Any = layer.e_value(lmb)
         S_Layer = CSMatrix(V0, k0, kx, ky, layer.thickness, e_value)
@@ -176,7 +178,6 @@ def smm(layer_list: List[Layer_Type], theta: float, phi: float, lmb: float,
     E_ref, E_trn = S_Global.ref_trn(p, kz_ref, kz_trn)
     R = E_ref
     T = (E_trn) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1]))
-    logging.info("Done...")
     return R, T
 
 
@@ -200,14 +201,13 @@ def smm_broadband(layer_list: List[Layer_Type],
     Returns:
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
-    logging.debug(f"SMM for {theta}:{phi}:{pol}:{i_med}:{t_med}")
-    logging.debug(f"WVL: {lmb}")
-    logging.info(f"SMM... Start...")
+    logging.debug(
+        f"SMM Broadband for {theta}:{phi}:{pol}:{i_med}:{t_med}:{override_thick}"
+    )
     if not isinstance(theta,
                       (int, float)) or not isinstance(phi, (int, float)):
         raise InvalidParameter("Invalid Input parameter")
     if override_thick is not None:
-        logging.info("Overriding Thicknesses")
         if len(override_thick) == len(layer_list):
             for thick_i, layer in zip(override_thick, layer_list):
                 layer.thickness = thick_i
@@ -223,7 +223,6 @@ def smm_broadband(layer_list: List[Layer_Type],
     R = []
     T = []
     # Loop through all wavelengths and layers
-    logging.debug("Looping through layers")
     for k0_i, layer_data in zip(k0, layer_data.T):
         S_trn = CSMatrix(V0, k0_i, kx, ky, 0, t_med[0], t_med[1], CSMMType.TRN)
         S_ref = CSMatrix(V0, k0_i, kx, ky, 0, i_med[0], i_med[1], CSMMType.REF)
@@ -236,7 +235,6 @@ def smm_broadband(layer_list: List[Layer_Type],
         E_ref, E_trn = S_Global_i.ref_trn(p, kz_ref, kz_trn)
         R.append(E_ref)
         T.append((E_trn) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1])))
-    logging.info("Done...")
     return np.array(R), np.array(T)
 
 
@@ -260,9 +258,8 @@ def smm_angle(layer_list: List[Layer_Type],
     Returns:
         R, T: Arrays with the Reflection and transmission for the layer setup
     """
-    logging.debug(f"SMM for {phi}:{lmb}:{pol}:{i_med}:{t_med}")
-    logging.debug(f"Angle: {theta}")
-    logging.info(f"SMM... Start...")
+    logging.debug(
+        f"SMM Angle for {phi}:{lmb}:{pol}:{i_med}:{t_med}:{override_thick}")
     if not isinstance(lmb, (float, int)) or not isinstance(phi, (int, float)):
         raise InvalidParameter("Invalid Input parameter")
     if override_thick is not None:
@@ -288,7 +285,6 @@ def smm_angle(layer_list: List[Layer_Type],
         E_ref, E_trn = S_Global.ref_trn(p, kz_ref, kz_trn)
         R.append(E_ref)
         T.append((E_trn) * np.real((kz_trn * i_med[1]) / (kz_ref * t_med[1])))
-    logging.info("Done..")
     return np.array(R), np.array(T)
 
 
@@ -313,9 +309,8 @@ def smm_layer(layer_list: List[Layer_Type],
     Returns:
         Abs: Absorption fonumpy typing unionr a particular layer
     """
-    logging.debug(f"SMM for {theta}:{phi}:{pol}:{i_med}:{t_med}")
-    logging.debug(f"WVL: {lmb}")
-    logging.info(f"SMM... Start...")
+    logging.debug(
+        f"SMM Layer for {theta}:{phi}:{pol}:{i_med}:{t_med}:{override_thick}")
     if not isinstance(theta,
                       (int, float)) or not isinstance(phi, (int, float)):
         raise InvalidParameter("Invalid Input parameter")
@@ -345,13 +340,11 @@ def smm_layer(layer_list: List[Layer_Type],
         S_Global_Before = S_ref
         for layer_index, layer in enumerate(layer_list):
             if layer_index == layer_i:
-                logging.debug("SMatrix just before wanted layer")
                 S_Global_Before = S_Global_i.return_SMatrix()
             S_Layer = CSMatrix(V0, k0_i, kx, ky, layer.thickness,
                                layer_data[layer_index])
             S_Global_i = S_Global_i * S_Layer
             if layer_index == layer_i:
-                logging.debug("SMatrix just after wanted layer")
                 S_Global_After = S_Global_i.return_SMatrix()
         S_Pre_Trn = S_Global_i.return_SMatrix()
         S_Pre_Trn_11, S_Pre_Trn_12, S_Pre_Trn_21, S_Pre_Trn_22 = S_Pre_Trn
@@ -363,7 +356,6 @@ def smm_layer(layer_list: List[Layer_Type],
         E_ref, _, E_trn, _ = S_Global_i.fields(p, kz_ref, kz_trn)
         S_Global_Before_11, S_Global_Before_12, S_Global_Before_21, S_Global_Before_22 = S_Global_Before
         S_Global_After_11, S_Global_After_12, S_Global_After_21, S_Global_After_22 = S_Global_After
-        logging.debug("Calculating power inside the device")
         c_ref_m = inv(S_ref_12) @ (E_ref - S_ref_11 @ p)
         c_ref_p = S_ref_21 @ p + S_ref_22 @ c_ref_m
         # Avoid S_Pre_Trn singular matrix for inv
@@ -399,5 +391,4 @@ def smm_layer(layer_list: List[Layer_Type],
         i_abs = (sum_left_p + sum_right_m - sum_left_m -
                  sum_right_p) / int_power
         Abs.append(i_abs * (1 - R - T))
-    logging.info("Done...")
     return np.array(Abs)

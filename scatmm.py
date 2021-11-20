@@ -54,6 +54,7 @@ class OptimizeWorkder(QtCore.QThread):
                  phi, pol, ref_medium, trn_medium, thickness, layer_list,
                  checks):
         super().__init__()
+        logging.info("Starting Optimization Worker Thread")
         """ Initialize variables and aliases """
         self.figure_canvas = figure_handler
         self.figure = self.figure_canvas.axes
@@ -97,6 +98,7 @@ class OptimizeWorkder(QtCore.QThread):
                 point_error = np.sum((1 - ref - trn - self.compare_data)**2,
                                      axis=0)
             else:
+                logging.error("This should not happen!!")
                 raise Exception("Unknown optimization variable")
             self.updateValueSignal.emit(
                 int(self.iterator / self.particle_info["n_iter"] * 100))
@@ -185,15 +187,16 @@ class SMMGUI(QMainWindow):
         self.layer_absorption: Any = [None, None]
         self.layer_abs_gid: Any = [None, None]
         # List to store the previous simulation results
-        self.export_ui = None
         self.sim_results = []
+        # Variable to store the export window Interface
+        self.export_ui = None
         # Store imported data
         self.imported_data = []
         # Load simulation default properties
         logging.debug("Loading default global properties")
         with open("config.json", "r") as config:
             self.global_properties = json.load(config)
-        # Initialize main dictionaries for simulations
+        # Initialize main helper dictionaries for simulations
         self.sim_config = {
             "check": self.sim_check,
             "materials": self.sim_mat,
@@ -225,7 +228,7 @@ class SMMGUI(QMainWindow):
         }
         # Initialize all the UI elements
         self.initializeUI()
-        logging.info("Finalize initializing → Show UI")
+        logging.info("Finalize initializing : Show UI")
         self.show()
 
     def initializeUI(self):
@@ -341,6 +344,8 @@ class SMMGUI(QMainWindow):
                         float(self.propertie_values[key].text())
                     ]
                 else:
+                    logging.critical(
+                        "Invalid type in config.json.. Should not happen")
                     raise Exception("Unknown type format in config.json")
         except ValueError:
             logging.warning("Invalid configuration in config file")
@@ -547,7 +552,6 @@ class SMMGUI(QMainWindow):
             if theta % 90 == 0 and theta != 0:
                 raise Exception("Theta not valid")
             theta = np.radians(theta)
-            # TODO: Normalize the polarization vector <08-10-21, Miguel> #
             pol = np.array([
                 complex(self.sim_data["pte"].text()),
                 complex(self.sim_data["ptm"].text())
@@ -649,7 +653,7 @@ class SMMGUI(QMainWindow):
         """
         Script that outputs all the data necessary to run smm_broadband
         """
-        logging.info("Starting Simulation")
+        logging.info("Starting Simulation....")
         # Get all the sim_data values
         try:
             theta, phi, pol, lmb_min, lmb_max = self.get_sim_data()
@@ -737,7 +741,7 @@ class SMMGUI(QMainWindow):
         Update the simulation results
         """
         # The identifier string is of the form S(sim)(theta,phi)|Layer_config|
-        logging.info("Updating simulation results buffer")
+        logging.info("Updating simulation results buffer...")
         if type == SType.WVL:
             logging.debug("Wavelength Simulation Detected")
             ident_string = "W" + str(len(self.sim_results) + 1) + "(" + str(
@@ -1108,6 +1112,7 @@ if __name__ == "__main__":
     }
     logging.basicConfig(**log_config)
     app = QtWidgets.QApplication(sys.argv)
+    # Update matplotlib color to match qt application
     color = app.palette().color(QPalette.Background)
     mpl.rcParams["axes.facecolor"] = f"{color.name()}"
     mpl.rcParams["figure.facecolor"] = f"{color.name()}"
