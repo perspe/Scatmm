@@ -65,6 +65,7 @@ class Database():
 
     def __getitem__(self, name: Union[str, int]) -> npt.NDArray:
         """ Syntax to access a certain item in DB Database[index/name] """
+        logging.debug(f"Accessing {name}")
         if isinstance(name, int):
             return np.loadtxt(
                 os.path.join(self.prepend_path, self.content[name] + ".txt"))
