@@ -11,6 +11,7 @@ import sys
 from typing import Any
 import uuid
 import webbrowser
+from pathlib import Path
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
@@ -36,6 +37,11 @@ from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 
 VERSION = "3.0.0"
+
+# path = Path(__file__).resolve().parent
+# print(path)
+# logging.info(f"Updating path to {path}")
+# os.chdir(path)
 
 # Default plot properties
 mstyle.use("smm_style")
@@ -1107,8 +1113,8 @@ if __name__ == "__main__":
     log_config = {
         "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
                 '%(lineno)d:%(message)s',
-        "filename": "scatmm.log",
-        "level": logging.INFO
+        # "filename": "scatmm.log",
+        "level": logging.DEBUG
     }
     logging.basicConfig(**log_config)
     app = QtWidgets.QApplication(sys.argv)

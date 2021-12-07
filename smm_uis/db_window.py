@@ -11,7 +11,7 @@ from .smm_database_window import Ui_Database
 from .smm_import_db_mat import Ui_ImportDB
 from modules.fig_class import PltFigure, FigWidget
 
-Units = {"nm": 1e3, "um": 1, "mm": 1e-3}
+Units = {"nm": 1, "um": 1e3, "mm": 1e6}
 
 
 class DBWindow(QWidget):
@@ -164,16 +164,16 @@ class DBWindow(QWidget):
         filepath = QFileDialog.getOpenFileName(self, 'Open File')
         if filepath[0] == '':
             return
-        chosen_unit = self.db_import_ui.unit_combobox.currentText()
         logging.debug("Chosen Unit: {chosen_unit}")
         filename = os.path.basename(filepath[0])
         self.db_import_window.raise_()
         self.db_import_window.setFocus(True)
         self.db_import_window.activateWindow()
+        logging.debug("Getting data for new material")
         self.new_mat = self.parent.get_data_from_file(filepath[0])
         if self.new_mat.shape[0] == 0:
+            logging.debug("No data in file... Ignoring")
             return
-        self.new_mat[:, 0] *= Units[chosen_unit]
         if self.new_mat.shape[1] < 3:
             title = "Incomplete import"
             msg = "The data must have 3 columns (wavelength/n/k)"
@@ -224,6 +224,7 @@ class DBWindow(QWidget):
         """
         Add the chosen material to the database
         """
+        chosen_unit = self.db_import_ui.unit_combobox.currentText()
         mat_name = self.db_import_ui.mat_name_edit.text()
         if self.new_mat.shape[0] == 0:
             QMessageBox.information(self, "Choose File",
@@ -242,7 +243,8 @@ class DBWindow(QWidget):
             self.db_import_window.setFocus(True)
             self.db_import_window.activateWindow()
             return
-        unit = self.db_import_ui.unit_combobox.currentText()
+        self.new_mat[:, 0] *= Units[chosen_unit]
+        print(self.new_mat[:, 0])
         self.database.add_content(mat_name, self.new_mat)
         self.new_mat = np.array([])
         self.db_import_window.close()
