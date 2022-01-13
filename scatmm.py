@@ -36,7 +36,7 @@ from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 # path = Path(__file__).resolve().parent
 # print(path)
