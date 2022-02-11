@@ -15,24 +15,26 @@ This program allows for:
 * Export the results of simulations to text files
 * Import data to compare with simulations
 * Thickness fitting from imported data (using a particle swarm algorithm to find the thickness combination for all layers that minimizes the error between the simulation algorithm and the imported data.
+* It also has a interface for the python structures used in the calculations (Described API_Tutorial.html and API_Tutorial.ipynb files)
 
 The program was written using the following version of different python packages (although it should also work with any recent version of these packages)
 
-* python 3.8.8
-* pandas 1.3.1
-* numpy 1.19.2
-* scipy 1.6.2
-* matplotlib 3.3.4
+* python 3.8.12
+* pandas 1.3.5
+* numpy 1.21.4 (minimal version of 1.20 needed for typing module)
+* scipy 1.7.3
+* matplotlib 3.5
 * pyqt 5.9.2
 
-The program can be run from python
+The program can either be ran from the terminal by running the scatmm.py script
 
 ```python
 python scatmm.py
 ```
 
 The script can be also run from IDEs, although it is important to guarantee that all the required packages are properly installed in the virtual environment.
-In spyder it may also be necessary to change the matplotlib backend to automatic in the settings.
+
+It also possible to run everything from the backend functions (as exmplained in API_Tutorial.html and API_Tutorial.ipynb)
 
 When run the program will display the image bellow.
 The help menu provides a brief description of all the program's capabilities

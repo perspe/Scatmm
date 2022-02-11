@@ -656,7 +656,7 @@ class SMMGUI(QMainWindow):
     """ Simulation and associated funcitons """
 
     def simulate(self):
-        """
+        """"cubic"
         Script that outputs all the data necessary to run smm_broadband
         """
         logging.info("Starting Simulation....")
@@ -1114,9 +1114,10 @@ if __name__ == "__main__":
         "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
                 '%(lineno)d:%(message)s',
         # "filename": "scatmm.log",
-        "level": logging.DEBUG
+        "level": logging.WARNING
     }
     logging.basicConfig(**log_config)
+    logging.getLogger("matplotlib").setLevel(logging.INFO)
     app = QtWidgets.QApplication(sys.argv)
     # Update matplotlib color to match qt application
     color = app.palette().color(QPalette.Background)

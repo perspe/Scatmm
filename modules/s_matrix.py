@@ -18,16 +18,17 @@ from numpy.linalg import inv
 import numpy.typing as npt
 from scipy.interpolate import interp1d
 
-from modules.py_smm_base import CMatrix, CSMatrix
-from modules.py_smm_base import SMMType as CSMMType
+from .py_smm_base import CMatrix, CSMatrix
+from .py_smm_base import SMMType as CSMMType
 
+# Default simulation config
 sim_config = {
     "theta": 0.0,
     "phi": 0.0,
     "lmb": 500.0,
     "pol": (1, 0),
-    "i_med": (1, 1),
-    "t_med": (1, 1)
+    "i_med": (1.0, 1.0),
+    "t_med": (1.0, 1.0)
 }
 
 
@@ -137,7 +138,7 @@ def _initialize_smm(theta, phi, lmb, pol, inc_medium):
     p_vector = np.add(pol[1] * ate, pol[0] * atm)
     p = p_vector[[0, 1]]
     logging.debug(f"Initialization Values for SMM: {k0}:{kx}:{ky}\n{V0}\n{p}")
-    return k0, kx, ky, V0, p
+    return k0, kx, ky, V0, np.array(p, dtype=np.complex128)
 
 
 """ Main functions """
@@ -396,6 +397,5 @@ def smm_layer(layer_list: List[Layer_Type],
                  sum_right_p) / int_power
         Abs.append(i_abs * (1 - R - T))
     if non_invertable_matrix:
-        logging.warning(
-            f"Non Invertable Matrix Found in.. Considered 0")
+        logging.warning(f"Non Invertable Matrix Found in.. Considered 0")
     return np.array(Abs)
