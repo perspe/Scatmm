@@ -117,15 +117,21 @@ class OptimizeWorkder(QtCore.QThread):
             for i, thick_i in enumerate(self.thickness)
         }
         # Particle swarm algorithm
-        lowest_error, best_thick, _, _ = particle_swarm(
-            optimize_function,
-            thick,
-            swarm_properties=(self.particle_info["w"],
-                              self.particle_info["c1"],
-                              self.particle_info["c2"]),
-            n_iter=self.particle_info["n_iter"],
-            n_particles=self.particle_info["n_particles"],
-            maximize=False)
+        try:
+            lowest_error, best_thick, _, _ = particle_swarm(
+                optimize_function,
+                thick,
+                swarm_properties=(self.particle_info["w"],
+                                  self.particle_info["c1"],
+                                  self.particle_info["c2"]),
+                n_iter=self.particle_info["n_iter"],
+                n_particles=self.particle_info["n_particles"],
+                maximize=False)
+        except MatOutsideBounds as error:
+            self.updateValueSignal.emit(0)
+            self.updateOptButton.emit(True)
+            self.updateTextSignal.emit(str(error))
+            return
 
         self.updateValueSignal.emit(0)
         # Update result on the QTextBrowser widget with the best results
@@ -668,9 +674,7 @@ class SMMGUI(QMainWindow):
             # Get all the sim_config_values
             ref_medium, trn_medium = self.get_medium_config(self.sim_config)
             _, layer_list = self.get_material_config(self.sim_config)
-        except ValueError:
-            return
-        except Exception:
+        except (ValueError, Exception):
             return
 
         try:
@@ -943,13 +947,17 @@ class SMMGUI(QMainWindow):
         Perform Results Optimization (Splits into a new worker thread)
         """
         logging.info("Starting Optimization")
+        try:
+            _, _, _, lmb_min, lmb_max = self.get_sim_data()
+        except (ValueError, Exception):
+            return
         if self.ui.sim_param_check_angle.isChecked():
             logging.warning("Wrong Simulation type detected")
-            message = "Optimization only available for Wavelength type" +\
+            error = "Optimization only available for Wavelength type" +\
                 "simulations\n\n Change?"
             change = QMessageBox.question(self,
                                           "Invalid Simulation Mode",
-                                          message,
+                                          error,
                                           QMessageBox.Yes | QMessageBox.No,
                                           defaultButton=QMessageBox.Yes)
             if change == QMessageBox.Yes:
@@ -960,6 +968,10 @@ class SMMGUI(QMainWindow):
             # Get the data for optimization
             lmb = self.imported_data[:, 0].T
             compare_data = self.imported_data[:, 1][:, np.newaxis]
+            # Adjust the imported file to adhere to lower and upper wvl limits
+            wvl_mask = (lmb > lmb_min) & (lmb < lmb_max)
+            lmb = lmb[wvl_mask]
+            compare_data = compare_data[wvl_mask]
             self.main_canvas.reinit()
             self.main_figure.plot(lmb, compare_data, "-.")
             self.main_canvas.draw()
@@ -981,22 +993,21 @@ class SMMGUI(QMainWindow):
             # Start worker
             self.opt_worker.start()
         # The ValueError and Exception are handled inside the calling functions
-        except ValueError:
+        except (ValueError, Exception) as error:
+            logging.warning(error)
             self.ui.opt_res_text.append("Optimization Failed")
-        except Exception:
-            self.ui.opt_res_text.append("Optimization Failed")
-        except TypeError:
-            logging.warning("Missing Data to perform optimization")
+        except TypeError as error:
+            logging.warning(error)
             QMessageBox.warning(self, "Import Data missing",
                                 "Missing data to perform optimization",
                                 QMessageBox.Close, QMessageBox.Close)
             self.ui.opt_res_text.append("Optimization Failed")
-        except MatOutsideBounds:
-            logging.warning("Material Outside Bonds")
+        except MatOutsideBounds as error:
+            logging.warning(error)
             title = "Error: Material Out of Bounds"
-            message = "One of the materials in the simulation is "\
+            error = "One of the materials in the simulation is "\
                 "undefined for the defined wavelength range"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
+            QMessageBox.warning(self, title, error, QMessageBox.Close,
                                 QMessageBox.Close)
 
     """ Open the Database Window """
@@ -1114,7 +1125,7 @@ if __name__ == "__main__":
         "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
                 '%(lineno)d:%(message)s',
         # "filename": "scatmm.log",
-        "level": logging.WARNING
+        "level": logging.DEBUG
     }
     logging.basicConfig(**log_config)
     logging.getLogger("matplotlib").setLevel(logging.INFO)
