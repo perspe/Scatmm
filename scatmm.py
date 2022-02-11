@@ -11,7 +11,6 @@ import sys
 from typing import Any
 import uuid
 import webbrowser
-from pathlib import Path
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
@@ -36,7 +35,7 @@ from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 
 # path = Path(__file__).resolve().parent
 # print(path)
@@ -273,7 +272,7 @@ class SMMGUI(QMainWindow):
         self.ui.actionHelp.triggered.connect(
             lambda: webbrowser.open_new_tab(os.path.join("Help", "help.html")))
         self.ui.actionAbout.triggered.connect(self.aboutDialog)
-        self.ui.clear_button.clicked.connect(lambda: self.main_canvas.reinit())
+        self.ui.clear_button.clicked.connect(self.clear_plot)
         logging.debug("All buttons connected to functions")
         # Set default value for progress bar
         self.ui.opt_progressBar.setValue(0)
@@ -782,6 +781,7 @@ class SMMGUI(QMainWindow):
         self.sim_results = []
         self.main_canvas.reinit()
         self.clear_button.setText("Clear")
+        self.imported_data = []
         self.reinit_abs_checkbox()
 
     def plot_abs_layer(self, _):
@@ -868,6 +868,17 @@ class SMMGUI(QMainWindow):
             checkbox.blockSignals(False)
             self.abs_list[index] = False
             self.layer_absorption[index] = None
+
+    def clear_plot(self):
+        """ Clear all the plots without removing imported data """
+        self.main_canvas.reinit()
+        if len(self.imported_data) > 1:
+            self.main_figure.plot(self.imported_data[:, 0],
+                                  self.imported_data[:, 1],
+                                  '--',
+                                  label="Import Data",
+                                  gid="Imported_Data")
+        self.main_canvas.draw()
 
     def delete_plot(self, id):
         """ Delete a specific plot defined by guid """
