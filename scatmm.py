@@ -7,11 +7,11 @@ import json
 import logging
 import math
 import os
+import shutil
 import sys
 from typing import Any
 import uuid
 import webbrowser
-import shutil
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPalette
@@ -53,6 +53,7 @@ config_dir = os.path.join(appdirs.user_data_dir(), "scatmm")
 if not os.path.isdir(config_dir):
     logging.info("Copying config data to user directory")
     shutil.copytree("config", config_dir)
+
 
 def find_loc(filename):
     """

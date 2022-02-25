@@ -25,6 +25,7 @@ The program was written using the following version of different python packages
 * scipy 1.7.3
 * matplotlib 3.5
 * pyqt 5.9.2
+* appdirs 1.4.4
 
 __Note:__ The program also has a module built under cython. There are compiled binaries for Windows 10, and Linux (used in Mint and Arch). In any case, it should be possible to compile it (provided a compiler is installed, like g++) by running ```python python setup.py``` in the modules folder.
 

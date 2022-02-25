@@ -1,16 +1,16 @@
 """ Class for the DB Window """
+import logging
 import os
+
 from PyQt5 import QtGui
+from PyQt5.QtGui import QStandardItem, QStandardItemModel
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QTableWidget, QWidget
+from modules.fig_class import FigWidget, PltFigure
 import numpy as np
 from scipy.interpolate import interp1d
-import logging
-
-from PyQt5.QtWidgets import QWidget, QTableWidget, QMessageBox, QFileDialog
-from PyQt5.QtGui import QStandardItem, QStandardItemModel
 
 from .smm_database_window import Ui_Database
 from .smm_import_db_mat import Ui_ImportDB
-from modules.fig_class import PltFigure, FigWidget
 
 Units = {"nm": 1, "um": 1e3, "mm": 1e6}
 
