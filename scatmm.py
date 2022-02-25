@@ -11,6 +11,7 @@ import sys
 from typing import Any
 import uuid
 import webbrowser
+import shutil
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPalette
@@ -46,6 +47,12 @@ log_config = {
 logging.basicConfig(**log_config)
 logging.getLogger("matplotlib").setLevel(logging.INFO)
 
+# Check if there is a user filder with the config data
+# If there isnt... Copy everything to that folder
+config_dir = os.path.join(appdirs.user_data_dir(), "scatmm")
+if not os.path.isdir(config_dir):
+    logging.info("Copying config data to user directory")
+    shutil.copytree("config", config_dir)
 
 def find_loc(filename):
     """
@@ -224,6 +231,9 @@ class SMMGUI(QMainWindow):
         self.export_ui = None
         # Store imported data
         self.imported_data: Any = []
+        # Window variables
+        self.db_ui = None
+        self.properties_window = None
         # Load simulation default properties
         logging.debug("Loading default global properties")
         with open(find_loc("config.json"), "r") as config:
@@ -383,7 +393,10 @@ class SMMGUI(QMainWindow):
             logging.warning("Invalid configuration in config file")
             raise Exception("Mistaken type in config file")
         logging.info("Closing properties window")
-        self.properties_window.close()
+        if self.properties_window is not None:
+            self.properties_window.close()
+        else:
+            raise Exception("Unknown Problem...")
 
     def save_default_properties(self):
         """
@@ -391,7 +404,7 @@ class SMMGUI(QMainWindow):
         """
         self.update_properties()
         logging.info("Storing defaults in config file")
-        with open("config.json", "w") as config:
+        with open(find_loc("config.json"), "w") as config:
             json.dump(self.global_properties, config, indent=2)
 
     def open_properties(self):
@@ -1150,6 +1163,15 @@ class SMMGUI(QMainWindow):
                                   label="Import Data",
                                   gid="Imported_Data")
             self.main_canvas.draw()
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        if self.properties_window is not None:
+            logging.info("Properties Window still opened... Closing...")
+            self.properties_window.close()
+        if self.db_ui is not None:
+            logging.info("Database Window still opened... Closing...")
+            self.db_ui.close()
+        return super().closeEvent(a0)
 
 
 if __name__ == "__main__":

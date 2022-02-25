@@ -1,5 +1,6 @@
 """ Class for the DB Window """
 import os
+from PyQt5 import QtGui
 import numpy as np
 from scipy.interpolate import interp1d
 import logging
@@ -27,6 +28,7 @@ class DBWindow(QWidget):
         self.db_table = self.ui.database_table
         self.db_table.setModel(self.data)
         self.data.setColumnCount(3)
+        self.db_import_window = None
         self.update_db_preview()
         self.initializeUI()
 
@@ -164,11 +166,10 @@ class DBWindow(QWidget):
         filepath = QFileDialog.getOpenFileName(self, 'Open File')
         if filepath[0] == '':
             return
+        if self.db_import_window is None:
+            raise Exception("Unknown Error...")
         logging.debug("Chosen Unit: {chosen_unit}")
         filename = os.path.basename(filepath[0])
-        self.db_import_window.raise_()
-        self.db_import_window.setFocus(True)
-        self.db_import_window.activateWindow()
         logging.debug("Getting data for new material")
         self.new_mat = self.parent.get_data_from_file(filepath[0])
         if self.new_mat.shape[0] == 0:
@@ -190,13 +191,12 @@ class DBWindow(QWidget):
         """
         Show a preview of the imported data with the interpolation
         """
+        if self.db_import_window is None:
+            raise Exception("Unknown Error...")
         if self.new_mat.shape[0] == 0:
             QMessageBox.information(self, "Choose File",
                                     "Must select a file before previewing",
                                     QMessageBox.Ok, QMessageBox.Ok)
-            self.db_import_window.raise_()
-            self.db_import_window.setFocus(True)
-            self.db_import_window.activateWindow()
             return
         lmb, n, k = self.new_mat[:, 0], self.new_mat[:, 1], self.new_mat[:, 2]
         interp_n = interp1d(lmb, n)
@@ -224,24 +224,20 @@ class DBWindow(QWidget):
         """
         Add the chosen material to the database
         """
+        if self.db_import_window is None:
+            raise Exception("Unknown Error...")
         chosen_unit = self.db_import_ui.unit_combobox.currentText()
         mat_name = self.db_import_ui.mat_name_edit.text()
         if self.new_mat.shape[0] == 0:
             QMessageBox.information(self, "Choose File",
                                     "Must select a file before importing",
                                     QMessageBox.Ok, QMessageBox.Ok)
-            self.db_import_window.raise_()
-            self.db_import_window.setFocus(True)
-            self.db_import_window.activateWindow()
             return
         elif mat_name == '':
             QMessageBox.information(
                 self, "No material name",
                 "Please select a material name before importing",
                 QMessageBox.Ok, QMessageBox.Ok)
-            self.db_import_window.raise_()
-            self.db_import_window.setFocus(True)
-            self.db_import_window.activateWindow()
             return
         self.new_mat[:, 0] *= Units[chosen_unit]
         print(self.new_mat[:, 0])
@@ -258,3 +254,8 @@ class DBWindow(QWidget):
         self.raise_()
         self.setFocus(True)
         self.activateWindow()
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        if self.db_import_window is not None:
+            self.db_import_window.close()
+        return super().closeEvent(a0)
