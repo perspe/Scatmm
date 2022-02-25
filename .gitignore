@@ -1,9 +1,9 @@
 Test_Results
-*.gp
+modules/build
 *.svg
 *.xcf
 *Designer_UIs*
-Database/Backup
+config/Database/Backup
 Video
 .ipynb_checkpoints
 .virtual_documents

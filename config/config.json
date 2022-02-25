@@ -1,0 +1,26 @@
+{
+  "n_particles": [
+    "int",
+    60
+  ],
+  "n_iter": [
+    "int",
+    40
+  ],
+  "w": [
+    "float",
+    0.55
+  ],
+  "c1": [
+    "float",
+    1.2
+  ],
+  "c2": [
+    "float",
+    1.2
+  ],
+  "sim_points": [
+    "int",
+    150
+  ]
+}
