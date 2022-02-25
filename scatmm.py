@@ -38,6 +38,15 @@ from smm_uis.smm_properties_ui import Ui_Properties
 
 VERSION = "3.3.0"
 
+log_config = {
+    "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
+            '%(lineno)d:%(message)s',
+    "level": logging.DEBUG,
+}
+logging.basicConfig(**log_config)
+logging.getLogger("matplotlib").setLevel(logging.INFO)
+
+
 def find_loc(filename):
     """
     Find the location the first location of filename, following a order of path
@@ -51,6 +60,7 @@ def find_loc(filename):
     else:
         logging.info(f"{filename} in local config")
         return os.path.join("config", filename)
+
 
 # Default plot properties
 mstyle.use(find_loc("smm_style"))
@@ -1143,13 +1153,6 @@ class SMMGUI(QMainWindow):
 
 
 if __name__ == "__main__":
-    log_config = {
-        "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
-                '%(lineno)d:%(message)s',
-        "level": logging.DEBUG
-    }
-    logging.getLogger("matplotlib").setLevel(logging.INFO)
-    logging.basicConfig(**log_config)
     app = QtWidgets.QApplication(sys.argv)
     # Update matplotlib color to match qt application
     color = app.palette().color(QPalette.Background)

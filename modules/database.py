@@ -18,12 +18,15 @@ class Database():
         self.db_file: str = db_file
         self.prepend_path: str = os.path.dirname(db_file)
         with open(self.db_file) as file:
-            self.content: List[str] = file.read().splitlines()
+            self.content: List[str] = [
+                line for line in file.read().splitlines() if len(line) > 0
+            ]
+        logging.debug(f"{self.content=}")
 
     def add_content(self, name: str, data: npt.NDArray) -> None:
         """ Add content to the Database """
         with open(self.db_file, "a") as db_file:
-            db_file.write(name)
+            db_file.write(name + "\n")
         self.content.append(name)
         np.savetxt(os.path.join(self.prepend_path, name + ".txt"), data)
         logging.info(f"Added material '{name}' to Database")
