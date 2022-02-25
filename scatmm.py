@@ -13,17 +13,18 @@ import uuid
 import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 from PyQt5.QtGui import QPalette
+from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
+import appdirs
+import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import matplotlib.style as mstyle
-import matplotlib as mpl
 import numpy as np
 from numpy.linalg import norm
 import numpy.typing as npt
 import pandas as pd
 
-from Database.database import Database
+from modules.database import Database
 from modules.fig_class import PltFigure
 from modules.pso import particle_swarm
 from modules.s_matrix import smm_angle, smm_broadband, smm_layer
@@ -35,15 +36,24 @@ from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 
-VERSION = "3.2.0"
+VERSION = "3.3.0"
 
-# path = Path(__file__).resolve().parent
-# print(path)
-# logging.info(f"Updating path to {path}")
-# os.chdir(path)
+def find_loc(filename):
+    """
+    Find the location the first location of filename, following a order of path
+    1st - User Local Config (%APPDATA% or ~/.local/share)
+    2nd - Fallback to the base path
+    """
+    config_dir = os.path.join(appdirs.user_data_dir(), "scatmm")
+    if os.path.isdir(config_dir):
+        logging.info(f"{filename} in {config_dir}")
+        return os.path.join(config_dir, filename)
+    else:
+        logging.info(f"{filename} in local config")
+        return os.path.join("config", filename)
 
 # Default plot properties
-mstyle.use("smm_style")
+mstyle.use(find_loc("smm_style"))
 
 
 class OptimizeWorkder(QtCore.QThread):
@@ -171,7 +181,8 @@ class SMMGUI(QMainWindow):
         # Alias to add plots to the figure
         self.main_figure = self.main_canvas.axes
         # Initialize database
-        self.database = Database(os.path.join("Database", "database"))
+        db_file = os.path.join("Database", "database")
+        self.database = Database(find_loc(db_file))
         # Initialize list with the buttons in the opt and sim tabs
         self.sim_mat = [self.ui.sim_tab_sim_mat1, self.ui.sim_tab_sim_mat2]
         for sim_mat_i in self.sim_mat:
@@ -205,7 +216,7 @@ class SMMGUI(QMainWindow):
         self.imported_data: Any = []
         # Load simulation default properties
         logging.debug("Loading default global properties")
-        with open("config.json", "r") as config:
+        with open(find_loc("config.json"), "r") as config:
             self.global_properties = json.load(config)
         # Initialize main helper dictionaries for simulations
         self.sim_config = {
@@ -1135,11 +1146,10 @@ if __name__ == "__main__":
     log_config = {
         "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
                 '%(lineno)d:%(message)s',
-        # "filename": "scatmm.log",
         "level": logging.DEBUG
     }
-    logging.basicConfig(**log_config)
     logging.getLogger("matplotlib").setLevel(logging.INFO)
+    logging.basicConfig(**log_config)
     app = QtWidgets.QApplication(sys.argv)
     # Update matplotlib color to match qt application
     color = app.palette().color(QPalette.Background)

@@ -2,7 +2,7 @@
 
 ## Usage Example
 
-![Usage Demonstration](preview.gif)
+![Usage Demonstration](Help/preview.gif)
 
 ## Description
 
