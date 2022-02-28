@@ -14,7 +14,7 @@ import uuid
 import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator, QValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 import appdirs
 import matplotlib as mpl
@@ -37,7 +37,7 @@ from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 
-VERSION = "3.3.0"
+VERSION = "3.3.2"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -237,11 +237,10 @@ class SMMGUI(QMainWindow):
         self.layer_abs_gid: Any = [None, None]
         # List to store the previous simulation results
         self.sim_results = []
-        # Variable to store the export window Interface
-        self.export_ui = None
         # Store imported data
         self.imported_data: Any = []
         # Window variables
+        self.export_ui = None
         self.db_ui = None
         self.properties_window = None
         # Load simulation default properties
@@ -620,6 +619,7 @@ class SMMGUI(QMainWindow):
         """
         Get simulation configuration
         """
+        print(type(self.sim_data["theta"].displayText()))
         logging.info("Retrieving Simulation configuration")
         theta = np.radians(float(self.sim_data["theta"].text()))
         phi = np.radians(float(self.sim_data["phi"].text()))
@@ -659,22 +659,31 @@ class SMMGUI(QMainWindow):
             logging.debug("Simulation type detected")
             for material, thickness in zip(material_structure["materials"],
                                            material_structure["size"]):
+                thick = float(
+                    thickness.text()) if not thickness.text() == '' else 0
                 mat_i = material.currentText()
                 db_data: npt.NDArray = self.database[mat_i]
                 layer_list.append(
                     Layer3D(mat_i,
-                            float(thickness.text()),
+                            thick,
                             db_data[:, 0],
                             db_data[:, 1],
                             db_data[:, 2],
                             kind='cubic'))
         else:
             logging.debug("Optimization type detected")
-            for material, low_t, upp_t in zip(
-                    material_structure["materials"],
-                    material_structure["size_low"],
-                    material_structure["size_high"]):
-                thick.append([float(low_t.text()), float(upp_t.text())])
+            for material, low_t, upp_t in zip(material_structure["materials"],
+                                              material_structure["size_low"],
+                                              material_structure["size_high"]):
+                try:
+                    thick.append([float(low_t.text()), float(upp_t.text())])
+                except ValueError as error:
+                    logging.error(error)
+                    QMessageBox.warning(
+                        self, "Thickness Error",
+                        "Optimization thicknesses not defined!!",
+                        QMessageBox.Close, QMessageBox.Close)
+                    raise ValueError
                 mat_i = material.currentText()
                 db_data = self.database[mat_i]
                 layer_list.append(
@@ -989,7 +998,7 @@ class SMMGUI(QMainWindow):
         if self.ui.sim_param_check_angle.isChecked():
             logging.warning("Wrong Simulation type detected")
             error = "Optimization only available for Wavelength type" +\
-                "simulations\n\n Change?"
+                " simulations\n\n Change?"
             change = QMessageBox.question(self,
                                           "Invalid Simulation Mode",
                                           error,
