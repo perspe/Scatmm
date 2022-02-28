@@ -148,8 +148,6 @@ class ImportWindow(QWidget):
         self.import_model._data = self.data
         self.import_model.layoutChanged.emit()
 
-    """ Functions for the main buttons """
-
     def choose_db_mat(self):
         """
         Open a AskFileDialog to choose a file with the material data and

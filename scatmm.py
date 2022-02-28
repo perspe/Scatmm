@@ -14,7 +14,7 @@ import uuid
 import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QPalette
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator, QValidator
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 import appdirs
 import matplotlib as mpl
@@ -201,14 +201,23 @@ class SMMGUI(QMainWindow):
         # Initialize database
         db_file = os.path.join("Database", "database")
         self.database = Database(find_loc(db_file))
+        # Validator for doubles
+        self.double_validator = QDoubleValidator(self)
+        self.double_validator.setLocale(QtCore.QLocale("en_US"))
         # Initialize list with the buttons in the opt and sim tabs
         self.sim_mat = [self.ui.sim_tab_sim_mat1, self.ui.sim_tab_sim_mat2]
+        self.ui.sim_tab_sim_mat_size1.setValidator(self.double_validator)
+        self.ui.sim_tab_sim_mat_size2.setValidator(self.double_validator)
         for sim_mat_i in self.sim_mat:
             sim_mat_i.addItems(self.database.content)
         self.sim_mat_size = [
             self.ui.sim_tab_sim_mat_size1, self.ui.sim_tab_sim_mat_size2
         ]
         self.opt_mat = [self.ui.opt_tab_sim_mat1, self.ui.opt_tab_sim_mat2]
+        self.ui.opt_tab_sim_mat_size_max1.setValidator(self.double_validator)
+        self.ui.opt_tab_sim_mat_size_max2.setValidator(self.double_validator)
+        self.ui.opt_tab_sim_mat_size_min1.setValidator(self.double_validator)
+        self.ui.opt_tab_sim_mat_size_min2.setValidator(self.double_validator)
         for opt_mat_i in self.opt_mat:
             opt_mat_i.addItems(self.database.content)
         self.opt_mat_size_min = [
@@ -278,7 +287,6 @@ class SMMGUI(QMainWindow):
         """
         Associate all UI elements with action functions
         """
-        logging.debug("Connect buttons to functions")
         self.ui.sim_tab_add_layer_button.clicked.connect(
             lambda: self.add_layer("sim"))
         self.ui.opt_tab_add_layer_button.clicked.connect(
@@ -289,6 +297,24 @@ class SMMGUI(QMainWindow):
             lambda: self.rmv_layer("opt"))
         for checkbox in self.sim_check:
             checkbox.stateChanged.connect(self.plot_abs_layer)
+        # Add Validators to several entries
+        self.ui.sim_param_lmb_max.setValidator(QIntValidator(self))
+        self.ui.sim_param_lmb_min.setValidator(QIntValidator(self))
+        self.ui.sim_param_theta.setValidator(QIntValidator(0, 89, self))
+        self.ui.sim_param_phi.setValidator(QIntValidator(0, 360, self))
+        double_validators = [
+            self.ui.sim_tab_ref_k, self.ui.sim_tab_ref_n,
+            self.ui.sim_tab_trn_k, self.ui.sim_tab_trn_n,
+            self.ui.opt_tab_ref_k, self.ui.opt_tab_ref_n,
+            self.ui.opt_tab_trn_k, self.ui.opt_tab_trn_n
+        ]
+        for validator in double_validators:
+            validator.setValidator(self.double_validator)
+        # Regex validator for the polarization vectors
+        pol_regex = QtCore.QRegExp("[0-9]+\\.?[0-9]*j?")
+        self.ui.sim_param_pte.setValidator(QRegExpValidator(pol_regex))
+        self.ui.sim_param_ptm.setValidator(QRegExpValidator(pol_regex))
+        # Connect remaining buttons
         self.ui.sim_param_check_angle.stateChanged.connect(self.sim_angle)
         self.ui.sim_param_check_lmb.stateChanged.connect(self.sim_lmb)
         self.ui.sim_tab_sim_button.clicked.connect(self.simulate)
@@ -495,6 +521,7 @@ class SMMGUI(QMainWindow):
                 f"sim_tab_sim_mat_size{len(self.sim_mat_size)+1}")
             self.ui.gridLayout_2.addWidget(self.sim_mat_size[-1],
                                            len(self.sim_mat_size), 3, 1, 1)
+            self.sim_mat_size[-1].setValidator(self.double_validator)
         else:
             logging.info("Adding Optimization layer")
             # Add combobox for the material
@@ -544,6 +571,8 @@ class SMMGUI(QMainWindow):
                 f"opt_tab_sim_mat_size_max{len(self.opt_mat_size_max)+1}")
             self.ui.gridLayout_4.addWidget(self.opt_mat_size_max[-1],
                                            len(self.opt_mat_size_max), 3, 1, 1)
+            self.opt_mat_size_max[-1].setValidator(self.double_validator)
+            self.opt_mat_size_min[-1].setValidator(self.double_validator)
 
     def rmv_layer(self, tab):
         """
@@ -592,57 +621,31 @@ class SMMGUI(QMainWindow):
         Get simulation configuration
         """
         logging.info("Retrieving Simulation configuration")
-        try:
-            theta = float(self.sim_data["theta"].text())
-            phi = np.radians(float(self.sim_data["phi"].text()))
-            if theta % 90 == 0 and theta != 0:
-                raise Exception("Theta not valid")
-            theta = np.radians(theta)
-            pol = np.array([
-                complex(self.sim_data["pte"].text()),
-                complex(self.sim_data["ptm"].text())
-            ])
-            pol /= norm(pol)
-            lmb_min = float(self.sim_data["lmb_min"].text())
-            lmb_max = float(self.sim_data["lmb_max"].text())
-            logging.debug(f"Sim Config: {theta}:{phi}:{lmb_min}:{lmb_max}")
-            return theta, phi, pol, lmb_min, lmb_max
-        except ValueError:
-            logging.warning("Invalid simulation number")
-            title = "Error: Invalid number"
-            message = "Invalid simulation parameter"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
-                                QMessageBox.Close)
-            raise ValueError
-        except Exception:
-            logging.warning("Invalid Simulation angle")
-            title = "Error: Invalid number"
-            message = "Not valid incidence angle - θ is multiple of 90º"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
-                                QMessageBox.Close)
-            raise Exception
+        theta = np.radians(float(self.sim_data["theta"].text()))
+        phi = np.radians(float(self.sim_data["phi"].text()))
+        lmb_min = float(self.sim_data["lmb_min"].text())
+        lmb_max = float(self.sim_data["lmb_max"].text())
+        pol = np.array([
+            complex(self.sim_data["pte"].text()),
+            complex(self.sim_data["ptm"].text())
+        ])
+        pol /= norm(pol)
+        logging.debug(f"Sim Config: {theta}:{phi}:{lmb_min}:{lmb_max}:{pol}")
+        return theta, phi, pol, lmb_min, lmb_max
 
     def get_medium_config(self, data_structure):
         """
         Get data for the transmission and reflection media
         """
         logging.info("Retrieve envolvent medium configuration")
-        try:
-            ref_medium_n = float(data_structure["ref_n"].text())
-            ref_medium_k = float(data_structure["ref_k"].text())
-            ref_medium = ((ref_medium_n + 1j * ref_medium_k)**2, 1)
-            trn_medium_n = float(data_structure["trn_n"].text())
-            trn_medium_k = float(data_structure["trn_k"].text())
-            trn_medium = ((trn_medium_n + 1j * trn_medium_k)**2, 1)
-            logging.debug(f"Retrieved: {ref_medium}:{trn_medium}")
-            return ref_medium, trn_medium
-        except ValueError:
-            logging.warning("Invalid medium value")
-            title = "Error: Invalid number"
-            message = "Invalid parameter in Ref/Transmission regions"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
-                                QMessageBox.Close)
-            raise ValueError
+        ref_medium_n = float(data_structure["ref_n"].text())
+        ref_medium_k = float(data_structure["ref_k"].text())
+        ref_medium = ((ref_medium_n + 1j * ref_medium_k)**2, 1)
+        trn_medium_n = float(data_structure["trn_n"].text())
+        trn_medium_k = float(data_structure["trn_k"].text())
+        trn_medium = ((trn_medium_n + 1j * trn_medium_k)**2, 1)
+        logging.debug(f"Retrieved: {ref_medium}:{trn_medium}")
+        return ref_medium, trn_medium
 
     def get_material_config(self, material_structure, tab="sim"):
         """
@@ -652,44 +655,36 @@ class SMMGUI(QMainWindow):
         thick = []
         layer_list = []
         # Get results depending on the respective tab
-        try:
-            if tab == "sim":
-                logging.debug("Simulation type detected")
-                for material, thickness in zip(material_structure["materials"],
-                                               material_structure["size"]):
-                    mat_i = material.currentText()
-                    db_data: npt.NDArray = self.database[mat_i]
-                    layer_list.append(
-                        Layer3D(mat_i,
-                                float(thickness.text()),
-                                db_data[:, 0],
-                                db_data[:, 1],
-                                db_data[:, 2],
-                                kind='cubic'))
-            else:
-                logging.debug("Optimization type detected")
-                for material, low_t, upp_t in zip(
-                        material_structure["materials"],
-                        material_structure["size_low"],
-                        material_structure["size_high"]):
-                    thick.append([float(low_t.text()), float(upp_t.text())])
-                    mat_i = material.currentText()
-                    db_data = self.database[mat_i]
-                    layer_list.append(
-                        Layer3D(mat_i,
-                                float(low_t.text()),
-                                db_data[:, 0],
-                                db_data[:, 1],
-                                db_data[:, 2],
-                                kind='cubic'))
-            thick = np.array(thick)
-        except ValueError:
-            logging.warning("Invalid Layer Parameter")
-            title = "Error: Invalid parameter"
-            message = "Improperly defined layer for simulation"
-            QMessageBox.warning(self, title, message, QMessageBox.Close,
-                                QMessageBox.Close)
-            raise ValueError
+        if tab == "sim":
+            logging.debug("Simulation type detected")
+            for material, thickness in zip(material_structure["materials"],
+                                           material_structure["size"]):
+                mat_i = material.currentText()
+                db_data: npt.NDArray = self.database[mat_i]
+                layer_list.append(
+                    Layer3D(mat_i,
+                            float(thickness.text()),
+                            db_data[:, 0],
+                            db_data[:, 1],
+                            db_data[:, 2],
+                            kind='cubic'))
+        else:
+            logging.debug("Optimization type detected")
+            for material, low_t, upp_t in zip(
+                    material_structure["materials"],
+                    material_structure["size_low"],
+                    material_structure["size_high"]):
+                thick.append([float(low_t.text()), float(upp_t.text())])
+                mat_i = material.currentText()
+                db_data = self.database[mat_i]
+                layer_list.append(
+                    Layer3D(mat_i,
+                            float(low_t.text()),
+                            db_data[:, 0],
+                            db_data[:, 1],
+                            db_data[:, 2],
+                            kind='cubic'))
+        thick = np.array(thick)
         logging.debug(f"Data:\n{thick}\n{layer_list}")
         return thick, layer_list
 
@@ -701,15 +696,12 @@ class SMMGUI(QMainWindow):
         """
         logging.info("Starting Simulation....")
         # Get all the sim_data values
-        try:
-            theta, phi, pol, lmb_min, lmb_max = self.get_sim_data()
-            lmb = np.linspace(lmb_min, lmb_max,
-                              self.global_properties["sim_points"][1])
-            # Get all the sim_config_values
-            ref_medium, trn_medium = self.get_medium_config(self.sim_config)
-            _, layer_list = self.get_material_config(self.sim_config)
-        except (ValueError, Exception):
-            return
+        theta, phi, pol, lmb_min, lmb_max = self.get_sim_data()
+        lmb = np.linspace(lmb_min, lmb_max,
+                          self.global_properties["sim_points"][1])
+        # Get all the sim_config_values
+        ref_medium, trn_medium = self.get_medium_config(self.sim_config)
+        _, layer_list = self.get_material_config(self.sim_config)
 
         try:
             if self.ui.sim_param_check_lmb.isChecked():
@@ -993,10 +985,7 @@ class SMMGUI(QMainWindow):
         Perform Results Optimization (Splits into a new worker thread)
         """
         logging.info("Starting Optimization")
-        try:
-            _, _, _, lmb_min, lmb_max = self.get_sim_data()
-        except (ValueError, Exception):
-            return
+        _, _, _, lmb_min, lmb_max = self.get_sim_data()
         if self.ui.sim_param_check_angle.isChecked():
             logging.warning("Wrong Simulation type detected")
             error = "Optimization only available for Wavelength type" +\
