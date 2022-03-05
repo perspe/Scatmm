@@ -28,7 +28,7 @@ class ExpWindow(QWidget):
             self.ui.absorption_checkbox,
             self.ui.layers_checkbox
         ]
-        export_names = [sim_name.ID for sim_name in self.sim_results]
+        export_names = [sim_name.repr for sim_name in self.sim_results]
         self.chosen_sim.addItems(export_names)
         self.initializeUI()
         self.update_sim_info()
@@ -43,39 +43,21 @@ class ExpWindow(QWidget):
     def update_sims(self, sim_results):
         logging.info("Updating simulation info in export window")
         self.sim_results = sim_results
-        export_names = [sim_name.ID for sim_name in self.sim_results]
+        export_names = [sim_name.repr for sim_name in self.sim_results]
         self.chosen_sim.clear()
         self.chosen_sim.addItems(export_names)
 
     def update_sim_info(self):
         """ Update the simulation information in the QText Edit """
         sim_choice = self.chosen_sim.currentText()
-        layer_info = "----------------------\nLayers:\n"
-        type = ""
-        phi = ""
-        i_med = ""
-        t_med = ""
-        pol = ""
+        summary=""
         for sim in self.sim_results:
-            if sim.ID == sim_choice:
-                if sim.Type == SType.WVL:
-                    type = "Broadband Simulation:\n\n"
-                    type += f"λ : {sim.Lmb.min()} - {sim.Lmb.max()}\n"
-                    type += f"θ : {sim.Theta}\n"
-                elif sim.Type == SType.ANGLE:
-                    type = "Angular simulation:\n\n"
-                    type += f"θ : {sim.Theta.min()} - {sim.Theta.max()}\n"
-                    type += f"λ : {sim.Lmb}\n"
-                else:
-                    raise Exception("Invalid SType")
-
-                phi = f"Φ : {sim.Phi}\n"
-                pol = f"Polarization: {sim.Pol} (PTM, PTE)\n"
-                i_med = f"Incidence Medium: {sim.INC_MED}\n"
-                t_med = f"Transmission Medium: {sim.TRN_MED}\n"
-                for layer in sim.Layers:
-                    layer_info += f"{layer.name} : ({layer.thickness} nm)\n"
-        summary = type + phi + pol + i_med + t_med + layer_info
+            print([sim == sim_i for sim_i in self.sim_results])
+            if sim.repr == sim_choice:
+                logging.debug(f"Chosen {sim}")
+                summary = sim.description()
+                break
+        logging.debug(summary)
         self.ui.simulation_summary.setText(summary)
 
     """ Button functions """
@@ -95,16 +77,11 @@ class ExpWindow(QWidget):
             return
         for result in self.sim_results:
             header = ""
-            if result.ID == sim_choice:
+            if result.repr == sim_choice:
                 # Start building the export array
-                if result.Type == SType.WVL:
-                    export_array = result.Lmb
-                    header += "Wavelength(nm)"
-                elif result.Type == SType.ANGLE:
-                    export_array = result.Theta
-                    header += "Angle"
-                else:
-                    raise Exception("Invalid SType")
+                xlabel, xdata = result.xinfo()
+                header += xlabel
+                export_array = xdata
                 export_array = export_array[:, np.newaxis]
                 if ref_check:
                     export_array = np.concatenate(
@@ -120,7 +97,7 @@ class ExpWindow(QWidget):
                             (1-result.Ref-result.Trn)[:, np.newaxis]), axis=1)
                     header += " Abs"
                 if layers_check and result.Type is not SType.ANGLE:
-                    for i in range(result.NLayers):
+                    for i in range(len(result.Layers)):
                         abs_i = smm_layer(result.Layers, i+1, result.Theta,
                                           result.Phi, result.Lmb, result.Pol,
                                           result.INC_MED, result.TRN_MED)
@@ -129,6 +106,7 @@ class ExpWindow(QWidget):
                         exp_header = result.Layers[i].name.replace(" ", "_")
                         header += f" Abs_{exp_header}"
                 np.savetxt(savepath[0], export_array, header=header)
+                break
         QMessageBox.information(self, "Successful Export",
                                 "Results Exported Successfully!",
                                 QMessageBox.Ok, QMessageBox.Ok)
@@ -151,18 +129,9 @@ class ExpWindow(QWidget):
         layers_check = self.export_checks[3].isChecked()
         for result in self.sim_results:
             header = ""
-            # Start building the export array
-            if result.Type == SType.WVL:
-                logging.debug("WVL Simulation...")
-                export_array = result.Lmb
-                header += "Wavelength(nm)"
-            elif result.Type == SType.ANGLE:
-                logging.debug("ANGLE Simulation...")
-                export_array = result.Theta
-                header += "Angle"
-            else:
-                logging.critical("Invalid SType!!!")
-                raise Exception("Invalid SType")
+            xlabel, xdata = result.xinfo()
+            header += xlabel
+            export_array = xdata
             export_array = export_array[:, np.newaxis]
             if ref_check:
                 logging.debug("Exporting Reflection....")
@@ -182,7 +151,7 @@ class ExpWindow(QWidget):
                 header += " Abs"
             if layers_check and result.Type is not SType.ANGLE:
                 logging.debug("Exporting Layers....")
-                for i in range(result.NLayers):
+                for i in range(len(result.Layers)):
                     abs_i = smm_layer(result.Layers, i+1, result.Theta,
                                       result.Phi, result.Lmb, result.Pol,
                                       result.INC_MED, result.TRN_MED)
@@ -191,8 +160,7 @@ class ExpWindow(QWidget):
                     exp_header = result.Layers[i].name.replace(" ", "_")
                     header += f" Abs_{exp_header}"
             # Replace unwnated " " and "|" from the export name
-            id = result.ID.replace("|", "_")
-            id = id.replace(" ", "")
+            id = result.repr.replace("|", "_").replace(" ", "")
             export_path = os.path.join(export_dir, id)
             np.savetxt(export_path, export_array, header=header)
         self.close()
@@ -207,13 +175,8 @@ class ExpWindow(QWidget):
         sim_choice = self.chosen_sim.currentText()
         self.preview_window = FigWidget(f"Preview {sim_choice}")
         for result in self.sim_results:
-            if result.ID == sim_choice:
-                if result.Type == SType.WVL:
-                    xlabel = "Wavelength (nm)"
-                    xdata = result.Lmb
-                elif result.Type == SType.ANGLE:
-                    xlabel = "Angle (θ)"
-                    xdata = result.Theta
+            if result.repr == sim_choice:
+                xlabel, xdata = result.xinfo()
                 self.preview_fig = PltFigure(self.preview_window.layout,
                                              xlabel, "R/T/Abs", width=7)
                 self.preview_window.show()

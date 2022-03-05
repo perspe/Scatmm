@@ -14,7 +14,7 @@ import uuid
 import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator, QValidator
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 import appdirs
 import matplotlib as mpl
@@ -37,7 +37,7 @@ from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 
-VERSION = "3.3.2"
+VERSION = "3.3.3"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -619,7 +619,6 @@ class SMMGUI(QMainWindow):
         """
         Get simulation configuration
         """
-        print(type(self.sim_data["theta"].displayText()))
         logging.info("Retrieving Simulation configuration")
         theta = np.radians(float(self.sim_data["theta"].text()))
         phi = np.radians(float(self.sim_data["phi"].text()))
@@ -717,24 +716,20 @@ class SMMGUI(QMainWindow):
                 ref, trn = smm_broadband(layer_list, theta, phi, lmb, pol,
                                          ref_medium, trn_medium)
                 self.sim_plot_data(lmb, ref, trn)
-                self.sim_results_update(layer_list, theta, phi, pol, lmb, ref,
-                                        trn, ref_medium, trn_medium)
+                results = SRes(len(self.sim_results), SType.WVL, layer_list,
+                               theta, phi, pol, ref_medium, trn_medium,
+                               lmb, ref, trn)
+                self.sim_results.append(results)
             else:
                 theta = np.linspace(0, 89,
                                     self.global_properties["sim_points"][1])
                 ref, trn = smm_angle(layer_list, np.radians(theta), phi,
                                      lmb_min, pol, ref_medium, trn_medium)
                 self.sim_plot_data(theta, ref, trn)
-                self.sim_results_update(layer_list,
-                                        theta,
-                                        phi,
-                                        pol,
-                                        lmb_min,
-                                        ref,
-                                        trn,
-                                        ref_medium,
-                                        trn_medium,
-                                        type=SType.ANGLE)
+                results = SRes(len(self.sim_results), SType.ANGLE, layer_list,
+                               theta, phi, pol, ref_medium, trn_medium,
+                               lmb, ref, trn)
+                self.sim_results.append(results)
             # Reinitialize the absorption checkboxes
             self.reinit_abs_checkbox()
             logging.info("Finished Simulation")
@@ -771,43 +766,6 @@ class SMMGUI(QMainWindow):
                                   label="A Sim(" + simulations + ")")
         self.main_canvas.draw()
 
-    def sim_results_update(self,
-                           layer_list,
-                           theta,
-                           phi,
-                           pol,
-                           lmb,
-                           ref,
-                           trn,
-                           i_med,
-                           t_med,
-                           type=SType.WVL):
-        """
-        Update the simulation results
-        """
-        # The identifier string is of the form S(sim)(theta,phi)|Layer_config|
-        logging.info("Updating simulation results buffer...")
-        if type == SType.WVL:
-            logging.debug("Wavelength Simulation Detected")
-            ident_string = "W" + str(len(self.sim_results) + 1) + "(" + str(
-                int(math.degrees(theta))) + "," + str(int(
-                    math.degrees(phi))) + ") "
-        elif type == SType.ANGLE:
-            logging.debug("Angle Simulation Detected")
-            ident_string = "A" + str(len(self.sim_results) + 1) + "(" + str(
-                int(lmb)) + "," + str(int(math.degrees(phi))) + ") "
-        else:
-            logging.error("Unknown Simulation Type")
-            raise Exception("Unknown Simulation Type")
-        for layer in layer_list:
-            ident_string += "|" + layer.name[:5] + "(" + str(
-                layer.thickness) + ")"
-        res_struct = SRes(ident_string, type, layer_list, len(layer_list),
-                          theta, phi, pol, lmb, i_med, t_med, ref, trn)
-        logging.debug("Adding Results to internal list")
-        self.sim_results.append(res_struct)
-        logging.debug("Updating Clear Button")
-        self.clear_button.setText("Clear (" + str(len(self.sim_results)) + ")")
 
     def clear_sim_buffer(self):
         """

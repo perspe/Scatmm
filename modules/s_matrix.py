@@ -69,6 +69,15 @@ class Layer1D():
     def __repr__(self) -> str:
         return f"{self.name}({self.thickness} nm)"
 
+    def __eq__(self, __o) -> bool:
+        """ Create a layer comparison through the properties """
+        if not isinstance(__o, Layer1D):
+            raise TypeError
+        if self.n == __o.n and self.k == __o.k and self.thickness == __o.thickness:
+            return True
+        else:
+            return False
+
 
 class Layer3D():
     """
@@ -85,6 +94,9 @@ class Layer3D():
         self.name: str = name
         self.lmb: list = [np.min(lmb), np.max(lmb)]
         self.thickness: float = thickness
+        # Store initial data for comparisons
+        self._og_n = n_array
+        self._og_k = k_array
         self.n = interp1d(lmb, n_array, **kwargs)
         self.k = interp1d(lmb, k_array, **kwargs)
         logging.info(f"Layer: {self} created...")
@@ -105,6 +117,17 @@ class Layer3D():
 
     def __repr__(self) -> str:
         return f"{self.name}({self.thickness} nm)"
+
+    def __eq__(self, __o) -> bool:
+        """ Create a layer comparison through the properties """
+        if not isinstance(__o, Layer3D):
+            raise TypeError
+        n_bool = self._og_n == __o._og_n
+        k_bool = self._og_k == __o._og_k
+        if n_bool.all() and k_bool.all() and self.thickness == __o.thickness:
+            return True
+        else:
+            return False
 
 
 """ Helper functions """
