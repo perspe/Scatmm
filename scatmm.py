@@ -5,7 +5,6 @@ Main script that combines everything from the SMM method
 
 import json
 import logging
-import math
 import os
 import shutil
 import sys
@@ -14,7 +13,7 @@ import uuid
 import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator, QValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator
 from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
 import appdirs
 import matplotlib as mpl
@@ -36,8 +35,9 @@ from smm_uis.db_window import DBWindow
 from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
+from smm_uis.imp_window import ImpPrevWindow
 
-VERSION = "3.3.3"
+VERSION = "3.4.0"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -243,6 +243,7 @@ class SMMGUI(QMainWindow):
         self.export_ui = None
         self.db_ui = None
         self.properties_window = None
+        self.import_window = None
         # Load simulation default properties
         logging.debug("Loading default global properties")
         with open(find_loc("config.json"), "r") as config:
@@ -1030,31 +1031,11 @@ class SMMGUI(QMainWindow):
         """
         logging.info("Import Button Clicked")
         filepath = QFileDialog.getOpenFileName(self, 'Open File')
-        title = "Invalid Import Format"
-        msg = "The imported data has an unacceptable format"
         if filepath[0] == '':
             logging.debug("No file provided... Ignoring...")
             return
-        try:
-            data = self.get_data_from_file(filepath[0])
-        except ValueError:
-            logging.warning("Invalid Import Data format")
-            QMessageBox.warning(self, title, msg, QMessageBox.Close,
-                                QMessageBox.Close)
-            return
-        except Exception:
-            logging.warning("Invalid Import Data format")
-            QMessageBox.warning(self, title, msg + " (Directory)",
-                                QMessageBox.Close, QMessageBox.Close)
-            return
-        self.imported_data = data[:, [0, 1]]
-        self.delete_plot("Imported_Data")
-        self.main_figure.plot(data[:, 0],
-                              data[:, 1],
-                              '--',
-                              label="Import Data",
-                              gid="Imported_Data")
-        self.main_canvas.draw()
+        self.import_window = ImpPrevWindow(self, mode="imp", filepath=filepath[0])
+        self.import_window.show()
 
     """ Generic function to import data from file """
 
@@ -1090,36 +1071,21 @@ class SMMGUI(QMainWindow):
         """ Check if only a single file was imported and then
         import the data from that file """
         logging.debug("Handling Drop event")
-        title = "Invalid Import Format"
-        msg = "The imported data has an unacceptable format"
-        if event.mimeData().hasUrls():
-            url = event.mimeData().urls()
-            if len(url) > 1:
-                logging.warning("Invalid number of files dragged..")
-                QMessageBox.warning(self, "Multiple Import",
-                                    "Only a single file can be imported!!!",
-                                    QMessageBox.Close, QMessageBox.Close)
-                return
-            try:
-                data = self.get_data_from_file(str(url[0].toLocalFile()))
-            except ValueError:
-                logging.warning("Invalid Import Data format")
-                QMessageBox.warning(self, title, msg, QMessageBox.Close,
-                                    QMessageBox.Close)
-                return
-            except IsADirectoryError:
-                logging.warning("Invalid Import Data format")
-                QMessageBox.warning(self, title, msg + " (Directory)",
-                                    QMessageBox.Close, QMessageBox.Close)
-                return
-            self.delete_plot("Imported_Data")
-            self.imported_data = data[:, [0, 1]]
-            self.main_figure.plot(data[:, 0],
-                                  data[:, 1],
-                                  "--",
-                                  label="Import Data",
-                                  gid="Imported_Data")
-            self.main_canvas.draw()
+        if not event.mimeData().hasUrls():
+            return
+        url = event.mimeData().urls()
+        if len(url) > 1:
+            logging.warning("Invalid number of files dragged..")
+            QMessageBox.warning(self, "Multiple Import",
+                                "Only a single file can be imported!!!",
+                                QMessageBox.Close, QMessageBox.Close)
+            return
+        filepath = str(url[0].toLocalFile())
+        if os.path.isdir(filepath):
+            logging.info("Invalid File Type")
+            return
+        self.import_window = ImpPrevWindow(self, mode="imp", filepath=filepath)
+        self.import_window.show()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         if self.properties_window is not None:
@@ -1128,6 +1094,9 @@ class SMMGUI(QMainWindow):
         if self.db_ui is not None:
             logging.info("Database Window still opened... Closing...")
             self.db_ui.close()
+        if self.import_window is not None:
+            logging.info("Import Window still opened... Closing...")
+            self.import_window.close()
         return super().closeEvent(a0)
 
 
