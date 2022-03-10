@@ -42,4 +42,4 @@ It also possible to run everything from the backend functions (as exmplained in 
 When run the program will display the image bellow.
 The help menu provides a brief description of all the program's capabilities
 
-![Scatmm Interface](./Help/basic_)
+![Scatmm Interface](./Help/basic_gui.png)
