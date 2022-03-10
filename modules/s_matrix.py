@@ -165,7 +165,7 @@ def _initialize_smm(theta, phi, lmb, pol, inc_medium):
 
 
 """ Main functions """
-Layer_Type = Union[Layer1D, Layer3D]
+Layer_Type = Union[Layer3D, Layer1D]
 
 
 def smm(layer_list: List[Layer_Type], theta: float, phi: float, lmb: float,

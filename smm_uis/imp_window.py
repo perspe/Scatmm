@@ -17,7 +17,7 @@ from .smm_import_db_mat import Ui_ImportDB
 
 Units = {"nm": 1, "um": 1e3, "mm": 1e6}
 Decimal = {"Dot (.)": ".", "Comma (,)": ","}
-Separator = {"comma (,)": r",", "space ( )": r"\s+", ";": ";", "other": " "}
+Separator = {"comma (,)": ",", "space ( )": r"\s+", ";": ";", "other": " "}
 """ Model to show a preview of the imported data """
 
 class TableModel(QAbstractTableModel):

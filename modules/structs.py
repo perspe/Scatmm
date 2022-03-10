@@ -26,19 +26,18 @@ class SRes:
 
     def __post_init__(self):
         """ Create internal variables to represent the particular class """
-        print(self.Type)
-        self._REPR = ""
         if self.Type == SType.WVL:
-            self._REPR += f"W{self.ID}({self.Theta},{self.Phi})"
+            self._REPR = f"W{self.ID}({self.Theta},{self.Phi})"
             self._Type = ("Wavelength (nm)", self.Lmb)
         elif self.Type == SType.ANGLE:
-            self._REPR += f"A{self.ID}({self.Theta},{self.Phi})"
+            self._REPR = f"A{self.ID}({self.Lmb},{self.Phi})"
             self._Type = ("Angle (θ)", self.Theta)
         else:
             raise Exception("Unknown Simulation Type")
         for layer in self.Layers:
             self._REPR += "|" + layer.name[:5] + "(" + str(
                 layer.thickness) + ")"
+        logging.debug(f"{self._REPR=}")
 
     def description(self):
         """ Return a detailed description of the Layer """
