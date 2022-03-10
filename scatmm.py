@@ -953,6 +953,13 @@ class SMMGUI(QMainWindow):
         Perform Results Optimization (Splits into a new worker thread)
         """
         logging.info("Starting Optimization")
+        if self.imported_data is None or len(self.imported_data) == 0:
+            logging.warning("Missing Imported Data for Optimization")
+            QMessageBox.warning(self, "Import Data missing",
+                                "Missing data to perform optimization",
+                                QMessageBox.Close, QMessageBox.Close)
+            self.ui.opt_res_text.append("Optimization Failed")
+            return
         _, _, _, lmb_min, lmb_max = self.get_sim_data()
         if self.ui.sim_param_check_angle.isChecked():
             logging.warning("Wrong Simulation type detected")
@@ -968,6 +975,7 @@ class SMMGUI(QMainWindow):
                 self.ui.sim_param_check_lmb.setChecked(True)
             return
         try:
+            logging.debug(self.imported_data)
             # Get the data for optimization
             lmb = self.imported_data[:, 0].T
             compare_data = self.imported_data[:, 1][:, np.newaxis]
@@ -998,13 +1006,7 @@ class SMMGUI(QMainWindow):
         # The ValueError and Exception are handled inside the calling functions
         except (ValueError, Exception) as error:
             logging.warning(error)
-            self.ui.opt_res_text.append("Optimization Failed")
-        except TypeError as error:
-            logging.warning(error)
-            QMessageBox.warning(self, "Import Data missing",
-                                "Missing data to perform optimization",
-                                QMessageBox.Close, QMessageBox.Close)
-            self.ui.opt_res_text.append("Optimization Failed")
+            return
         except MatOutsideBounds as error:
             logging.warning(error)
             title = "Error: Material Out of Bounds"

@@ -189,7 +189,7 @@ class ImpPrevWindow(QWidget):
     def imp_data(self):
         """ Import the results to the parent variable """
         data = self.data.values
-        self.parent.import_data = data[:, [0, 1]]
+        self.parent.imported_data = data[:, [0, 1]]
         self.parent.delete_plot("Imported_Data")
         self.parent.main_figure.plot(data[:, 0],
                               data[:, 1],
