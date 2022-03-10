@@ -59,62 +59,23 @@
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
-<li><a href="#how-data-should-be-formated">How Data Should be Formated</a></li>
-<li><a href="#examples">Examples</a></li>
+<li><a href="#import-window">Import Window</a></li>
 </ul>
 </nav>
-<h2 id="how-data-should-be-formated">How Data Should be Formated</h2>
-<p>Data should be imported from text files. The import functionality has a limited range of applications, thus leaving the burden for the user to adequately prepare the data before importing. The data should have a tabular format of numeric-only entries separated either by either space|,|tab|;. Any non-numeric data should be commented with # (see Example 3 bellow). Furthermore, when importing the data the program does not check the number of columns in the file. For the case of optimizations (<em>Import button</em>), only the first two columns will be used and will be assumed to be wavelength (in nm) and either absorption/reflection/transmission (<a href="Optimization.html">Optimization</a>). To import materials to the database 3 columns will be used and assumed to be wavelength/real refractive index/complex refractive index (<a href="Manage%20Database.html">Manage Database</a>). Below are provided 3 examples of possible data to be imported.</p>
-<h2 id="examples">Examples</h2>
-<ul>
-<li>Example 1:</li>
-</ul>
+<h2 id="import-window">Import Window</h2>
+<p>Data should be imported from text files (.txt, .csv, .tsv, …). When importing data a window, a new window will popup that allows the user to see how the data will be imported.</p>
+<p>There are 4 main aspects for the window (see image bellow):</p>
 <blockquote>
-<p>251.57 2.31717213 0.577801613<br />
-253.16 2.33168536 0.569701795<br />
-254.75 2.34626565 0.560078808<br />
-256.34 2.36067795 0.548891345<br />
-257.93 2.37467908 0.536140733<br />
-259.52 2.38802531 0.521875087<br />
-261.12 2.40048438 0.506187696<br />
-262.71 2.41184546 0.489213773<br />
-264.3 2.42192779 0.471124947<br />
-265.89 2.43058781 0.45212117<br />
-</p>
+<ol type="1">
+<li>Up top the filename will appear (in case of iporting for the database there is also a textbox to choose the file name</li>
+<li>In the second section the user can choose the separator, decimal point and lines to ignore for the imported file</li>
+<li>Then there is the preview of the data. Good columns will be normally presented, while columns that will be ignored upon import will be shown in ref (this will depend on wether the import is for the database or optimization).</li>
+<li>In the botton the user can choose the units of the imported material, preview the data or perform the import action</li>
+</ol>
 </blockquote>
-<ul>
-<li>Example 2:</li>
-</ul>
-<blockquote>
-<p>251.57,2.31717213,0.577801613<br />
-253.16,2.33168536,0.569701795<br />
-254.75,2.34626565,0.560078808<br />
-256.34,2.36067795,0.548891345<br />
-257.93,2.37467908,0.536140733<br />
-259.52,2.38802531,0.521875087<br />
-261.12,2.40048438,0.506187696<br />
-262.71,2.41184546,0.489213773<br />
-264.3,2.42192779,0.471124947<br />
-265.89,2.43058781,0.45212117<br />
-</p>
-</blockquote>
-<ul>
-<li>Example 3:</li>
-</ul>
-<blockquote>
-<p>#Column1 Column2 Column3<br />
-251.57 2.31717213 0.577801613<br />
-253.16 2.33168536 0.569701795<br />
-254.75 2.34626565 0.560078808<br />
-256.34 2.36067795 0.548891345<br />
-257.93 2.37467908 0.536140733<br />
-259.52 2.38802531 0.521875087<br />
-261.12 2.40048438 0.506187696<br />
-262.71 2.41184546 0.489213773<br />
-264.3 2.42192779 0.471124947<br />
-265.89 2.43058781 0.45212117<br />
-</p>
-</blockquote>
-<p><a href="help.html">Return to Home page</a></p>
+<p>In the case of Database Materials, the top part will have a “Choose Material” button, that will allow the user to choose the file with the data to be imported, and a “Material Name”, where the user can add a name for the material</p>
+<figure>
+<img src="./import_window.png" alt="Import Window" /><figcaption aria-hidden="true">Import Window</figcaption>
+</figure>
 </body>
 </html>
