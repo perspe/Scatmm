@@ -631,7 +631,8 @@ class SMMGUI(QMainWindow):
                 complex(self.sim_data["ptm"].text())
             ])
             pol /= norm(pol)
-            logging.debug(f"Sim Config: {theta}:{phi}:{lmb_min}:{lmb_max}:{pol}")
+            logging.debug(
+                f"Sim Config: {theta}:{phi}:{lmb_min}:{lmb_max}:{pol}")
         except ValueError as error:
             raise ValueError(error)
         return theta, phi, pol, lmb_min, lmb_max
@@ -683,10 +684,9 @@ class SMMGUI(QMainWindow):
                 thick.append([float(low_t.text()), float(upp_t.text())])
             except ValueError as error:
                 logging.error(error)
-                QMessageBox.warning(
-                    self, "Thickness Error",
-                    "Optimization thicknesses not defined!!",
-                    QMessageBox.Close, QMessageBox.Close)
+                QMessageBox.warning(self, "Thickness Error",
+                                    "Optimization thicknesses not defined!!",
+                                    QMessageBox.Close, QMessageBox.Close)
                 raise ValueError
             mat_i = material.currentText()
             db_data = self.database[mat_i]
@@ -716,8 +716,10 @@ class SMMGUI(QMainWindow):
             layer_list = self.get_sim_config()
         except ValueError as error:
             logging.error(error)
-            QMessageBox.warning(self, "Invalid Parameter",
-                    "Invalid simulation parameter... Check if everything is filled or if all inserted characters are valid")
+            QMessageBox.warning(
+                self, "Invalid Parameter",
+                "Invalid simulation parameter... Check if everything is filled or if all inserted characters are valid"
+            )
             return
 
         # Do the simulation
@@ -727,8 +729,8 @@ class SMMGUI(QMainWindow):
                                          ref_medium, trn_medium)
                 self.sim_plot_data(lmb, ref, trn)
                 results = SRes(len(self.sim_results), SType.WVL, layer_list,
-                               theta, phi, pol, ref_medium, trn_medium,
-                               lmb, ref, trn)
+                               theta, phi, pol, ref_medium, trn_medium, lmb,
+                               ref, trn)
                 self.sim_results.append(results)
             else:
                 theta = np.linspace(0, 89,
@@ -752,7 +754,8 @@ class SMMGUI(QMainWindow):
             logging.info("Updating exportUI with new simulation")
             self.export_ui.update_sims(self.sim_results)
         # Update the number of simulations in the clear button
-        self.ui.sim_tab_clear_button.setText(f"Clear ({len(self.sim_results)})")
+        self.ui.sim_tab_clear_button.setText(
+            f"Clear ({len(self.sim_results)})")
 
     def sim_plot_data(self, x, ref, trn) -> None:
         """
@@ -985,8 +988,6 @@ class SMMGUI(QMainWindow):
             thick, layer_list = self.get_opt_config()
         except ValueError as error:
             logging.error(error)
-            QMessageBox.warning(self, "Invalid Parameter",
-                    "Invalid simulation parameter... Check if everything is filled or if all inserted characters are valid")
             return
 
         try:
@@ -1046,7 +1047,9 @@ class SMMGUI(QMainWindow):
         if filepath[0] == '':
             logging.debug("No file provided... Ignoring...")
             return
-        self.import_window = ImpPrevWindow(self, mode="imp", filepath=filepath[0])
+        self.import_window = ImpPrevWindow(self,
+                                           mode="imp",
+                                           filepath=filepath[0])
         self.import_window.show()
 
     """ Drag and Drop Functionality """

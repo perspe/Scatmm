@@ -58,7 +58,7 @@ class Layer1D():
         self.thickness: float = thickness
         self.n: float = n_val
         self.k: float = k_val
-        logging.info(f"Layer: {self} created...")
+        logging.debug(f"Layer: {self} created...")
 
     def e_value(self, lmb: npt.ArrayLike) -> npt.ArrayLike:
         """ Return e_value for specific wavelength """
@@ -99,7 +99,7 @@ class Layer3D():
         self._og_k = k_array
         self.n = interp1d(lmb, n_array, **kwargs)
         self.k = interp1d(lmb, k_array, **kwargs)
-        logging.info(f"Layer: {self} created...")
+        logging.debug(f"Layer: {self} created...")
 
     def e_value(self, lmb: npt.ArrayLike) -> npt.ArrayLike:
         """ Calculate e_values for a range of wavelengths """
@@ -160,7 +160,8 @@ def _initialize_smm(theta, phi, lmb, pol, inc_medium):
     # Create the composite polariztion vector
     p_vector = np.add(pol[1] * ate, pol[0] * atm)
     p = p_vector[[0, 1]]
-    logging.debug(f"Initialization Values for SMM: {k0}:{kx}:{ky}\n{V0}\n{p}")
+    logging.debug(
+        f"Initialization Values for SMM: {k0=}\n{kx=}\n{ky=}\n{V0=}\n{p=}")
     return k0, kx, ky, V0, np.array(p, dtype=np.complex128)
 
 
