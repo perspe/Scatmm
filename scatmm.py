@@ -37,7 +37,7 @@ from smm_uis.smm_main_window import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.imp_window import ImpPrevWindow
 
-VERSION = "3.4.0"
+VERSION = "3.4.1"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
