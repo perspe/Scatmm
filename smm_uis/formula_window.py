@@ -3,14 +3,16 @@ from typing import List, Union
 
 from PyQt5 import QtCore
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import (
-    QMainWindow,
-    QMessageBox,
-    QSizePolicy,
-    QSpacerItem,
-)
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QSizePolicy, QSpacerItem
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
-from modules.dispersion import cauchy, cauchy_abs, const, sellmeier_abs, tauc_lorentz_n
+from modules.dispersion import (
+    cauchy,
+    cauchy_abs,
+    const,
+    new_amorphous_n,
+    sellmeier_abs,
+    tauc_lorentz_n,
+)
 from modules.fig_class import PltFigure
 import numpy as np
 import scipy.constants as scc
@@ -22,6 +24,7 @@ from .smm_formula_mat import Ui_Formula
 methods: dict = {
     "Constant": const,
     "Tauc Lorentz": tauc_lorentz_n,
+    "New Amorphous": new_amorphous_n,
     "Cauchy": cauchy,
     "Cauchy Absorbent": cauchy_abs,
     "Sellmeier Absorbent": sellmeier_abs
@@ -36,7 +39,7 @@ Units = {
 
 
 class FormulaWindow(QMainWindow):
-    def __init__(self, parent: Union[QtCore.QObject, None]=None) -> None:
+    def __init__(self, parent: Union[QtCore.QObject, None] = None) -> None:
         self.parent: Union[QtCore.QObject, None] = parent
         super(FormulaWindow, self).__init__()
         logging.debug("Opened Formula Window")
@@ -47,6 +50,7 @@ class FormulaWindow(QMainWindow):
         self.methods: dict = {
             "Constant": self.MConst,
             "Tauc Lorentz": self.MTaucLorentz,
+            "New Amorphous": self.MNewAmorphous,
             "Cauchy": self.MCauchy,
             "Cauchy Absorbent": self.MCauchyAbs,
             "Sellmeier Absorbent": self.MSellmeierAbs
@@ -58,6 +62,8 @@ class FormulaWindow(QMainWindow):
         # Define the xdata, xlims and the xvariable
         self._xmin: float = 0.5
         self._xmax: float = 6.5
+        self.ui.xmin_value.setText(str(self._xmin))
+        self.ui.xmax_value.setText(str(self._xmax))
         self._xres: int = 500
         self._e = np.linspace(self._xmin,
                               self._xmax,
@@ -149,7 +155,7 @@ class FormulaWindow(QMainWindow):
 
     def add_database(self) -> None:
         if self.parent is None:
-            logging.critical("No parent to add data to database """)
+            logging.critical("No parent to add data to database " "")
             raise Exception("Critical Error")
         mat_name = self.ui.mat_name.text()
         logging.debug(f"{mat_name=}")
@@ -256,7 +262,12 @@ class FormulaWindow(QMainWindow):
         n_peaks: int = int(self.slider_list[0].curr_value())
         logging.debug(f"Updating TL peaks... {n_peaks=}")
         # Rebuild all widgets
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, fixed_lim=True)
+        n_peak = CustomSlider("N peak",
+                              n_peaks,
+                              1,
+                              11,
+                              resolution=100,
+                              fixed_lim=True)
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_tl_peaks)
         einf = CustomSlider("ε∞", 1.5, 1, 5)
@@ -279,7 +290,12 @@ class FormulaWindow(QMainWindow):
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        n_peak = CustomSlider("N peak", 1, 1, 11, fixed_lim=True)
+        n_peak = CustomSlider("N peak",
+                              1,
+                              1,
+                              11,
+                              resolution=100,
+                              fixed_lim=True)
         n_peak.changed.connect(self._update_tl_peaks)
         layout.addWidget(n_peak)
         einf = CustomSlider("ε∞", 1.5, 1, 5)
@@ -288,6 +304,55 @@ class FormulaWindow(QMainWindow):
         a = CustomSlider("A1", 50, 0.1, 200)
         c = CustomSlider("C1", 1, 0.1, 10)
         self.slider_list = [einf, eg, e0, a, c]
+        self._update_layout(self.ui.variable_layout)
+        self.slider_list.insert(0, n_peak)
+        logging.debug(f"Slider List... {self.slider_list}")
+
+    def _update_na_peaks(self) -> None:
+        """ Update the number of custom Sliders for the peaks """
+        self._clear_variable_layout()
+        n_peaks: int = int(self.slider_list[0].curr_value())
+        logging.debug(f"Updating NA peaks... {n_peaks=}")
+        # Rebuild all widgets
+        n_peak = CustomSlider("N peak",
+                              n_peaks,
+                              1,
+                              11,
+                              resolution=100,
+                              fixed_lim=True)
+        self.ui.variable_layout.addWidget(n_peak)
+        n_peak.changed.connect(self._update_na_peaks)
+        ninf = CustomSlider("n∞", 1.5, 1, 5)
+        wg = CustomSlider("ωg", 1.5, 0.5, 10)
+        self.slider_list = [ninf, wg]
+        for i in range(n_peaks):
+            fj = CustomSlider(f"f{i}", 0.3, 0, 1)
+            gammaj = CustomSlider(f"Γ{i}", 1, 0.2, 8)
+            wj = CustomSlider(f"ω{i}", 2, 1.5, 10)
+            slider_peak = [fj, gammaj, wj]
+            self.slider_list.extend(slider_peak)
+        self._update_layout(self.ui.variable_layout)
+        self.slider_list.insert(0, n_peak)
+        logging.debug(f"Slider List... {self.slider_list}")
+        self._update_plot()
+
+    def MNewAmorphous(self) -> None:
+        self._clear_variable_layout()
+        layout = self.ui.variable_layout
+        n_peak = CustomSlider("N peak",
+                              1,
+                              1,
+                              11,
+                              resolution=100,
+                              fixed_lim=True)
+        n_peak.changed.connect(self._update_na_peaks)
+        layout.addWidget(n_peak)
+        ninf = CustomSlider("n∞", 1.5, 1, 5, 10)
+        wg = CustomSlider("ωg", 1.5, 0.5, 10)
+        fj = CustomSlider("fj", 0.3, 0, 1)
+        gammaj = CustomSlider("Γj", 1, 0.2, 8)
+        wj = CustomSlider("ωj", 2, 1.5, 10)
+        self.slider_list = [ninf, wg, fj, gammaj, wj]
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
         logging.debug(f"Slider List... {self.slider_list}")
@@ -323,4 +388,3 @@ class FormulaWindow(QMainWindow):
         e = CustomSlider("E", 3, 0.5, 10)
         self.slider_list = [a, b, c, d, e]
         self._update_layout(layout)
-

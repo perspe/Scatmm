@@ -1,9 +1,8 @@
 import sys
 import logging
-from typing import Union
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, pyqtSignal, QRegExp
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QRegExpValidator
+from PyQt5.QtGui import QIntValidator, QRegExpValidator
 
 
 class CustomSlider(QtWidgets.QWidget):
@@ -25,7 +24,7 @@ class CustomSlider(QtWidgets.QWidget):
                  default_value: float,
                  slider_min: float = 1,
                  slider_max: float = 10,
-                 resolution: int = 100,
+                 resolution: int = 1000,
                  fixed_lim: bool = False) -> None:
         super().__init__()
         # Base variables
@@ -80,6 +79,7 @@ class CustomSlider(QtWidgets.QWidget):
         """ Connect elements to functions """
         self._max_edit.editingFinished.connect(self._change_max_edit)
         self._min_edit.editingFinished.connect(self._change_min_edit)
+        self._qslider.valueChanged.connect(self._update_label)
         self._qslider.sliderMoved.connect(self._update_label)
         self._qslider.valueChanged.connect(self.changed.emit)
         self._curr_value.editingFinished.connect(self._update_slider)
@@ -99,18 +99,19 @@ class CustomSlider(QtWidgets.QWidget):
             value: float = float(self._curr_value.text())
         if value < self._slider_min:
             value = self._slider_min
-            self._curr_value.setText(f"{value:.2f}")
+            # self._curr_value.setText(f"{value:.3f}")
         if value > self._slider_max:
             value = self._slider_max
-            self._curr_value.setText(f"{value:.2f}")
+            # self._curr_value.setText(f"{value:.3f}")
         logging.debug(f"{value=}")
-        diff = (value - self._slider_min)/(self._slider_max - self._slider_min)
-        self._qslider.setValue(int(diff*self._resolution))
+        diff = (value - self._slider_min) / (self._slider_max -
+                                             self._slider_min)
+        self._qslider.setValue(int(diff * self._resolution))
 
     def _update_label(self) -> None:
         """ Update Label from Slider Value """
         updated_curr_value: float = self.curr_value()
-        self._curr_value.setText(f"{updated_curr_value:.2f}")
+        self._curr_value.setText(f"{updated_curr_value:.3f}")
 
     def _change_max_edit(self) -> None:
         """ Update max bound for the slider """
