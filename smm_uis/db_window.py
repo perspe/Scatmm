@@ -1,4 +1,5 @@
 """ Class for the DB Window """
+import logging
 from PyQt5 import QtGui
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import QMessageBox, QWidget
@@ -39,6 +40,7 @@ class DBWindow(QWidget):
         """
         Update visualizer of database materials
         """
+        logging.debug("Updating DB list")
         self.data.clear()
         self.data.setHorizontalHeaderLabels(
             ["Material", "Min Wav (µm)", "Max Wav (µm)"])
@@ -57,11 +59,22 @@ class DBWindow(QWidget):
         """
         Update checkboxes in simulation and optimization tabs with db materials
         """
+        logging.debug("Updating Simulation/Optimization comboboxes")
         for smat, omat in zip(self.parent.sim_mat, self.parent.opt_mat):
+            # Keep the already chosen variable
+            s_mat_curr_name = smat.currentText()
+            o_mat_curr_name = omat.currentText()
+            logging.debug(f"{s_mat_curr_name=}::{o_mat_curr_name=}")
             smat.clear()
             omat.clear()
             smat.addItems(self.database.content)
             omat.addItems(self.database.content)
+            if s_mat_curr_name in self.database.content:
+                logging.debug(f"Updating {s_mat_curr_name=}")
+                smat.setCurrentText(s_mat_curr_name)
+            if o_mat_curr_name in self.database.content:
+                logging.debug(f"Updating {o_mat_curr_name=}")
+                omat.setCurrentText(o_mat_curr_name)
 
     """ Functions for the different buttons in the DB Interface """
 
@@ -74,7 +87,7 @@ class DBWindow(QWidget):
 
     def add_formula(self):
         """ Open a new UI with the formula manager """
-        self.formula_window = FormulaWindow()
+        self.formula_window = FormulaWindow(self)
         self.formula_window.show()
 
     def rmv_db_material(self):

@@ -2,7 +2,7 @@ import logging
 
 from PyQt5 import Qt, QtCore
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import QMainWindow, QSizePolicy, QSpacerItem, QWidget
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QSizePolicy, QSpacerItem, QWidget
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from modules.fig_class import PltFigure
 import numpy as np
@@ -69,6 +69,7 @@ def tauc_lorentz_2(e, einf, eg, e01, a1, c1, e02, a2, c2):
     n = np.sqrt(e_complex)
     return np.real(n), np.imag(n)
 
+
 def tauc_lorentz_n(e, n_peak, einf, eg, *args):
     """ Tauc Lorentx Equation for multiple peaks
     Args:
@@ -78,12 +79,12 @@ def tauc_lorentz_n(e, n_peak, einf, eg, *args):
         eg (float): eg variable
         *args (e0, a, c)*n_peak: remaining peak variables
     """
-    if len(args) < 3*n_peak:
+    if len(args) < 3 * n_peak:
         raise Exception("Number of arguments not compatible with n_peak")
     er = np.zeros_like(e, dtype=np.float64)
     ei = np.zeros_like(e, dtype=np.float64)
     for i in range(n_peak):
-        e0i, ai, ci = args[i*3+0], args[i*3+1], args[i*3+2]
+        e0i, ai, ci = args[i * 3 + 0], args[i * 3 + 1], args[i * 3 + 2]
         er_i, ei_i = tauc_lorentz_peak(e, eg, e0i, ai, ci)
         er += er_i
         ei += ei_i
@@ -226,8 +227,35 @@ class FormulaWindow(QMainWindow):
     """ Window buttons functions """
 
     def add_database(self):
-        # TODO:  <12-03-22, yourname> #
-        return
+        mat_name = self.ui.mat_name.text()
+        logging.debug(f"{mat_name=}")
+        if mat_name == '':
+            QMessageBox.information(
+                self, "No material name",
+                "Please select a material name before importing",
+                QMessageBox.Ok, QMessageBox.Ok)
+            return
+        data = np.c_[self._lmb, self._n, self._k]
+        override = QMessageBox.NoButton
+        if mat_name in self.parent.database.content:
+            override = QMessageBox.question(
+                self, "Material name in Database",
+                "The Database already has a material with this name.." +
+                "\nOverride the material?", QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes)
+        if override == QMessageBox.No:
+            return
+        elif override == QMessageBox.Yes:
+            self.parent.database.rmv_content(mat_name)
+            self.parent.database.add_content(mat_name, data)
+        else:
+            self.parent.database.add_content(mat_name, data)
+
+        QMessageBox.information(self, "Success",
+                                "Material added Successfully to Database",
+                                QMessageBox.Ok, QMessageBox.Ok)
+        self.parent.update_db_preview()
+        self.parent.update_mat_comboboxes()
 
     def update_xvar(self):
         """ Update the overall representation of xvar, between E and Wvl """
@@ -237,7 +265,8 @@ class FormulaWindow(QMainWindow):
         # Update label text
         self.ui.xmin_label.setText(min_label)
         self.ui.xmax_label.setText(max_label)
-        limit_1, limit_2 = _nm_to_ev * (1 / self._xmin), _nm_to_ev * (1 / self._xmax)
+        limit_1, limit_2 = _nm_to_ev * (1 / self._xmin), _nm_to_ev * (
+            1 / self._xmax)
         # Update QLineEdit Limits
         self._xmin = min([limit_1, limit_2])
         self._xmax = max([limit_1, limit_2])
