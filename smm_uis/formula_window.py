@@ -79,7 +79,10 @@ def tauc_lorentz_n(e, n_peak, einf, eg, *args):
         eg (float): eg variable
         *args (e0, a, c)*n_peak: remaining peak variables
     """
-    if len(args) < 3 * n_peak:
+    n_peak = int(n_peak)
+    logging.debug(f"{n_peak=}::{einf=}::{eg=}::{args=}")
+    if len(args) != 3 * n_peak:
+        logging.error(args, n_peak)
         raise Exception("Number of arguments not compatible with n_peak")
     er = np.zeros_like(e, dtype=np.float64)
     ei = np.zeros_like(e, dtype=np.float64)
@@ -106,13 +109,11 @@ def cauchy(e, a, b, c):
 
 methods: dict = {
     "Constant": const,
-    "Tauc Lorentz 1": tauc_lorentz_1,
-    "Tauc Lorentz 2": tauc_lorentz_2,
+    "Tauc Lorentz": tauc_lorentz_n,
     "Cauchy": cauchy
 }
 
 _nm_to_ev = (scc.h * scc.c) / (scc.e * 1e-9)
-# _ev_to_nm = (scc.h * scc.c) / (scc.e * 1e-9)
 Units = {
     "Energy (eV)": ("Emin (eV)", "Emax (eV)"),
     "Wavelength (nm)": ("λmin (nm)", "λmax (nm)")
@@ -130,8 +131,7 @@ class FormulaWindow(QMainWindow):
         # Connect Combobox names to functions
         self.methods: dict = {
             "Constant": self.method_const,
-            "Tauc Lorentz 1": self.method_TL_1,
-            "Tauc Lorentz 2": self.method_TL_2,
+            "Tauc Lorentz": self.method_TL,
             "Cauchy": self.cauchy
         }
         self.slider_list = []
@@ -156,11 +156,17 @@ class FormulaWindow(QMainWindow):
         self.addToolBar(QtCore.Qt.TopToolBarArea,
                         NavigationToolbar2QT(self.plot_canvas, self))
         self.n_plot = self.plot_canvas.axes
+        self.n_plot.spines["left"].set_color("b")
+        self.n_plot.spines["right"].set_color("r")
+        self.n_plot.tick_params(axis='y', colors='b')
         self.n_plot.set_ylabel("n", color='b')
         self.n_plot.set_ylim((0, 5))
         self.k_plot = self.n_plot.twinx()
         self.k_plot.set_ylabel("k", color="r")
         self.k_plot.set_ylim((0, 5))
+        self.k_plot.spines["left"].set_color("b")
+        self.k_plot.spines["right"].set_color("r")
+        self.k_plot.tick_params(axis='y', colors='r')
         # InitializeUI and update plot info
         self.initializeUI()
         # Make the first plot iteration
@@ -191,6 +197,7 @@ class FormulaWindow(QMainWindow):
         new_method: str = self.ui.method_cb.currentText()
         logging.debug(f"Method Updated to: {new_method}")
         self.methods[new_method]()
+        self._update_nk()
         self._rebuild_plot()
 
     def _update_nk(self):
@@ -319,43 +326,54 @@ class FormulaWindow(QMainWindow):
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        n = CustomSlider("n", 1, 5)
-        k = CustomSlider("k", 0, 5)
+        n = CustomSlider("n", 1.5, 1, 5)
+        k = CustomSlider("k", 0.5, 0, 5)
         layout.addWidget(n)
         layout.addWidget(k)
         self.slider_list = [n, k]
         self._update_layout(layout)
 
-    def method_TL_1(self):
+    def _update_tl_peaks(self):
+        """ Update the number of custom Sliders for the peaks """
+        self._clear_variable_layout()
+        n_peaks = int(self.slider_list[0].curr_value())
+        logging.debug(f"Updating TL peaks... {n_peaks=}")
+        # Rebuild all widgets
+        n_peak = CustomSlider("N peak", n_peaks, 1, 11, fixed_lim=True)
+        self.ui.variable_layout.addWidget(n_peak)
+        n_peak.changed.connect(self._update_tl_peaks)
+        einf = CustomSlider("ε∞", 1.5, 1, 5)
+        eg = CustomSlider("Eg", 1.5, 0.5, 10)
+        self.slider_list = [einf, eg]
+        for i in range(n_peaks):
+            e0 = CustomSlider(f"E0{i+1}", 3, 0.5, 10)
+            a = CustomSlider(f"A{i+1}", 50, 0.1, 200)
+            c = CustomSlider(f"C{i+1}", 1, 0.1, 10)
+            slider_peak = [e0, a, c]
+            self.slider_list.extend(slider_peak)
+        self._update_layout(self.ui.variable_layout)
+        self.slider_list.insert(0, n_peak)
+        logging.debug(f"Slider List... {self.slider_list}")
+        self._update_plot()
+
+    def method_TL(self):
         """ Create the variables for the const method
         Vars: einf, eg, e0, a, c
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        einf = CustomSlider("ε∞", 1, 5)
-        eg = CustomSlider("Eg", 0.5, 10)
-        e0 = CustomSlider("E0", 0.5, 10)
-        a = CustomSlider("A", 0.1, 500, 500)
-        c = CustomSlider("C", 0.1, 10)
+        n_peak = CustomSlider("N peak", 1, 1, 11, fixed_lim=True)
+        n_peak.changed.connect(self._update_tl_peaks)
+        layout.addWidget(n_peak)
+        einf = CustomSlider("ε∞", 1.5, 1, 5)
+        eg = CustomSlider("Eg", 1.5, 0.5, 10)
+        e0 = CustomSlider("E01", 3, 0.5, 10)
+        a = CustomSlider("A1", 50, 0.1, 200)
+        c = CustomSlider("C1", 1, 0.1, 10)
         self.slider_list = [einf, eg, e0, a, c]
-        self._update_layout(layout)
-
-    def method_TL_2(self):
-        """ Create the variables for the const method
-        Vars: einf, eg, e01, a1, c1, e02, a2, c2
-        """
-        self._clear_variable_layout()
-        layout = self.ui.variable_layout
-        einf = CustomSlider("ε∞", 1, 5)
-        eg = CustomSlider("Eg", 0.5, 10)
-        e01 = CustomSlider("E0", 0.5, 10)
-        a1 = CustomSlider("A", 0.1, 500, 500)
-        c1 = CustomSlider("C", 0.1, 10)
-        e02 = CustomSlider("E0", 0.5, 10)
-        a2 = CustomSlider("A", 0.1, 500, 500)
-        c2 = CustomSlider("C", 0.1, 10)
-        self.slider_list = [einf, eg, e01, a1, c1, e02, a2, c2]
-        self._update_layout(layout)
+        self._update_layout(self.ui.variable_layout)
+        self.slider_list.insert(0, n_peak)
+        logging.debug(f"Slider List... {self.slider_list}")
 
     def cauchy(self):
         """ Create the variables for the const method
@@ -363,8 +381,8 @@ class FormulaWindow(QMainWindow):
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        a = CustomSlider("A", 1, 5)
-        b = CustomSlider("B", 0.5, 10)
-        c = CustomSlider("C", 0.5, 10)
+        a = CustomSlider("A", 1, 1, 5)
+        b = CustomSlider("B", 2, 0.5, 10)
+        c = CustomSlider("C", 3, 0.5, 10)
         self.slider_list = [a, b, c]
         self._update_layout(layout)

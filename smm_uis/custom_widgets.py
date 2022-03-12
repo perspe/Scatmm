@@ -1,5 +1,6 @@
 import sys
 import logging
+from typing import Union
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, pyqtSignal, QRegExp
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QRegExpValidator
@@ -9,16 +10,26 @@ class CustomSlider(QtWidgets.QWidget):
     """
     Custom QtWidget with a QSlider and 2 QLineEdits by the side
     that allow the user to change the slider maximum and minimum
+    Args:
+        var_name (str): Variable name
+        default_value (float): default value to show
+        slider_min (float): minimum value for the slider
+        slider_max (float): maximum value for the slider
+        resolution (int): Resolution of the slider (bigger == more resolution)
+        fixed_lim (bool): Fix the min and max values of the slider
     """
     changed = pyqtSignal(bool)
 
     def __init__(self,
                  var_name: str,
+                 default_value: float,
                  slider_min: float = 1,
                  slider_max: float = 10,
-                 resolution: int = 100) -> None:
+                 resolution: int = 100,
+                 fixed_lim: bool = False) -> None:
         super().__init__()
         # Base variables
+        self._var_name = var_name
         self._slider_min: float = slider_min
         self._slider_max: float = slider_max
         self._resolution: int = resolution
@@ -33,11 +44,13 @@ class CustomSlider(QtWidgets.QWidget):
         self._min_edit = QtWidgets.QLineEdit()
         self._min_edit.setValidator(QIntValidator())
         self._min_edit.setText(str(self._slider_min))
+        self._min_edit.setDisabled(fixed_lim)
         layout.addWidget(self._min_edit, 1, 0)
         # Add right QLineEdit
         self._max_edit = QtWidgets.QLineEdit()
         self._min_edit.setValidator(QIntValidator())
         self._max_edit.setText(str(self._slider_max))
+        self._max_edit.setDisabled(fixed_lim)
         layout.addWidget(self._max_edit, 1, 2)
         # Add QSlider
         # The slider goes from 0-100 in 2 spaces
@@ -47,6 +60,7 @@ class CustomSlider(QtWidgets.QWidget):
         self._qslider.setMaximum(self._resolution)
         self._qslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
         self._qslider.setTickInterval(int(self._resolution / 10))
+        self._update_slider(default_value)
         layout.addWidget(self._qslider, 1, 1)
         # Add Indicator for current Slider value
         self._curr_value = QtWidgets.QLineEdit()
@@ -79,9 +93,10 @@ class CustomSlider(QtWidgets.QWidget):
                                                     self._resolution)
         return updated_curr_value
 
-    def _update_slider(self):
+    def _update_slider(self, value=None):
         """ Update slider after the value label is changed """
-        value: float = float(self._curr_value.text())
+        if value is None:
+            value: float = float(self._curr_value.text())
         if value < self._slider_min:
             value = self._slider_min
             self._curr_value.setText(f"{value:.2f}")
@@ -106,6 +121,9 @@ class CustomSlider(QtWidgets.QWidget):
         """ Update min bound for the slider """
         self._slider_min: float = int(self._min_edit.text())
         self._update_label()
+
+    def __repr__(self) -> str:
+        return f"{self._var_name} ({self.curr_value()})"
 
 
 if __name__ == "__main__":
