@@ -6,7 +6,8 @@ from modules.fig_class import FigWidget, PltFigure
 import numpy as np
 from scipy.interpolate import interp1d
 
-from .smm_database_window import Ui_Database
+from .smm_view_database import Ui_Database
+from .formula_window import FormulaWindow
 from .imp_window import ImpPrevWindow
 
 class DBWindow(QWidget):
@@ -23,12 +24,14 @@ class DBWindow(QWidget):
         self.db_table.setModel(self.data)
         self.data.setColumnCount(3)
         self.db_import_window = None
+        self.formula_window = None
         self.update_db_preview()
         self.initializeUI()
 
     def initializeUI(self):
         """ Connect elements to specific functions """
         self.ui.add_material.clicked.connect(self.add_db_material)
+        self.ui.add_formula.clicked.connect(self.add_formula)
         self.ui.rmv_material.clicked.connect(self.rmv_db_material)
         self.ui.view_material.clicked.connect(self.db_preview)
 
@@ -68,6 +71,11 @@ class DBWindow(QWidget):
         """
         self.db_import_window = ImpPrevWindow(self)
         self.db_import_window.show()
+
+    def add_formula(self):
+        """ Open a new UI with the formula manager """
+        self.formula_window = FormulaWindow()
+        self.formula_window.show()
 
     def rmv_db_material(self):
         """
@@ -145,4 +153,6 @@ class DBWindow(QWidget):
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         if self.db_import_window is not None:
             self.db_import_window.close()
+        if self.formula_window is not None:
+            self.formula_window.close()
         return super().closeEvent(a0)

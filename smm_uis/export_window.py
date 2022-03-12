@@ -3,7 +3,7 @@ import logging
 import os
 
 # from scatmm import SType
-from .smm_export_window import Ui_ExportWindow
+from .smm_export_gui import Ui_ExportWindow
 from modules.fig_class import FigWidget, PltFigure
 from modules.structs import SType
 from modules.s_matrix import smm_layer

@@ -22,7 +22,6 @@ import matplotlib.style as mstyle
 import numpy as np
 from numpy.linalg import norm
 import numpy.typing as npt
-import pandas as pd
 
 from modules.database import Database
 from modules.fig_class import PltFigure
@@ -33,11 +32,11 @@ from modules.s_matrix import MatOutsideBounds
 from modules.structs import SRes, SType
 from smm_uis.db_window import DBWindow
 from smm_uis.export_window import ExpWindow
-from smm_uis.smm_main_window import Ui_SMM_Window
+from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.imp_window import ImpPrevWindow
 
-VERSION = "3.4.1"
+VERSION = "3.5.0"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
