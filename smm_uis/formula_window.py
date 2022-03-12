@@ -1,12 +1,15 @@
-import sys
 import logging
-import numpy as np
+import sys
+
 from PyQt5 import Qt, QtCore
-from PyQt5.QtWidgets import QMainWindow, QWidget, QSpacerItem, QSizePolicy
+from PyQt5.QtWidgets import QMainWindow, QSizePolicy, QSpacerItem, QWidget
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
-from .smm_formula_mat import Ui_Formula
-from .custom_widgets import CustomSlider
 from modules.fig_class import PltFigure
+import numpy as np
+import scipy.constants as scc
+
+from .custom_widgets import CustomSlider
+from .smm_formula_mat import Ui_Formula
 
 
 def const(e, n, k):
@@ -15,8 +18,8 @@ def const(e, n, k):
     return arr * n, arr * k
 
 
-def tauc_lorentz(e, einf, eg, e0, a, c):
-    """ Tauc Lorentz Formula for a single oscilator """
+def tauc_lorentz_peak(e, eg, e0, a, c):
+    """ Formula to calcuate one peak for the Tauc Lorentz formula """
     logging.debug(f"{eg=}::{e0=}::{a=}::{c=}")
     ei = np.zeros_like(e, dtype=np.float64)
     er = np.zeros_like(e, dtype=np.float64)
@@ -37,28 +40,57 @@ def tauc_lorentz(e, einf, eg, e0, a, c):
         (e02 + eg2 + alpha * eg) / (e02 + eg2 - alpha * eg))
     er -= (a * atan) / (np.pi * zeta4 * e0) * (np.pi - np.arctan(
         (2 * eg + alpha) / c) + np.arctan((alpha - 2 * eg) / c))
-    er += (4 * a * e0 * eg * (e2 -
-                             gamma**2) / (np.pi * zeta4 * alpha)) * (np.arctan(
-                                 (alpha + 2 * eg) / c) + np.arctan(
-                                     (alpha - 2 * eg) / c))
-    er -= (a * e0 * c * (e2 + eg2) / (np.pi * zeta4 * e)) * np.log(
-        np.abs(e - eg) / (e + eg))
+    er += (4 * a * e0 * eg * (e2 - gamma**2) /
+           (np.pi * zeta4 * alpha)) * (np.arctan(
+               (alpha + 2 * eg) / c) + np.arctan((alpha - 2 * eg) / c))
+    er -= (a * e0 * c * (e2 + eg2) /
+           (np.pi * zeta4 * e)) * np.log(np.abs(e - eg) / (e + eg))
     er += (2 * a * e0 * c * eg / (np.pi * zeta4)) * np.log(
         np.abs(e - eg) * (e + eg) / (np.sqrt((e02 - eg2)**2 + eg2 * c2)))
+    return er, ei
 
+
+def tauc_lorentz_1(e, einf, eg, e0, a, c):
+    """ Tauc Lorentz Equation with one peak """
+    er, ei = tauc_lorentz_peak(e, eg, e0, a, c)
     er += einf
-    # Convert to n/k
-    e = er + 1j * ei
-    n_comp = np.sqrt(e)
-    n, k = np.real(n_comp), np.imag(n_comp)
+    e_complex = er + 1j * ei
+    n = np.sqrt(e_complex)
+    return np.real(n), np.imag(n)
+
+
+def tauc_lorentz_2(e, einf, eg, e01, a1, c1, e02, a2, c2):
+    """ Tauc Lorentz Equation with one peak """
+    er1, ei1 = tauc_lorentz_peak(e, eg, e01, a1, c1)
+    er2, ei2 = tauc_lorentz_peak(e, eg, e02, a2, c2)
+    er = er1 + er2 + einf
+    ei = ei1 + ei2
+    e_complex = er + 1j * ei
+    n = np.sqrt(e_complex)
+    return np.real(n), np.imag(n)
+
+
+def cauchy(e, a, b, c):
+    """ Standard non-absorber cauchy formula """
+    logging.debug(f"{a=}::{b=}::{c=}")
+    lmb = (scc.h * scc.c) / (scc.e * e) * 1e9
+    logging.debug(lmb)
+    n = a + 1e4 * b / lmb**2 + 1e9 * c / lmb**4
+    k = np.zeros_like(n)
     return n, k
 
 
-methods: dict = {"Constant": const, "Tauc Lorentz": tauc_lorentz}
+methods: dict = {
+    "Constant": const,
+    "Tauc Lorentz 1": tauc_lorentz_1,
+    "Tauc Lorentz 2": tauc_lorentz_2,
+    "Cauchy": cauchy
+}
 
 
 class FormulaWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, parent=None):
+        self.parent = parent
         super(FormulaWindow, self).__init__()
         logging.debug("Opened Formula Window")
         self.ui = Ui_Formula()
@@ -66,9 +98,13 @@ class FormulaWindow(QMainWindow):
         # Internal variables of interest
         self.methods: dict = {
             "Constant": self.method_const,
-            "Tauc Lorentz": self.method_TL
+            "Tauc Lorentz 1": self.method_TL_1,
+            "Tauc Lorentz 2": self.method_TL_2,
+            "Cauchy": self.cauchy
         }
         self._e = np.linspace(0.5, 6.5, 500, dtype=np.float64)
+        self._lmb = (scc.c * scc.h) / (scc.e *
+                                       self._e) * 1e9  # Wavelength in nm
         self.slider_list = []
         # Create the figure to plot the data
         self.plot_canvas = PltFigure(self.ui.plot_layout,
@@ -92,12 +128,15 @@ class FormulaWindow(QMainWindow):
         self._n_plot = nplot[0]
         self._k_plot = kplot[0]
         self.addToolBar(QtCore.Qt.TopToolBarArea,
-                NavigationToolbar2QT(self.plot_canvas, self))
+                        NavigationToolbar2QT(self.plot_canvas, self))
 
     def initializeUI(self):
         """ Connect functions to buttons """
         self.ui.method_cb.currentIndexChanged.connect(
             lambda a: self.update_method(False))
+        self.ui.add_db_button.clicked.connect(self.add_database)
+
+    """ Update the n/k info and the plot """
 
     def update_method(self, first_run=False):
         """ Update the formula """
@@ -124,13 +163,28 @@ class FormulaWindow(QMainWindow):
         self._k_plot.set_ydata(self._k)
         self.plot_canvas.draw()
 
+    """ Window buttons functions """
+
+    def add_database(self):
+        return
+
     """ Functions to Build the Variables for Different Methods """
 
     def _clear_variable_layout(self):
+        """ Function to clear all the widgets in the layout """
         while self.ui.variable_layout.count():
             child = self.ui.variable_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+
+    def _update_layout(self, layout):
+        """ Update the slider layout """
+        for slider in self.slider_list:
+            layout.addWidget(slider)
+            slider.changed.connect(self.update_plot)
+        verticalSpacer = QSpacerItem(20, 80, QSizePolicy.Minimum,
+                                     QSizePolicy.Expanding)
+        layout.addItem(verticalSpacer)
 
     def method_const(self):
         """ Create the variables for the const method
@@ -142,16 +196,12 @@ class FormulaWindow(QMainWindow):
         k = CustomSlider("k")
         layout.addWidget(n)
         layout.addWidget(k)
-        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum,
-                                     QSizePolicy.Expanding)
-        layout.addItem(verticalSpacer)
         self.slider_list = [n, k]
-        for slider in self.slider_list:
-            slider.changed.connect(self.update_plot)
+        self._update_layout(layout)
 
-    def method_TL(self):
+    def method_TL_1(self):
         """ Create the variables for the const method
-        Vars: n, k
+        Vars: einf, eg, e0, a, c
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
@@ -161,9 +211,33 @@ class FormulaWindow(QMainWindow):
         a = CustomSlider("A", 0.1, 500, 500)
         c = CustomSlider("C", 0.1, 10)
         self.slider_list = [einf, eg, e0, a, c]
-        for slider in self.slider_list:
-            layout.addWidget(slider)
-            slider.changed.connect(self.update_plot)
-        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum,
-                                     QSizePolicy.Expanding)
-        layout.addItem(verticalSpacer)
+        self._update_layout(layout)
+
+    def method_TL_2(self):
+        """ Create the variables for the const method
+        Vars: einf, eg, e01, a1, c1, e02, a2, c2
+        """
+        self._clear_variable_layout()
+        layout = self.ui.variable_layout
+        einf = CustomSlider("ε∞", 1, 5)
+        eg = CustomSlider("Eg", 0.5, 10)
+        e01 = CustomSlider("E0", 0.5, 10)
+        a1 = CustomSlider("A", 0.1, 500, 500)
+        c1 = CustomSlider("C", 0.1, 10)
+        e02 = CustomSlider("E0", 0.5, 10)
+        a2 = CustomSlider("A", 0.1, 500, 500)
+        c2 = CustomSlider("C", 0.1, 10)
+        self.slider_list = [einf, eg, e01, a1, c1, e02, a2, c2]
+        self._update_layout(layout)
+
+    def cauchy(self):
+        """ Create the variables for the const method
+        Vars: A, B, C
+        """
+        self._clear_variable_layout()
+        layout = self.ui.variable_layout
+        a = CustomSlider("A", 1, 5)
+        b = CustomSlider("B", 0.5, 10)
+        c = CustomSlider("C", 0.5, 10)
+        self.slider_list = [a, b, c]
+        self._update_layout(layout)
