@@ -49,9 +49,9 @@ val_tauc_lorentz = {"N peak": 1, "ε∞": 1.5, "Eg": 1.5}
 val_new_amorphous = {"N peak": 1, "n∞": 1.5, "ωg": 1.5}
 [
     val_new_amorphous.update({
-        f"f{i+1}": 3,
-        f"Γ{i+1}": 50,
-        f"ωj{i+1}": 1
+        f"f{i}": 3,
+        f"Γ{i}": 50,
+        f"ω{i}": 1
     }) for i in range(11)
 ]
 val_const = {"n": 1.5, "k": 0.5}
@@ -157,9 +157,9 @@ class FormulaWindow(QMainWindow):
     def _save_changed_values(self) -> None:
         """ Save the current chosen values before updating the method """
         val_dict = func_vals[self._curr_method]
+        logging.debug(self.slider_list)
         for slider in self.slider_list:
             val_dict[slider.name] = slider.curr_value()
-        logging.debug(self.slider_list)
         logging.debug(val_dict)
 
     def _update_nk(self) -> None:
@@ -298,8 +298,11 @@ class FormulaWindow(QMainWindow):
 
     def _update_tl_peaks(self) -> None:
         """ Update the number of custom Sliders for the peaks """
-        self._clear_variable_layout()
+        # Save previous values before updating
+        self._save_changed_values()
         n_peaks: int = int(self.slider_list[0].curr_value())
+        val_tauc_lorentz["N peak"] = n_peaks
+        self._clear_variable_layout()
         # Rebuild all widgets
         n_peak = CustomSlider("N peak",
                               n_peaks,
@@ -321,8 +324,6 @@ class FormulaWindow(QMainWindow):
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        logging.debug(f"Slider List... {self.slider_list}")
-        self._save_changed_values()
         self._update_plot()
 
     def MTaucLorentz(self) -> None:
@@ -354,8 +355,10 @@ class FormulaWindow(QMainWindow):
 
     def _update_na_peaks(self) -> None:
         """ Update the number of custom Sliders for the peaks """
-        self._clear_variable_layout()
+        self._save_changed_values()
         n_peaks: int = int(self.slider_list[0].curr_value())
+        val_new_amorphous["N peak"] = n_peaks
+        self._clear_variable_layout()
         # Rebuild all widgets
         n_peak = CustomSlider("N peak",
                               n_peaks,
@@ -365,23 +368,21 @@ class FormulaWindow(QMainWindow):
                               fixed_lim=True)
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_na_peaks)
-        ninf = CustomSlider("n∞", 1.5, 1, 5)
-        wg = CustomSlider("ωg", 1.5, 0.5, 10)
+        ninf = CustomSlider("n∞", val_new_amorphous["n∞"], 1, 5)
+        wg = CustomSlider("ωg", val_new_amorphous["ωg"], 0.5, 10)
         self.slider_list = [ninf, wg]
         for i in range(n_peaks):
-            fj = CustomSlider(f"f{i}", 0.3, 0, 1)
-            gammaj = CustomSlider(f"Γ{i}", 1, 0.2, 8)
-            wj = CustomSlider(f"ω{i}", 2, 1.5, 10)
+            fj = CustomSlider(f"f{i}", val_new_amorphous[f"f{i}"], 0, 1)
+            gammaj = CustomSlider(f"Γ{i}", val_new_amorphous[f"Γ{i}"], 0.2, 8)
+            wj = CustomSlider(f"ω{i}", val_new_amorphous[f"ω{i}"], 1.5, 10)
             slider_peak = [fj, gammaj, wj]
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        self._save_changed_values()
         self._update_plot()
 
     def MNewAmorphous(self) -> None:
         self._clear_variable_layout()
-        layout = self.ui.variable_layout
         n_peaks = int(val_new_amorphous["N peak"])
         n_peak = CustomSlider("N peak",
                               n_peaks,
@@ -390,19 +391,18 @@ class FormulaWindow(QMainWindow):
                               resolution=100,
                               fixed_lim=True)
         n_peak.changed.connect(self._update_na_peaks)
-        layout.addWidget(n_peak)
-        ninf = CustomSlider("n∞", 1.5, 1, 5, 10)
-        wg = CustomSlider("ωg", 1.5, 0.5, 10)
+        self.ui.variable_layout.addWidget(n_peak)
+        ninf = CustomSlider("n∞", val_new_amorphous["n∞"], 1, 5)
+        wg = CustomSlider("ωg", val_new_amorphous["ωg"], 0.5, 10)
         self.slider_list = [ninf, wg]
         for i in range(n_peaks):
-            fj = CustomSlider(f"f{i}", 0.3, 0, 1)
-            gammaj = CustomSlider(f"Γ{i}", 1, 0.2, 8)
-            wj = CustomSlider(f"ω{i}", 2, 1.5, 10)
+            fj = CustomSlider(f"f{i}", val_new_amorphous[f"f{i}"], 0, 1)
+            gammaj = CustomSlider(f"Γ{i}", val_new_amorphous[f"Γ{i}"], 0.2, 8)
+            wj = CustomSlider(f"ω{i}", val_new_amorphous[f"ω{i}"], 1.5, 10)
             slider_peak = [fj, gammaj, wj]
             self.slider_list.extend(slider_peak)
-        self._update_layout(layout)
+        self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        self._save_changed_values()
         self._update_plot()
 
     def MCauchy(self) -> None:

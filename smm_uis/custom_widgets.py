@@ -59,13 +59,13 @@ class CustomSlider(QtWidgets.QWidget):
         self._qslider.setMaximum(self._resolution)
         self._qslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
         self._qslider.setTickInterval(int(self._resolution / 10))
-        self._update_slider(default_value)
         layout.addWidget(self._qslider, 1, 1)
         # Add Indicator for current Slider value
         self._curr_value = QtWidgets.QLineEdit()
         self._curr_value.setMaximumWidth(80)
         num_regex = QRegExp("[0-9]+\\.?[0-9]*j?")
         self._curr_value.setValidator(QRegExpValidator(num_regex))
+        self._update_slider(default_value)
         self._update_label()
         layout.addWidget(self._curr_value, 0, 1)
         self.setLayout(layout)
@@ -95,14 +95,14 @@ class CustomSlider(QtWidgets.QWidget):
 
     def _update_slider(self, value=None):
         """ Update slider after the value label is changed """
+        if self._curr_value.text() == '':
+            self._curr_value.setText(str(self._qslider.value()))
         if value is None:
             value: float = float(self._curr_value.text())
         if value < self._slider_min:
             value = self._slider_min
-            # self._curr_value.setText(f"{value:.3f}")
         if value > self._slider_max:
             value = self._slider_max
-            # self._curr_value.setText(f"{value:.3f}")
         logging.debug(f"{value=}")
         diff = (value - self._slider_min) / (self._slider_max -
                                              self._slider_min)
@@ -115,12 +115,21 @@ class CustomSlider(QtWidgets.QWidget):
 
     def _change_max_edit(self) -> None:
         """ Update max bound for the slider """
-        self._slider_max: float = int(self._max_edit.text())
+        value = self._max_edit.text()
+        if value == '':
+            self._max_edit.setText(str(self._slider_max))
+        else:
+            self._slider_max: float = int(self._max_edit.text())
         self._update_slider()
         self._update_label()
 
     def _change_min_edit(self) -> None:
         """ Update min bound for the slider """
+        value = self._min_edit.text()
+        if value == '':
+            self._min_edit.setText(str(self._slider_min))
+        else:
+            self._slider_min: float = int(self._min_edit.text())
         self._slider_min: float = int(self._min_edit.text())
         self._update_slider()
         self._update_label()
