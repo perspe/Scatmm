@@ -12,6 +12,9 @@ class Ui_Formula(object):
     def setupUi(self, Formula):
         Formula.setObjectName("Formula")
         Formula.resize(923, 670)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap("logo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        Formula.setWindowIcon(icon)
         self.centralwidget = QtWidgets.QWidget(Formula)
         self.centralwidget.setObjectName("centralwidget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.centralwidget)

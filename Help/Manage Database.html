@@ -61,17 +61,23 @@
 <ul>
 <li><a href="#accessing-the-database">Accessing the Database</a></li>
 <li><a href="#database-actions">Database Actions</a></li>
-<li><a href="#adding-new-materials">Adding New Materials</a></li>
+<li><a href="#adding-new-materials">Adding New Materials</a>
+<ul>
+<li><a href="#material-from-pre-existing-data">Material from pre-existing data</a></li>
+<li><a href="#adding-from-predefined-formula">Adding from predefined formula</a></li>
+</ul></li>
 </ul>
 </nav>
 <h2 id="accessing-the-database">Accessing the Database</h2>
-<p>The database can be accessed by the Main interface Database → Manage Database menu, opening a new window where the database materials can be controled.</p>
-<p>Each of the most important information for each database material is shown in 3 different columns, “Material”, “Min Wav”, “Max Wav”. The first shows the material name, and the next two provide the wavelength range where the stored database values are defined. These last values are particularly useful to guarantee that the material is adequately defined for a possible simulation range. Simulations and optimizations are limited to the wavelength range where all materials in that particular simulation/optimization are defined.</p>
+<p>The database can be accessed by the Main interface Database → Manage Database menu, opening a new window where the database materials can be previewed and adapted.</p>
+<p>Each of the most important parameters for each database material is shown in 3 different columns, “Material”, “Min Wav”, “Max Wav”. The first shows the material name, and the next two provide the wavelength range where the stored database values are defined. These last values are particularly useful to guarantee that the material is adequately defined for a possible simulation range. Simulations and optimizations are limited to the wavelength range where all materials in that particular simulation/optimization are defined.</p>
 <h2 id="database-actions">Database Actions</h2>
 <p>The database provides three different interactions:</p>
 <blockquote>
 <ul>
 <li><strong>Add Material</strong>: To add a new material to the database (see more below)<br />
+</li>
+<li><strong>Add from Formula</strong>: Add a new material from a predefined formula<br />
 </li>
 <li><strong>Remove Material</strong>: Remove the currently selected material from the database<br />
 </li>
@@ -85,10 +91,31 @@ material<br />
 <img src="manage_database.png" alt="Manage Database" /><figcaption aria-hidden="true">Manage Database</figcaption>
 </figure>
 <h2 id="adding-new-materials">Adding New Materials</h2>
-<p>When “Add Material” is clicked, a new interface will open to provide the necessary information to import the material information.</p>
-<p>More information is provided in <a href="./Import.html">Importing Data</a></p>
+<h3 id="material-from-pre-existing-data">Material from pre-existing data</h3>
+<p>Material info can be added from a file containing the necessary information. For this, the user can click the “Add Material” button, where a new interface will appear (see the image bellow). In this interface, the user can define the relevant information for importing the data. More details, about imported data can be seen in <a href="./Import.html">Importing Data</a>.</p>
 <figure>
-<img src="add_database.png" alt="Add Material" /><figcaption aria-hidden="true">Add Material</figcaption>
+<img src="add_database.png" alt="Interface to add file materials to the database" /><figcaption aria-hidden="true">Interface to add file materials to the database</figcaption>
+</figure>
+<h3 id="adding-from-predefined-formula">Adding from predefined formula</h3>
+<p>Materials can also be added from predefined dispersion formulas. By clicking the “Add from Formula” button, a new interface will appear (see image bellow). There, the user can create the materials by changing the different parameters, defined by different dispersion relations. The possible dispersion formulas are:</p>
+<blockquote>
+<ol type="1">
+<li><strong>Constant</strong>: To define constant n/k materials<br />
+</li>
+<li><strong>New Amorphous</strong>: Formula that established a Lorentzian shape for the refractive index and extinction coefficient (Generally good to define semiconductor materials)<br />
+</li>
+<li><strong>Tauc Lorentz</strong>: Formula defined from the Tauc joint density of states and a Lorentz oscillator (Generally good for semiconductor materials)<br />
+</li>
+<li><strong>Cauchy and Cauchy Absorbent</strong>: Empirical dispersion law, that generally works well for materials with no optical absorption in the visible range (The Cauchy absorbent can be used for weakly absorbing materials)<br />
+</li>
+<li><strong>Sellmeier Absorbent</strong>: Semi-Empirical dispersion very similar to the Cauchy expression, but more accurate to characterize the refractive index across a wider spectral range<br />
+</li>
+</ol>
+</blockquote>
+<p>Upon choosing the proper dispersion formula, the several parameters will appear bellow. The user can either scroll the slider, to adjust the parameter or change the value in the text box just above the slider to adjust to a particular value. To the sides of the slider, are the minimum (left) and maximum (right) values defined in the slider. These values can, in most cases, be changed, to provide better resolution for the slider values (some cases, like the number of peaks in the Tauc Lorentz and New Amorphous cannot be changed)</p>
+<p>The plot to the right provides a preview for the n and k values for the current set of chosen parameters. The x variable can be changed (between Energy and Wavelength), by changing the value in the Units combobox, just bellow the plot. The x plot limits can also be updated by changing the respective values in the text boxes bellow the plot.</p>
+<figure>
+<img src="add_from_formula.png" alt="Add material from pre-defined formula" /><figcaption aria-hidden="true">Add material from pre-defined formula</figcaption>
 </figure>
 <p><a href="help.html">Return to Home page</a></p>
 </body>
