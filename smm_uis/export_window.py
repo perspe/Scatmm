@@ -96,6 +96,9 @@ class ExpWindow(QWidget):
                         (export_array,
                             (1-result.Ref-result.Trn)[:, np.newaxis]), axis=1)
                     header += " Abs"
+                if result.Type == SType.ANGLE:
+                    np.savetxt(savepath[0], export_array, header=header)
+                    break
                 if layers_check and result.Type is not SType.ANGLE:
                     for i in range(len(result.Layers)):
                         abs_i = smm_layer(result.Layers, i+1, result.Theta,

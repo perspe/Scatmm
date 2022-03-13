@@ -20,6 +20,13 @@ import scipy.constants as scc
 from .custom_widgets import CustomSlider
 from .smm_formula_mat import Ui_Formula
 
+# Alias to convert nm to ev and ev to nm
+_nm_to_ev = (scc.h * scc.c) / (scc.e * 1e-9)
+Units = {
+    "Energy (eV)": ("Emin (eV)", "Emax (eV)"),
+    "Wavelength (nm)": ("λmin (nm)", "λmax (nm)")
+}
+
 # Dictionary with all the dispersion equations
 methods: dict = {
     "Constant": const,
@@ -30,11 +37,35 @@ methods: dict = {
     "Sellmeier Absorbent": sellmeier_abs
 }
 
-# Alias to convert nm to ev and ev to nm
-_nm_to_ev = (scc.h * scc.c) / (scc.e * 1e-9)
-Units = {
-    "Energy (eV)": ("Emin (eV)", "Emax (eV)"),
-    "Wavelength (nm)": ("λmin (nm)", "λmax (nm)")
+# Dictionaries with default values (to keep track of internal changes)
+val_tauc_lorentz = {"N peak": 1, "ε∞": 1.5, "Eg": 1.5}
+[
+    val_tauc_lorentz.update({
+        f"E0{i+1}": 3,
+        f"A{i+1}": 50,
+        f"C{i+1}": 1
+    }) for i in range(11)
+]
+val_new_amorphous = {"N peak": 1, "n∞": 1.5, "ωg": 1.5}
+[
+    val_new_amorphous.update({
+        f"f{i+1}": 3,
+        f"Γ{i+1}": 50,
+        f"ωj{i+1}": 1
+    }) for i in range(11)
+]
+val_const = {"n": 1.5, "k": 0.5}
+val_cauchy = {"A": 1, "B": 2, "C": 3}
+val_cauchy_abs = {"A": 1, "B": 1, "C": 1, "D": 1, "E": 1, "F": 1}
+val_sellmeier_abs = {"A": 1, "B": 1, "C": 1, "D": 1, "E": 1}
+
+func_vals = {
+    "Constant": val_const,
+    "Cauchy": val_cauchy,
+    "Cauchy Absorbent": val_cauchy_abs,
+    "Sellmeier Absorbent": val_sellmeier_abs,
+    "Tauc Lorentz": val_tauc_lorentz,
+    "New Amorphous": val_new_amorphous
 }
 
 
@@ -55,6 +86,7 @@ class FormulaWindow(QMainWindow):
             "Cauchy Absorbent": self.MCauchyAbs,
             "Sellmeier Absorbent": self.MSellmeierAbs
         }
+        self._curr_method: str = "Constant"
         self.slider_list: List[CustomSlider] = []
         # Fill comboboxes
         self.ui.units_cb.addItems([str(unit) for unit in Units.keys()])
@@ -116,9 +148,19 @@ class FormulaWindow(QMainWindow):
         """ Update the formula """
         new_method: str = self.ui.method_cb.currentText()
         logging.debug(f"Method Updated to: {new_method}")
+        self._save_changed_values()
         self.methods[new_method]()
         self._update_nk()
         self._rebuild_plot()
+        self._curr_method = new_method
+
+    def _save_changed_values(self) -> None:
+        """ Save the current chosen values before updating the method """
+        val_dict = func_vals[self._curr_method]
+        for slider in self.slider_list:
+            val_dict[slider.name] = slider.curr_value()
+        logging.debug(self.slider_list)
+        logging.debug(val_dict)
 
     def _update_nk(self) -> None:
         """ Get updated nk values for current given parameters """
@@ -249,10 +291,8 @@ class FormulaWindow(QMainWindow):
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        n = CustomSlider("n", 1.5, 1, 5)
-        k = CustomSlider("k", 0.5, 0, 5)
-        layout.addWidget(n)
-        layout.addWidget(k)
+        n = CustomSlider("n", val_const["n"], 1, 5)
+        k = CustomSlider("k", val_const["k"], 0, 5)
         self.slider_list = [n, k]
         self._update_layout(layout)
 
@@ -260,7 +300,6 @@ class FormulaWindow(QMainWindow):
         """ Update the number of custom Sliders for the peaks """
         self._clear_variable_layout()
         n_peaks: int = int(self.slider_list[0].curr_value())
-        logging.debug(f"Updating TL peaks... {n_peaks=}")
         # Rebuild all widgets
         n_peak = CustomSlider("N peak",
                               n_peaks,
@@ -270,49 +309,53 @@ class FormulaWindow(QMainWindow):
                               fixed_lim=True)
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_tl_peaks)
-        einf = CustomSlider("ε∞", 1.5, 1, 5)
-        eg = CustomSlider("Eg", 1.5, 0.5, 10)
+        einf = CustomSlider("ε∞", val_tauc_lorentz["ε∞"], 1, 5)
+        eg = CustomSlider("Eg", val_tauc_lorentz["Eg"], 0.5, 10)
         self.slider_list = [einf, eg]
         for i in range(n_peaks):
-            e0 = CustomSlider(f"E0{i+1}", 3, 0.5, 10)
-            a = CustomSlider(f"A{i+1}", 50, 0.1, 200)
-            c = CustomSlider(f"C{i+1}", 1, 0.1, 10)
+            e0 = CustomSlider(f"E0{i+1}", val_tauc_lorentz[f"E0{i+1}"], 0.5,
+                              10)
+            a = CustomSlider(f"A{i+1}", val_tauc_lorentz[f"A{i+1}"], 0.1, 200)
+            c = CustomSlider(f"C{i+1}", val_tauc_lorentz[f"C{i+1}"], 0.1, 10)
             slider_peak = [e0, a, c]
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
         logging.debug(f"Slider List... {self.slider_list}")
+        self._save_changed_values()
         self._update_plot()
 
     def MTaucLorentz(self) -> None:
-        """ Create the variables for the const method
-        Vars: einf, eg, e0, a, c
-        """
+        """ Update the number of custom Sliders for the peaks """
         self._clear_variable_layout()
-        layout = self.ui.variable_layout
+        n_peaks = int(val_tauc_lorentz["N peak"])
+        # Rebuild all widgets
         n_peak = CustomSlider("N peak",
-                              1,
+                              n_peaks,
                               1,
                               11,
                               resolution=100,
                               fixed_lim=True)
+        self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_tl_peaks)
-        layout.addWidget(n_peak)
-        einf = CustomSlider("ε∞", 1.5, 1, 5)
-        eg = CustomSlider("Eg", 1.5, 0.5, 10)
-        e0 = CustomSlider("E01", 3, 0.5, 10)
-        a = CustomSlider("A1", 50, 0.1, 200)
-        c = CustomSlider("C1", 1, 0.1, 10)
-        self.slider_list = [einf, eg, e0, a, c]
+        einf = CustomSlider("ε∞", val_tauc_lorentz["ε∞"], 1, 5)
+        eg = CustomSlider("Eg", val_tauc_lorentz["Eg"], 0.5, 10)
+        self.slider_list = [einf, eg]
+        for i in range(n_peaks):
+            e0 = CustomSlider(f"E0{i+1}", val_tauc_lorentz[f"E0{i+1}"], 0.5,
+                              10)
+            a = CustomSlider(f"A{i+1}", val_tauc_lorentz[f"A{i+1}"], 0.1, 200)
+            c = CustomSlider(f"C{i+1}", val_tauc_lorentz[f"C{i+1}"], 0.1, 10)
+            slider_peak = [e0, a, c]
+            self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        logging.debug(f"Slider List... {self.slider_list}")
+        self._update_plot()
 
     def _update_na_peaks(self) -> None:
         """ Update the number of custom Sliders for the peaks """
         self._clear_variable_layout()
         n_peaks: int = int(self.slider_list[0].curr_value())
-        logging.debug(f"Updating NA peaks... {n_peaks=}")
         # Rebuild all widgets
         n_peak = CustomSlider("N peak",
                               n_peaks,
@@ -333,14 +376,15 @@ class FormulaWindow(QMainWindow):
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        logging.debug(f"Slider List... {self.slider_list}")
+        self._save_changed_values()
         self._update_plot()
 
     def MNewAmorphous(self) -> None:
         self._clear_variable_layout()
         layout = self.ui.variable_layout
+        n_peaks = int(val_new_amorphous["N peak"])
         n_peak = CustomSlider("N peak",
-                              1,
+                              n_peaks,
                               1,
                               11,
                               resolution=100,
@@ -349,42 +393,46 @@ class FormulaWindow(QMainWindow):
         layout.addWidget(n_peak)
         ninf = CustomSlider("n∞", 1.5, 1, 5, 10)
         wg = CustomSlider("ωg", 1.5, 0.5, 10)
-        fj = CustomSlider("fj", 0.3, 0, 1)
-        gammaj = CustomSlider("Γj", 1, 0.2, 8)
-        wj = CustomSlider("ωj", 2, 1.5, 10)
-        self.slider_list = [ninf, wg, fj, gammaj, wj]
-        self._update_layout(self.ui.variable_layout)
+        self.slider_list = [ninf, wg]
+        for i in range(n_peaks):
+            fj = CustomSlider(f"f{i}", 0.3, 0, 1)
+            gammaj = CustomSlider(f"Γ{i}", 1, 0.2, 8)
+            wj = CustomSlider(f"ω{i}", 2, 1.5, 10)
+            slider_peak = [fj, gammaj, wj]
+            self.slider_list.extend(slider_peak)
+        self._update_layout(layout)
         self.slider_list.insert(0, n_peak)
-        logging.debug(f"Slider List... {self.slider_list}")
+        self._save_changed_values()
+        self._update_plot()
 
     def MCauchy(self) -> None:
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        a = CustomSlider("A", 1, 1, 5)
-        b = CustomSlider("B", 2, 0.5, 10)
-        c = CustomSlider("C", 3, 0.5, 10)
+        a = CustomSlider("A", val_cauchy["A"], 1, 5)
+        b = CustomSlider("B", val_cauchy["B"], 0.5, 10)
+        c = CustomSlider("C", val_cauchy["C"], 0.5, 10)
         self.slider_list = [a, b, c]
         self._update_layout(layout)
 
     def MCauchyAbs(self) -> None:
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        a = CustomSlider("A", 1, 1, 5)
-        b = CustomSlider("B", 2, 0.5, 10)
-        c = CustomSlider("C", 3, 0.5, 10)
-        d = CustomSlider("D", 3, 0.5, 10)
-        e = CustomSlider("E", 3, 0.5, 10)
-        f = CustomSlider("F", 3, 0.5, 10)
+        a = CustomSlider("A", val_cauchy_abs["A"], 1, 5)
+        b = CustomSlider("B", val_cauchy_abs["B"], 0.5, 10)
+        c = CustomSlider("C", val_cauchy_abs["C"], 0.5, 10)
+        d = CustomSlider("D", val_cauchy_abs["D"], 0.5, 10)
+        e = CustomSlider("E", val_cauchy_abs["E"], 0.5, 10)
+        f = CustomSlider("F", val_cauchy_abs["F"], 0.5, 10)
         self.slider_list = [a, b, c, d, e, f]
         self._update_layout(layout)
 
     def MSellmeierAbs(self) -> None:
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        a = CustomSlider("A", 1, 1, 5)
-        b = CustomSlider("B", 2, 0.5, 10)
-        c = CustomSlider("C", 3, 0.5, 10)
-        d = CustomSlider("D", 3, 0.5, 10)
-        e = CustomSlider("E", 3, 0.5, 10)
+        a = CustomSlider("A", val_sellmeier_abs["A"], 1, 5)
+        b = CustomSlider("B", val_sellmeier_abs["B"], 0.5, 10)
+        c = CustomSlider("C", val_sellmeier_abs["C"], 0.5, 10)
+        d = CustomSlider("D", val_sellmeier_abs["D"], 0.5, 10)
+        e = CustomSlider("E", val_sellmeier_abs["E"], 0.5, 10)
         self.slider_list = [a, b, c, d, e]
         self._update_layout(layout)

@@ -116,12 +116,18 @@ class CustomSlider(QtWidgets.QWidget):
     def _change_max_edit(self) -> None:
         """ Update max bound for the slider """
         self._slider_max: float = int(self._max_edit.text())
+        self._update_slider()
         self._update_label()
 
     def _change_min_edit(self) -> None:
         """ Update min bound for the slider """
         self._slider_min: float = int(self._min_edit.text())
+        self._update_slider()
         self._update_label()
+
+    @property
+    def name(self):
+        return self._var_name
 
     def __repr__(self) -> str:
         return f"{self._var_name} ({self.curr_value()})"

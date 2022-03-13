@@ -20,7 +20,6 @@ def const(e_array: npt.NDArray, n: float, k: float) -> DispType:
 def _tauc_lorentz_peak(e_array: npt.NDArray[np.floating], eg: float, e0: float,
                        a: float, c: float) -> DispType:
     """ Formula to calcuate one peak for the Tauc Lorentz formula """
-    logging.debug(f"{eg=}::{e0=}::{a=}::{c=}")
     ei: npt.NDArray[np.floating] = np.zeros_like(e_array, dtype=np.float64)
     er: npt.NDArray[np.floating] = np.zeros_like(e_array, dtype=np.float64)
     # Interim variables
