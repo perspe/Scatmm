@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Designer_UIs/view_database.ui'
+# Form implementation generated from reading ui file 'view_database.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -46,6 +46,9 @@ class Ui_Database(object):
         self.add_material = QtWidgets.QPushButton(self.frame)
         self.add_material.setObjectName("add_material")
         self.verticalLayout.addWidget(self.add_material)
+        self.add_formula = QtWidgets.QPushButton(self.frame)
+        self.add_formula.setObjectName("add_formula")
+        self.verticalLayout.addWidget(self.add_formula)
         self.rmv_material = QtWidgets.QPushButton(self.frame)
         self.rmv_material.setObjectName("rmv_material")
         self.verticalLayout.addWidget(self.rmv_material)
@@ -63,6 +66,7 @@ class Ui_Database(object):
         _translate = QtCore.QCoreApplication.translate
         Database.setWindowTitle(_translate("Database", "Manage Database"))
         self.add_material.setText(_translate("Database", "Add Material"))
+        self.add_formula.setText(_translate("Database", "Add from Formula"))
         self.rmv_material.setText(_translate("Database", "Remove Material"))
         self.view_material.setText(_translate("Database", "View Material"))
 
