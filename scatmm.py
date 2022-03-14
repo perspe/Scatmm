@@ -36,7 +36,7 @@ from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.imp_window import ImpPrevWindow
 
-VERSION = "3.5.0"
+VERSION = "3.5.1"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -46,7 +46,7 @@ log_config = {
 logging.basicConfig(**log_config)
 logging.getLogger("matplotlib").setLevel(logging.INFO)
 
-# Check if there is a user filder with the config data
+# Check if there is a user folder with the config data
 # If there isnt... Copy everything to that folder
 config_dir = os.path.join(appdirs.user_data_dir(), "scatmm")
 if not os.path.isdir(config_dir):
@@ -68,6 +68,19 @@ def find_loc(filename):
         logging.info(f"{filename} in local config")
         return os.path.join("config", filename)
 
+
+with open(os.path.join("config", "config.json"), "r") as global_config:
+    global_properties = json.load(global_config)
+    logging.debug(f"{global_properties=}")
+
+# Add new config variables to the user config file
+with open(find_loc("config.json"), "r") as user_config:
+    user_properties = json.load(user_config)
+    global_properties.update(user_properties)
+    logging.debug(f"{global_properties=}")
+
+with open(find_loc("config.json"), "w") as user_config:
+    json.dump(global_properties, user_config, indent=2)
 
 # Default plot properties
 mstyle.use(find_loc("smm_style"))
