@@ -71,6 +71,7 @@ func_vals = {
 
 class FormulaWindow(QMainWindow):
     def __init__(self, parent: Union[QtCore.QObject, None] = None) -> None:
+        logging.debug(val_const)
         self.parent: Union[QtCore.QObject, None] = parent
         super(FormulaWindow, self).__init__()
         logging.debug("Opened Formula Window")
