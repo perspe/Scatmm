@@ -34,6 +34,10 @@ class CustomSlider(QtWidgets.QWidget):
         self._slider_min: float = slider_min
         self._slider_max: float = slider_max
         self._resolution: int = resolution
+        logging.debug(f"{var_name=}::{default_value=}::{slider_min=}::{slider_max=}::{resolution=}")
+        # Regex to limit values added in text boxes
+        num_regex = QRegExp("[0-9]+\\.?[0-9]*")
+        # Start building the widget layout
         layout = QtWidgets.QGridLayout()
         layout.setHorizontalSpacing(5)
         layout.setVerticalSpacing(2)
@@ -43,13 +47,13 @@ class CustomSlider(QtWidgets.QWidget):
         layout.addWidget(self._var_label, 0, 0)
         # Add left QLineEdit
         self._min_edit = QtWidgets.QLineEdit()
-        self._min_edit.setValidator(QIntValidator())
+        self._min_edit.setValidator(QRegExpValidator(num_regex))
         self._min_edit.setText(str(self._slider_min))
         self._min_edit.setDisabled(fixed_lim)
         layout.addWidget(self._min_edit, 1, 0)
         # Add right QLineEdit
         self._max_edit = QtWidgets.QLineEdit()
-        self._min_edit.setValidator(QIntValidator())
+        self._min_edit.setValidator(QRegExpValidator(num_regex))
         self._max_edit.setText(str(self._slider_max))
         self._max_edit.setDisabled(fixed_lim)
         layout.addWidget(self._max_edit, 1, 2)
@@ -65,10 +69,7 @@ class CustomSlider(QtWidgets.QWidget):
         # Add Indicator for current Slider value
         self._curr_value = QtWidgets.QLineEdit()
         self._curr_value.setMaximumWidth(80)
-        num_regex = QRegExp("[0-9]+\\.?[0-9]*j?")
         self._curr_value.setValidator(QRegExpValidator(num_regex))
-        self._update_slider(default_value)
-        self._update_label()
         layout.addWidget(self._curr_value, 0, 1)
         self.setLayout(layout)
         # Ratio 1 - 2 - 1 for horizontal space for widgets
@@ -76,6 +77,8 @@ class CustomSlider(QtWidgets.QWidget):
         layout.setColumnStretch(1, 2)
         layout.setColumnStretch(2, 1)
         self.initializeUI()
+        # Update the slider with the default value
+        self._update_slider(value=default_value)
 
     def initializeUI(self) -> None:
         """ Connect elements to functions """
@@ -99,11 +102,12 @@ class CustomSlider(QtWidgets.QWidget):
         """ Update slider after the value label is changed """
         str_val = self._curr_value.text()
         if value is None:
+            if str_val == '':
+                logging.debug("Empty text label... Returning to prev_value")
+                self._update_label()
+                return
             value: float = float(str_val)
-        if str_val == '':
-            self._update_label()
-            return
-        logging.debug(f"{value=}")
+        logging.debug(f" Updating slider: {value=}")
         if value < self._slider_min:
             value = self._slider_min
         if value > self._slider_max:
@@ -125,7 +129,7 @@ class CustomSlider(QtWidgets.QWidget):
         if value == '':
             self._max_edit.setText(str(self._slider_max))
         else:
-            self._slider_max: float = int(self._max_edit.text())
+            self._slider_max: float = float(self._max_edit.text())
         self._update_slider()
 
     def _change_min_edit(self) -> None:
@@ -134,8 +138,7 @@ class CustomSlider(QtWidgets.QWidget):
         if value == '':
             self._min_edit.setText(str(self._slider_min))
         else:
-            self._slider_min: float = int(self._min_edit.text())
-        self._slider_min: float = int(self._min_edit.text())
+            self._slider_min: float = float(self._min_edit.text())
         self._update_slider()
 
     @property
