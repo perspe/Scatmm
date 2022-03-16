@@ -372,7 +372,7 @@ axes.titlesize:     large   # fontsize of the axes title
                              #     - above patches but below lines ('line')
                              #     - above all (False)
 
-axes.formatter.limits: -5, 2  # use scientific notation if log10
+axes.formatter.limits: -5, 4  # use scientific notation if log10
                                # of the axis range is smaller than the
                                # first or larger than the second
 #axes.formatter.use_locale: False  # When True, format tick labels

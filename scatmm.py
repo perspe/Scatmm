@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import sys
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple
 import uuid
 import webbrowser
 
@@ -36,7 +36,7 @@ from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.imp_window import ImpPrevWindow
 
-VERSION = "3.5.3"
+VERSION = "3.5.5"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
