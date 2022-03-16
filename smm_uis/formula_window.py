@@ -1,3 +1,4 @@
+from enum import Enum, auto
 import logging
 from typing import List, Union
 
@@ -69,9 +70,32 @@ func_vals = {
 }
 
 
+class Observable(Enum):
+    """ Enum for the Observable variables """
+    Ei = auto()
+    Er = auto()
+    N = auto()
+    K = auto()
+    ALPHA = auto()
+
+
+def convert_observable(lmb, n, k, wanted: Observable):
+    """ Convert n/k to wanted observable """
+    if wanted == Observable.Ei:
+        return np.imag((n + 1j * k)**2)
+    elif wanted == Observable.Er:
+        return np.real((n + 1j * k)**2)
+    elif wanted == Observable.N:
+        return n
+    elif wanted == Observable.K:
+        return k
+    elif wanted == Observable.ALPHA:
+        return 2 * np.pi * k / (lmb * 1e-7)
+    return n, k
+
+
 class FormulaWindow(QMainWindow):
     def __init__(self, parent: Union[QtCore.QObject, None] = None) -> None:
-        logging.debug(val_const)
         self.parent: Union[QtCore.QObject, None] = parent
         super(FormulaWindow, self).__init__()
         logging.debug("Opened Formula Window")
@@ -79,6 +103,19 @@ class FormulaWindow(QMainWindow):
         self.ui.setupUi(self)
         # Internal variables of interest
         # Connect Combobox names to functions
+        self.observables = {
+            "n":
+            lambda x, y, z: convert_observable(x, y, z, wanted=Observable.N),
+            "k":
+            lambda x, y, z: convert_observable(x, y, z, wanted=Observable.K),
+            "εr":
+            lambda x, y, z: convert_observable(x, y, z, wanted=Observable.Er),
+            "εi":
+            lambda x, y, z: convert_observable(x, y, z, wanted=Observable.Ei),
+            "α (1/cm)":
+            lambda x, y, z: convert_observable(
+                x, y, z, wanted=Observable.ALPHA)
+        }
         self.methods: dict = {
             "Constant": self.MConst,
             "Tauc Lorentz": self.MTaucLorentz,
@@ -92,6 +129,11 @@ class FormulaWindow(QMainWindow):
         # Fill comboboxes
         self.ui.units_cb.addItems([str(unit) for unit in Units.keys()])
         self.ui.method_cb.addItems([key for key in self.methods.keys()])
+        self.ui.left_axis_cb.addItems([key for key in self.observables.keys()])
+        self.ui.right_axis_cb.addItems(
+            [key for key in self.observables.keys()])
+        self.ui.left_axis_cb.setCurrentText("n")
+        self.ui.right_axis_cb.setCurrentText("k")
         # Define the xdata, xlims and the xvariable
         self._xmin: float = 0.5
         self._xmax: float = 6.5
@@ -108,27 +150,26 @@ class FormulaWindow(QMainWindow):
                                      self.ui.units_cb.currentText(), "n")
         self.addToolBar(QtCore.Qt.TopToolBarArea,
                         NavigationToolbar2QT(self.plot_canvas, self))
-        self.n_plot = self.plot_canvas.axes
-        self.n_plot.spines["left"].set_color("b")
-        self.n_plot.spines["right"].set_color("r")
-        self.n_plot.tick_params(axis='y', colors='b')
-        self.n_plot.set_ylabel("n", color='b')
-        self.n_plot.set_ylim((0, 5))
-        self.k_plot = self.n_plot.twinx()
-        self.k_plot.set_ylabel("k", color="r")
-        self.k_plot.set_ylim((0, 5))
-        self.k_plot.spines["left"].set_color("b")
-        self.k_plot.spines["right"].set_color("r")
-        self.k_plot.tick_params(axis='y', colors='r')
+        self.left_plot = self.plot_canvas.axes
+        self.left_plot.spines["left"].set_color("b")
+        self.left_plot.spines["right"].set_color("r")
+        self.left_plot.tick_params(axis='y', colors='b')
+        self.left_plot.set_ylabel("n", color='b')
+        self.right_plot = self.left_plot.twinx()
+        self.right_plot.set_ylabel("k", color="r")
+        self.right_plot.spines["left"].set_color("b")
+        self.right_plot.spines["right"].set_color("r")
+        self.right_plot.tick_params(axis='y', colors='r')
         # InitializeUI and update plot info
         self.initializeUI()
         # Make the first plot iteration
         self.methods[self.ui.method_cb.currentText()]()
         self._update_nk()
-        nplot = self.n_plot.plot(self._e, self._n, c='b')
-        kplot = self.k_plot.plot(self._e, self._k, c='r')
-        self._n_plot = nplot[0]
-        self._k_plot = kplot[0]
+        nplot = self.left_plot.plot(self._e, self._left, c='b')
+        kplot = self.right_plot.plot(self._e, self._right, c='r')
+        self._left_plot = nplot[0]
+        self._right_plot = kplot[0]
+        self._rebuild_plot()
 
     def initializeUI(self) -> None:
         """ Connect functions to buttons """
@@ -139,9 +180,13 @@ class FormulaWindow(QMainWindow):
         # Connect buttons and signals to functions
         self.ui.method_cb.currentIndexChanged.connect(self.update_method)
         self.ui.add_db_button.clicked.connect(self.add_database)
+        self.ui.import_button.clicked.connect(self.import_data)
         self.ui.units_cb.currentIndexChanged.connect(self.update_xvar)
         self.ui.xmin_value.editingFinished.connect(self.update_xlim)
         self.ui.xmax_value.editingFinished.connect(self.update_xlim)
+        self.ui.left_axis_cb.currentIndexChanged.connect(self.update_left_axis)
+        self.ui.right_axis_cb.currentIndexChanged.connect(
+            self.update_right_axis)
 
     """ Update the n/k info and the plot """
 
@@ -164,35 +209,67 @@ class FormulaWindow(QMainWindow):
         logging.debug(val_dict)
 
     def _update_nk(self) -> None:
-        """ Get updated nk values for current given parameters """
+        """
+        Update the calculated n/k for the specified method
+        Update the actual parameter to plot from the comboboxes atop the plot
+        self._n/self._k: Global variables that store the calculated n and k
+        self._left/self._right: Variables with the data to plot, after using the cb variable
+        """
         curr_method: str = self.ui.method_cb.currentText()
         curr_values = tuple(
             [slider_i.curr_value() for slider_i in self.slider_list])
+        # Pass the arguments to the calculating function
         self._n, self._k = methods[curr_method](self._e, *curr_values)
+        left_var: str = self.ui.left_axis_cb.currentText()
+        right_var: str = self.ui.right_axis_cb.currentText()
+        # Pass the arguments to the convertion function
+        self._left = self.observables[left_var](self._lmb, self._n, self._k)
+        self._right = self.observables[right_var](self._lmb, self._n, self._k)
 
     def _update_plot(self) -> None:
-        """ Calculate n/k from variables in widget and plot """
+        """ Calculate n/k from variables in widget and update plot data """
         self._update_nk()
-        self._n_plot.set_ydata(self._n)
-        self._k_plot.set_ydata(self._k)
+        self._left_plot.set_ydata(self._left)
+        self._right_plot.set_ydata(self._right)
         self.plot_canvas.draw()
 
     def _rebuild_plot(self) -> None:
         """ Rebuild plot after xvar or xlims is changed """
         logging.debug(self.ui.units_cb.currentText())
-        self.n_plot.set_xlabel(self.ui.units_cb.currentText())
+        self.left_plot.set_xlabel(self.ui.units_cb.currentText())
         if self.ui.units_cb.currentText() == list(Units.keys())[0]:
-            self._n_plot.set_xdata(self._e)
-            self._n_plot.set_ydata(self._n)
-            self._k_plot.set_xdata(self._e)
-            self._k_plot.set_ydata(self._k)
+            self._left_plot.set_xdata(self._e)
+            self._left_plot.set_ydata(self._left)
+            self._right_plot.set_xdata(self._e)
+            self._right_plot.set_ydata(self._right)
         else:
-            self._n_plot.set_xdata(self._lmb)
-            self._n_plot.set_ydata(self._n)
-            self._k_plot.set_xdata(self._lmb)
-            self._k_plot.set_ydata(self._k)
-        self.n_plot.set_xlim(self._xmin, self._xmax)
+            self._left_plot.set_xdata(self._lmb)
+            self._left_plot.set_ydata(self._left)
+            self._right_plot.set_xdata(self._lmb)
+            self._right_plot.set_ydata(self._left)
+        # Update ylimits to accompain data change
+        self.left_plot.set_ylim(
+            np.min(self._left) - np.min(self._left) * 0.2,
+            np.max(self._left) + np.max(self._left) * 0.2)
+        self.right_plot.set_ylim(
+            np.min(self._right) - np.min(self._right) * 0.2,
+            np.max(self._right) + np.max(self._right) * 0.2)
+        self.left_plot.set_xlim(self._xmin, self._xmax)
         self.plot_canvas.draw()
+
+    def update_left_axis(self):
+        """ Update the left axis variable and recreate the plot """
+        new_var = self.ui.left_axis_cb.currentText()
+        self._left = self.observables[new_var](self._lmb, self._n, self._k)
+        self.left_plot.set_ylabel(new_var)
+        self._rebuild_plot()
+
+    def update_right_axis(self):
+        """ Update the right axis variable and recreate the plot """
+        new_var = self.ui.right_axis_cb.currentText()
+        self._right = self.observables[new_var](self._lmb, self._n, self._k)
+        self.right_plot.set_ylabel(new_var)
+        self._rebuild_plot()
 
     """ Window buttons functions """
 
@@ -268,6 +345,9 @@ class FormulaWindow(QMainWindow):
         self._update_nk()
         self._rebuild_plot()
 
+    def import_data(self):
+        pass
+
     """ Functions to Build the Variables for Different Methods """
 
     def _clear_variable_layout(self) -> None:
@@ -325,7 +405,7 @@ class FormulaWindow(QMainWindow):
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        self._update_plot()
+        self._rebuild_plot()
 
     def MTaucLorentz(self) -> None:
         """ Update the number of custom Sliders for the peaks """
@@ -380,7 +460,7 @@ class FormulaWindow(QMainWindow):
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        self._update_plot()
+        self._rebuild_plot()
 
     def MNewAmorphous(self) -> None:
         self._clear_variable_layout()

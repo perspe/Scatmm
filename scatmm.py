@@ -36,7 +36,7 @@ from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
 from smm_uis.imp_window import ImpPrevWindow
 
-VERSION = "3.5.2"
+VERSION = "3.5.3"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -83,7 +83,7 @@ with open(find_loc("config.json"), "w") as user_config:
     json.dump(global_properties, user_config, indent=2)
 
 # Default plot properties
-mstyle.use(find_loc("smm_style"))
+mstyle.use("smm_style")
 
 
 class OptimizeWorkder(QtCore.QThread):
