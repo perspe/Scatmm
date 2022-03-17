@@ -1027,9 +1027,6 @@ class SMMGUI(QMainWindow):
             # Start worker
             self.opt_worker.start()
         # The ValueError and Exception are handled inside the calling functions
-        except (ValueError, Exception) as error:
-            logging.warning(error)
-            return
         except MatOutsideBounds as error:
             logging.warning(error)
             title = "Error: Material Out of Bounds"
@@ -1037,6 +1034,9 @@ class SMMGUI(QMainWindow):
                 "undefined for the defined wavelength range"
             QMessageBox.warning(self, title, error, QMessageBox.Close,
                                 QMessageBox.Close)
+        except (ValueError, Exception) as error:
+            logging.warning(error)
+            return
 
     """ Open the Database Window """
 
@@ -1050,7 +1050,7 @@ class SMMGUI(QMainWindow):
 
     """ Import data from file """
 
-    def import_data(self) -> None:
+    def import_data(self):
         """
         Function for import button - import data for simulation/optimization
         """
@@ -1062,7 +1062,24 @@ class SMMGUI(QMainWindow):
         self.import_window = ImpPrevWindow(self,
                                            mode="imp",
                                            filepath=filepath[0])
+        self.import_window.imp_clicked.connect(self._import)
         self.import_window.show()
+
+    QtCore.pyqtSlot(object, str)
+    def _import(self, import_data, name):
+        logging.debug(f"Imported data detected:\n {import_data=}\n{name=}")
+        if self.import_window is None:
+            logging.critical("Unknown error")
+            return
+        self.imported_data = import_data.values[:, [0, 1]]
+        self.delete_plot("Imported_Data")
+        self.main_figure.plot(self.imported_data[:, 0],
+                              self.imported_data[:, 1],
+                              '--',
+                              label="Import Data",
+                              gid="Imported_Data")
+        self.main_canvas.draw()
+        self.import_window.close()
 
     """ Drag and Drop Functionality """
 
@@ -1093,6 +1110,7 @@ class SMMGUI(QMainWindow):
             logging.info("Invalid File Type")
             return
         self.import_window = ImpPrevWindow(self, mode="imp", filepath=filepath)
+        self.import_window.imp_clicked.connect(self._import)
         self.import_window.show()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:

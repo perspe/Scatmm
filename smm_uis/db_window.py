@@ -1,6 +1,7 @@
 """ Class for the DB Window """
 import logging
 from PyQt5 import QtGui
+from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import QMessageBox, QWidget
 from modules.fig_class import FigWidget, PltFigure
@@ -83,7 +84,31 @@ class DBWindow(QWidget):
         Open a new UI to manage importing new data
         """
         self.db_import_window = ImpPrevWindow(self)
+        self.db_import_window.imp_clicked.connect(self._import)
         self.db_import_window.show()
+
+    @pyqtSlot(object, str)
+    def _import(self, import_data, name):
+        logging.debug(f"Imported data detected:\n {import_data=}\n{name=}")
+        if self.db_import_window is None:
+            logging.critical("Unknown Error")
+            return
+        override = QMessageBox.NoButton
+        if name in self.database.content:
+            override = QMessageBox.question(
+                    self, "Material name in Database",
+                    "The Database already has a material with this name.." +
+                    "\nOverride the material?", QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes)
+        logging.debug(f"{override=}")
+        if override == QMessageBox.No:
+            return
+        elif override == QMessageBox.Yes:
+            self.database.rmv_content(name)
+            self.database.add_content(name, import_data.values[:, [0, 1, 2]])
+        else:
+            self.database.add_content(name, import_data.values[:, [0, 1, 2]])
+        self.db_import_window.close()
 
     def add_formula(self):
         """ Open a new UI with the formula manager """

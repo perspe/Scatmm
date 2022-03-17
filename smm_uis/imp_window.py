@@ -1,14 +1,14 @@
-
 import logging
 import os
 from typing import Union, Any
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QAbstractTableModel, QRegExp, Qt
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QRegExp, Qt, pyqtSignal
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QWidget
 from modules.fig_class import FigWidget, PltFigure
+from pandas import DataFrame
 import pandas as pd
 from pandas.errors import ParserError
 from scipy.interpolate import interp1d
@@ -19,6 +19,7 @@ Units = {"nm": 1, "um": 1e3, "mm": 1e6}
 Decimal = {"Dot (.)": ".", "Comma (,)": ","}
 Separator = {"comma (,)": ",", "space ( )": r"\s+", ";": ";", "other": " "}
 """ Model to show a preview of the imported data """
+
 
 class TableModel(QAbstractTableModel):
     """ Abstract model to implement for the imported data preview
@@ -31,10 +32,10 @@ class TableModel(QAbstractTableModel):
             good_cols: column not to highlight red (if 0 just ignore)
         """
         super().__init__()
-        self._data = data
-        self._good_cols = good_cols
+        self._data: DataFrame = data
+        self._good_cols: int = good_cols
 
-    def data(self, index, role) -> Any:
+    def data(self, index: QModelIndex, role) -> Any:
         if role == Qt.DisplayRole:
             value = self._data.iloc[index.row(), index.column()]
             return str(value)
@@ -58,19 +59,27 @@ class TableModel(QAbstractTableModel):
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
 
+
 class ImpPrevWindow(QWidget):
-    def __init__(self, parent, mode="db", filepath:str=None):
+
+    # Emit signal to parent when import button is clicked
+    imp_clicked = pyqtSignal(object, str)
+
+    def __init__(self,
+                 parent,
+                 mode: str = "db",
+                 filepath: Union[str, None] = None):
         """ General import window
         mode - mode for the window (db or imp)
         """
         self.parent = parent
-        self.mode = mode
-        super(ImpPrevWindow, self).__init__()
+        self.mode: str = mode
+        super().__init__()
         self.ui = Ui_ImportDB()
         self.ui.setupUi(self)
         # Startup variables
         self.filepath: Union[str, None] = filepath or None
-        self.data = None
+        self.data: DataFrame = DataFrame()
         self.preview_import = None
         self.import_args = {
             "sep": " ",
@@ -82,9 +91,9 @@ class ImpPrevWindow(QWidget):
         # Things for preview table
         self.import_table = self.ui.tableView
         if self.mode == "db":
-            self.import_model = TableModel(pd.DataFrame(), 3)
+            self.import_model = TableModel(DataFrame(), 3)
         elif self.mode == "imp":
-            self.import_model = TableModel(pd.DataFrame(), 2)
+            self.import_model = TableModel(DataFrame(), 2)
         else:
             logging.critical(f"Unknown {self.mode}")
             raise Exception("Unknown self.mode")
@@ -101,15 +110,13 @@ class ImpPrevWindow(QWidget):
         """
         # General buttons
         if self.mode == "db":
-            self.ui.choose_file_button.clicked.connect(self.db_choose_mat)
-            self.ui.import_button.clicked.connect(self.db_imp_mat)
-            self.ui.preview_button.clicked.connect(self.db_prev_mat)
+            self.ui.choose_file_button.clicked.connect(self.db_choose)
+            self.ui.preview_button.clicked.connect(self.db_prev)
         elif self.mode == "imp":
-            self.ui.choose_file_button.hide()
             self.ui.chosen_file_label.setText(os.path.basename(self.filepath))
+            self.ui.choose_file_button.hide()
             self.ui.mat_name_edit.hide()
             self.ui.mat_name_label.hide()
-            self.ui.import_button.clicked.connect(self.imp_data)
             self.ui.preview_button.clicked.connect(self.imp_prev)
         else:
             logging.critical("Unknown {self.mode=}")
@@ -125,9 +132,29 @@ class ImpPrevWindow(QWidget):
             lambda btn: self.update_decimal(btn))
         self.ui.delimiter_group.buttonClicked.connect(
             lambda btn: self.update_delimiter(btn))
+        self.ui.import_button.clicked.connect(self._imp_clicked)
         self.ui.other_edit.textChanged.connect(self.update_other_label)
         self.ui.ignore_lines_edit.textChanged.connect(self.update_skiprows)
         self.ui.unit_combobox.currentTextChanged.connect(self.update_preview)
+
+    def _imp_clicked(self):
+        """ Filter information before passing the signal to the parent window """
+        if self.data is None:
+            return
+        if self.mode == "db" and self.data.shape[1] < 3:
+            logging.info(f"Invalid Shape for Imported Data {self.data.shape=}")
+            return
+        elif self.mode == "imp" and self.data.shape[1] < 2:
+            logging.info(f"Invalid Shape for Imported Data {self.data.shape=}")
+            return
+        mat_name = self.ui.mat_name_edit.text()
+        if self.mode == "db" and mat_name == '':
+            QMessageBox.information(
+                self, "No material name",
+                "Please select a material name before importing",
+                QMessageBox.Ok, QMessageBox.Ok)
+            return
+        self.imp_clicked.emit(self.data, mat_name)
 
     """ Update each button group value in self.import_args """
 
@@ -175,8 +202,7 @@ class ImpPrevWindow(QWidget):
             logging.debug("No filepath chosen.. Not Updating..")
             return
         try:
-            self.data: pd.DataFrame = pd.read_csv(self.filepath,
-                                                  **self.import_args)
+            self.data = pd.read_csv(self.filepath, **self.import_args)
             self.data.iloc[:, 0] *= Units[self.ui.unit_combobox.currentText()]
         except (ParserError, TypeError) as error:
             logging.error(f"Parse Error when importing data:\n{error=}")
@@ -185,19 +211,6 @@ class ImpPrevWindow(QWidget):
         self.import_model.layoutChanged.emit()
 
     """ Functions for Comparison data import """
-
-    def imp_data(self):
-        """ Import the results to the parent variable """
-        data = self.data.values
-        self.parent.imported_data = data[:, [0, 1]]
-        self.parent.delete_plot("Imported_Data")
-        self.parent.main_figure.plot(data[:, 0],
-                              data[:, 1],
-                              '--',
-                              label="Import Data",
-                              gid="Imported_Data")
-        self.parent.main_canvas.draw()
-        self.close()
 
     def imp_prev(self):
         """
@@ -217,7 +230,7 @@ class ImpPrevWindow(QWidget):
 
     """ Functions for the Mat Import Behavior """
 
-    def db_choose_mat(self):
+    def db_choose(self):
         """
         Open a AskFileDialog to choose a file with the material data and
         update the qtextlabel with the name of the file
@@ -231,7 +244,7 @@ class ImpPrevWindow(QWidget):
         self.update_preview()
         self.ui.chosen_file_label.setText(filename)
 
-    def db_prev_mat(self):
+    def db_prev(self):
         """
         Show a preview of the imported data with the interpolation
         """
@@ -266,30 +279,6 @@ class ImpPrevWindow(QWidget):
         self.n_plot.legend(loc="upper right")
         self.k_plot.legend(loc="center right")
         self.preview_import.show()
-
-    def db_imp_mat(self):
-        """
-        Add the chosen material to the database
-        """
-        mat_name = self.ui.mat_name_edit.text()
-        if self.data is None:
-            QMessageBox.information(self, "Choose File",
-                                    "Must select a file before importing",
-                                    QMessageBox.Ok, QMessageBox.Ok)
-            return
-        elif mat_name == '':
-            QMessageBox.information(
-                self, "No material name",
-                "Please select a material name before importing",
-                QMessageBox.Ok, QMessageBox.Ok)
-            return
-        data = self.data.values
-        self.parent.database.add_content(mat_name, data)
-        QMessageBox.information(self, "Import Successful",
-                                "Material imported successfully",
-                                QMessageBox.Ok, QMessageBox.Ok)
-        # Update the database previews
-        self.close()
 
     """ Other Events """
 
