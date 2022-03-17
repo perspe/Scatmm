@@ -108,6 +108,8 @@ class DBWindow(QWidget):
             self.database.add_content(name, import_data.values[:, [0, 1, 2]])
         else:
             self.database.add_content(name, import_data.values[:, [0, 1, 2]])
+        self.update_db_preview()
+        self.update_mat_comboboxes()
         self.db_import_window.close()
 
     def add_formula(self):

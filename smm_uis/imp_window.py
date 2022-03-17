@@ -86,7 +86,9 @@ class ImpPrevWindow(QWidget):
             "decimal": ".",
             "skiprows": 0,
             "header": None,
-            "comment": "#"
+            "comment": "#",
+            "usecols": None,
+            "skipfooter": 0
         }
         # Things for preview table
         self.import_table = self.ui.tableView
@@ -122,8 +124,12 @@ class ImpPrevWindow(QWidget):
             logging.critical("Unknown {self.mode=}")
             raise Exception("Unknown error")
         # Add validators to line edits
-        self.ui.ignore_lines_edit.setValidator(
+        self.ui.ignore_lines_top_edit.setValidator(
             QtGui.QIntValidator(0, 1000, self))
+        self.ui.ignore_lines_bottom_edit.setValidator(
+            QtGui.QIntValidator(0, 1000, self))
+        ignore_cols_regex = QRegExp("^[0-9, ]*")
+        self.ui.choose_columns_edit.setValidator(QRegExpValidator(ignore_cols_regex))
         # Dont accept numbers in the other line edit
         other_regex = QRegExp("[^0-9]+")
         self.ui.other_edit.setValidator(QRegExpValidator(other_regex))
@@ -134,7 +140,12 @@ class ImpPrevWindow(QWidget):
             lambda btn: self.update_delimiter(btn))
         self.ui.import_button.clicked.connect(self._imp_clicked)
         self.ui.other_edit.textChanged.connect(self.update_other_label)
-        self.ui.ignore_lines_edit.textChanged.connect(self.update_skiprows)
+        self.ui.ignore_lines_top_edit.editingFinished.connect(
+            self.update_skiprows)
+        self.ui.ignore_lines_bottom_edit.editingFinished.connect(
+            self.update_skipfooter)
+        self.ui.choose_columns_edit.editingFinished.connect(
+            self.update_ignore_cols)
         self.ui.unit_combobox.currentTextChanged.connect(self.update_preview)
 
     def _imp_clicked(self):
@@ -160,11 +171,43 @@ class ImpPrevWindow(QWidget):
 
     def update_skiprows(self):
         logging.debug(f"Update skiprows: {self.import_args['skiprows']=}")
-        number = self.ui.ignore_lines_edit.text()
+        number = self.ui.ignore_lines_top_edit.text().strip()
         if number == '':
+            self.ui.ignore_lines_top_edit.setText(
+                str(self.import_args['skiprows']))
+            self.update_preview()
             return
         self.import_args["skiprows"] = int(number)
         self.update_preview()
+
+    def update_skipfooter(self):
+        logging.debug(f"Update skipfooter: {self.import_args['skipfooter']=}")
+        number = self.ui.ignore_lines_bottom_edit.text().strip()
+        if number == '':
+            self.ui.ignore_lines_bottom_edit.setText(
+                str(self.import_args['skipfooter']))
+            self.update_preview()
+            return
+        self.import_args["skipfooter"] = int(number)
+        self.update_preview()
+
+    def update_ignore_cols(self):
+        logging.debug(f"Updating Ignore Cols: {self.import_args['usecols']=}")
+        pattern: str = self.ui.choose_columns_edit.text().strip(" ,")
+        if pattern == '':
+            self.import_args['usecols'] = None
+            self.update_preview()
+            return
+        ignore_list = list([int(split_i) - 1 for split_i in pattern.split(",")])
+        logging.debug(f"{ignore_list=}")
+        self.import_args["usecols"] = ignore_list
+        try:
+            self.update_preview()
+        except ValueError:
+            self.import_args['usecols'] = None
+            self.ui.choose_columns_edit.setText("")
+            self.update_preview()
+
 
     def update_decimal(self, btn):
         logging.debug(f"Updated decimal:{btn.text()} '{Decimal[btn.text()]}'")
@@ -204,6 +247,8 @@ class ImpPrevWindow(QWidget):
         try:
             self.data = pd.read_csv(self.filepath, **self.import_args)
             self.data.iloc[:, 0] *= Units[self.ui.unit_combobox.currentText()]
+        except ValueError:
+            raise ValueError
         except (ParserError, TypeError) as error:
             logging.error(f"Parse Error when importing data:\n{error=}")
             return
@@ -285,7 +330,4 @@ class ImpPrevWindow(QWidget):
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         if self.preview_import is not None:
             self.preview_import.close()
-        if self.mode == "db":
-            self.parent.update_db_preview()
-            self.parent.update_mat_comboboxes()
         return super().closeEvent(a0)

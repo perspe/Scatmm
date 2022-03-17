@@ -20,6 +20,7 @@ import scipy.constants as scc
 
 from .custom_widgets import CustomSlider
 from .smm_formula_mat import Ui_Formula
+from .imp_window import ImpPrevWindow
 
 # Alias to convert nm to ev and ev to nm
 _nm_to_ev = (scc.h * scc.c) / (scc.e * 1e-9)
@@ -103,6 +104,7 @@ class FormulaWindow(QMainWindow):
         self.ui.setupUi(self)
         # Internal variables of interest
         # Connect Combobox names to functions
+        self.import_window = None
         self.observables = {
             "n":
             lambda x, y, z: convert_observable(x, y, z, wanted=Observable.N),
@@ -345,8 +347,24 @@ class FormulaWindow(QMainWindow):
         self._update_nk()
         self._rebuild_plot()
 
+    """ Import Materials to preview/compare """
+
     def import_data(self):
-        pass
+        self.import_window = ImpPrevWindow(self, "db")
+        self.import_window.imp_clicked.connect(self._import)
+        self.import_window.show()
+
+    QtCore.pyqtSlot(object, str)
+    def _import(self, imported_data, name):
+        """ Plot the imported data """
+        if self.import_window is None:
+            logging.critical("Unknown Error...")
+            return
+        data = imported_data.values
+        self.left_plot.plot(data[:, 0], data[:, 1], '--b')
+        self.right_plot.plot(data[:, 0], data[:, 2], '--r')
+        self.plot_canvas.draw()
+        self.import_window.close()
 
     """ Functions to Build the Variables for Different Methods """
 
