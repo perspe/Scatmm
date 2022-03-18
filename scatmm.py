@@ -34,7 +34,7 @@ from smm_uis.db_window import DBWindow
 from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.smm_properties_ui import Ui_Properties
-from smm_uis.imp_window import ImpPrevWindow
+from smm_uis.imp_window import ImpPrevWindow, ImpFlag
 
 VERSION = "3.6.0"
 
@@ -1055,17 +1055,14 @@ class SMMGUI(QMainWindow):
         Function for import button - import data for simulation/optimization
         """
         logging.info("Import Button Clicked")
-        filepath = QFileDialog.getOpenFileName(self, 'Open File')
-        if filepath[0] == '':
-            logging.debug("No file provided... Ignoring...")
-            return
         self.import_window = ImpPrevWindow(self,
-                                           mode="imp",
-                                           filepath=filepath[0])
+                                           imp_flag=ImpFlag.BUTTON
+                                           | ImpFlag.DATA | ImpFlag.NONAME)
         self.import_window.imp_clicked.connect(self._import)
         self.import_window.show()
 
     QtCore.pyqtSlot(object, str)
+
     def _import(self, import_data, name):
         logging.debug(f"Imported data detected:\n {import_data=}\n{name=}")
         if self.import_window is None:
@@ -1109,7 +1106,10 @@ class SMMGUI(QMainWindow):
         if os.path.isdir(filepath):
             logging.info("Invalid File Type")
             return
-        self.import_window = ImpPrevWindow(self, mode="imp", filepath=filepath)
+        self.import_window = ImpPrevWindow(self,
+                                           imp_flag=ImpFlag.DRAG
+                                           | ImpFlag.DATA,
+                                           filepath=filepath)
         self.import_window.imp_clicked.connect(self._import)
         self.import_window.show()
 

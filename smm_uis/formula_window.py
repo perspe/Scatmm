@@ -20,7 +20,7 @@ import scipy.constants as scc
 
 from .custom_widgets import CustomSlider
 from .smm_formula_mat import Ui_Formula
-from .imp_window import ImpPrevWindow
+from .imp_window import ImpPrevWindow, ImpFlag
 
 # Alias to convert nm to ev and ev to nm
 _nm_to_ev = (scc.h * scc.c) / (scc.e * 1e-9)
@@ -350,11 +350,13 @@ class FormulaWindow(QMainWindow):
     """ Import Materials to preview/compare """
 
     def import_data(self):
-        self.import_window = ImpPrevWindow(self, "db")
+        self.import_window = ImpPrevWindow(
+            self, ImpFlag.NONAME | ImpFlag.DB | ImpFlag.BUTTON)
         self.import_window.imp_clicked.connect(self._import)
         self.import_window.show()
 
     QtCore.pyqtSlot(object, str)
+
     def _import(self, imported_data, name):
         """ Plot the imported data """
         if self.import_window is None:

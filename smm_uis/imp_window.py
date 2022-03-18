@@ -1,3 +1,4 @@
+from enum import Flag, auto
 import logging
 import os
 from typing import Union, Any
@@ -18,6 +19,16 @@ from .smm_import_db_mat import Ui_ImportDB
 Units = {"nm": 1, "um": 1e3, "mm": 1e6}
 Decimal = {"Dot (.)": ".", "Comma (,)": ","}
 Separator = {"comma (,)": ",", "space ( )": r"\s+", ";": ";", "other": " "}
+
+
+class ImpFlag(Flag):
+    DB = auto()  # Flag to indicate 2-y plot
+    DATA = auto()  # Flag to indicate 1-y plot
+    BUTTON = auto()  # Flag to indicate import button was clicked
+    NONAME = auto() # Flag to indicate that name is necessary
+    _DRAG = auto()
+    DRAG = _DRAG | NONAME  # Flag to indicate data from drag and drop
+
 """ Model to show a preview of the imported data """
 
 
@@ -67,18 +78,21 @@ class ImpPrevWindow(QWidget):
 
     def __init__(self,
                  parent,
-                 mode: str = "db",
+                 imp_flag: ImpFlag = ImpFlag.DB | ImpFlag.BUTTON,
                  filepath: Union[str, None] = None):
         """ General import window
-        mode - mode for the window (db or imp)
+        imp_flags: Flags that indicate how to create the window
         """
         self.parent = parent
-        self.mode: str = mode
+        self.imp_flag: ImpFlag = imp_flag
         super().__init__()
         self.ui = Ui_ImportDB()
         self.ui.setupUi(self)
         # Startup variables
         self.filepath: Union[str, None] = filepath or None
+        if ImpFlag.DRAG in self.imp_flag and self.filepath is None:
+            logging.critical("Import Window initialized improperly")
+            self.close()
         self.data: DataFrame = DataFrame()
         self.preview_import = None
         self.import_args = {
@@ -92,9 +106,9 @@ class ImpPrevWindow(QWidget):
         }
         # Things for preview table
         self.import_table = self.ui.tableView
-        if self.mode == "db":
+        if ImpFlag.DB in self.imp_flag:
             self.import_model = TableModel(DataFrame(), 3)
-        elif self.mode == "imp":
+        elif ImpFlag.DATA in self.imp_flag:
             self.import_model = TableModel(DataFrame(), 2)
         else:
             logging.critical(f"Unknown {self.mode}")
@@ -110,26 +124,28 @@ class ImpPrevWindow(QWidget):
         In this case depending on the type of window asked it connect
         different buttons
         """
-        # General buttons
-        if self.mode == "db":
-            self.ui.choose_file_button.clicked.connect(self.db_choose)
+        # Create the interface based on the provided flags
+        if ImpFlag.BUTTON in self.imp_flag:
+            self.ui.choose_file_button.clicked.connect(self.choose_file)
+        # Connect to preview function
+        if ImpFlag.DB in self.imp_flag:
             self.ui.preview_button.clicked.connect(self.db_prev)
-        elif self.mode == "imp":
+        elif ImpFlag.DATA in self.imp_flag:
+            self.ui.preview_button.clicked.connect(self.data_prev)
+        if ImpFlag.DRAG in self.imp_flag:
             self.ui.chosen_file_label.setText(os.path.basename(self.filepath))
             self.ui.choose_file_button.hide()
+        if ImpFlag.NONAME in self.imp_flag:
             self.ui.mat_name_edit.hide()
             self.ui.mat_name_label.hide()
-            self.ui.preview_button.clicked.connect(self.imp_prev)
-        else:
-            logging.critical("Unknown {self.mode=}")
-            raise Exception("Unknown error")
         # Add validators to line edits
         self.ui.ignore_lines_top_edit.setValidator(
             QtGui.QIntValidator(0, 1000, self))
         self.ui.ignore_lines_bottom_edit.setValidator(
             QtGui.QIntValidator(0, 1000, self))
         ignore_cols_regex = QRegExp("^[0-9, ]*")
-        self.ui.choose_columns_edit.setValidator(QRegExpValidator(ignore_cols_regex))
+        self.ui.choose_columns_edit.setValidator(
+            QRegExpValidator(ignore_cols_regex))
         # Dont accept numbers in the other line edit
         other_regex = QRegExp("[^0-9]+")
         self.ui.other_edit.setValidator(QRegExpValidator(other_regex))
@@ -152,14 +168,14 @@ class ImpPrevWindow(QWidget):
         """ Filter information before passing the signal to the parent window """
         if self.data is None:
             return
-        if self.mode == "db" and self.data.shape[1] < 3:
+        if ImpFlag.DB in self.imp_flag and self.data.shape[1] < 3:
             logging.info(f"Invalid Shape for Imported Data {self.data.shape=}")
             return
-        elif self.mode == "imp" and self.data.shape[1] < 2:
+        elif ImpFlag.DATA in self.imp_flag and self.data.shape[1] < 2:
             logging.info(f"Invalid Shape for Imported Data {self.data.shape=}")
             return
         mat_name = self.ui.mat_name_edit.text()
-        if self.mode == "db" and mat_name == '':
+        if ~ImpFlag.NONAME in self.imp_flag and mat_name == '':
             QMessageBox.information(
                 self, "No material name",
                 "Please select a material name before importing",
@@ -198,16 +214,11 @@ class ImpPrevWindow(QWidget):
             self.import_args['usecols'] = None
             self.update_preview()
             return
-        ignore_list = list([int(split_i) - 1 for split_i in pattern.split(",")])
+        ignore_list = list(
+            [int(split_i) - 1 for split_i in pattern.split(",")])
         logging.debug(f"{ignore_list=}")
         self.import_args["usecols"] = ignore_list
-        try:
-            self.update_preview()
-        except ValueError:
-            self.import_args['usecols'] = None
-            self.ui.choose_columns_edit.setText("")
-            self.update_preview()
-
+        self.update_preview()
 
     def update_decimal(self, btn):
         logging.debug(f"Updated decimal:{btn.text()} '{Decimal[btn.text()]}'")
@@ -247,17 +258,31 @@ class ImpPrevWindow(QWidget):
         try:
             self.data = pd.read_csv(self.filepath, **self.import_args)
             self.data.iloc[:, 0] *= Units[self.ui.unit_combobox.currentText()]
-        except ValueError:
-            raise ValueError
-        except (ParserError, TypeError) as error:
+        except (ParserError, TypeError, ValueError) as error:
             logging.error(f"Parse Error when importing data:\n{error=}")
             return
         self.import_model._data = self.data
         self.import_model.layoutChanged.emit()
 
-    """ Functions for Comparison data import """
+    """ Choose File Button """
 
-    def imp_prev(self):
+    def choose_file(self):
+        """
+        Open a AskFileDialog to choose a file with the material data and
+        update the qtextlabel with the name of the file
+        """
+        filepath = QFileDialog.getOpenFileName(self, 'Open File')
+        logging.debug(f"Chosen filepath: {filepath}")
+        if filepath[0] == '':
+            return
+        self.filepath = filepath[0]
+        filename = os.path.basename(filepath[0])
+        self.update_preview()
+        self.ui.chosen_file_label.setText(filename)
+
+    """ Functions to preview data """
+
+    def data_prev(self):
         """
         Show a preview of the data
         """
@@ -272,22 +297,6 @@ class ImpPrevWindow(QWidget):
         prev_plot = self.preview_import_fig.axes
         prev_plot.plot(data[:, 0], data[:, 1])
         self.preview_import.show()
-
-    """ Functions for the Mat Import Behavior """
-
-    def db_choose(self):
-        """
-        Open a AskFileDialog to choose a file with the material data and
-        update the qtextlabel with the name of the file
-        """
-        filepath = QFileDialog.getOpenFileName(self, 'Open File')
-        logging.debug(f"Chosen filepath: {filepath}")
-        if filepath[0] == '':
-            return
-        self.filepath = filepath[0]
-        filename = os.path.basename(filepath[0])
-        self.update_preview()
-        self.ui.chosen_file_label.setText(filename)
 
     def db_prev(self):
         """
