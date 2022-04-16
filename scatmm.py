@@ -14,7 +14,7 @@ import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator
-from PyQt5.QtWidgets import QFileDialog, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QMessageBox
 import appdirs
 import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -26,17 +26,13 @@ import numpy.typing as npt
 from modules.database import Database
 from modules.fig_class import PltFigure
 from modules.pso import particle_swarm
+from modules.s_matrix import MatOutsideBounds
 from modules.s_matrix import smm_angle, smm_broadband, smm_layer
 from modules.s_matrix import Layer3D
-from modules.s_matrix import MatOutsideBounds
 from modules.structs import SRes, SType
-from smm_uis.db_window import DBWindow
-from smm_uis.export_window import ExpWindow
 from smm_uis.smm_main import Ui_SMM_Window
-from smm_uis.smm_properties_ui import Ui_Properties
-from smm_uis.imp_window import ImpPrevWindow, ImpFlag
 
-VERSION = "3.6.1"
+VERSION = "3.6.2"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -73,18 +69,14 @@ with open(os.path.join("config", "config.json"), "r") as global_config:
     global_properties = json.load(global_config)
     logging.debug(f"{global_properties=}")
 
-# Add new config variables to the user config file
+# Update global config with the user config
 with open(find_loc("config.json"), "r") as user_config:
     user_properties = json.load(user_config)
     global_properties.update(user_properties)
     logging.debug(f"{global_properties=}")
 
-with open(find_loc("config.json"), "w") as user_config:
-    json.dump(global_properties, user_config, indent=2)
-
 # Default plot properties
 mstyle.use("smm_style")
-
 
 class OptimizeWorkder(QtCore.QThread):
     """
@@ -292,7 +284,6 @@ class SMMGUI(QMainWindow):
         }
         # Initialize all the UI elements
         self.initializeUI()
-        logging.info("Finalize initializing : Show UI")
         self.show()
 
     def initializeUI(self):
@@ -451,6 +442,7 @@ class SMMGUI(QMainWindow):
         Open a new window showing the properties
         """
         # Load the properties UI
+        from smm_uis.smm_properties_ui import Ui_Properties
         logging.info("Opening properties window")
         self.properties_window = QtWidgets.QTabWidget()
         self.properties_ui = Ui_Properties()
@@ -911,6 +903,7 @@ class SMMGUI(QMainWindow):
         """
         logging.info("Opening Export Simulation Window")
         if len(self.sim_results) > 0:
+            from smm_uis.export_window import ExpWindow
             self.export_ui = ExpWindow(self, self.sim_results)
             self.export_ui.show()
         else:
@@ -972,6 +965,7 @@ class SMMGUI(QMainWindow):
         """
         Perform Results Optimization (Splits into a new worker thread)
         """
+        from modules.pso import particle_swarm
         # Check if there is imported data
         if self.imported_data is None or len(self.imported_data) == 0:
             logging.warning("Missing Imported Data for Optimization")
@@ -1044,6 +1038,7 @@ class SMMGUI(QMainWindow):
         """
         Open a new window to see all the database materials
         """
+        from smm_uis.db_window import DBWindow
         logging.info("Calling the Database Window")
         self.db_ui = DBWindow(self, self.database)
         self.db_ui.show()
@@ -1054,6 +1049,7 @@ class SMMGUI(QMainWindow):
         """
         Function for import button - import data for simulation/optimization
         """
+        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
         logging.info("Import Button Clicked")
         self.import_window = ImpPrevWindow(self,
                                            imp_flag=ImpFlag.BUTTON
@@ -1092,6 +1088,7 @@ class SMMGUI(QMainWindow):
     def dropEvent(self, event) -> None:
         """ Check if only a single file was imported and then
         import the data from that file """
+        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
         logging.debug("Handling Drop event")
         if not event.mimeData().hasUrls():
             return
@@ -1123,6 +1120,9 @@ class SMMGUI(QMainWindow):
         if self.import_window is not None:
             logging.info("Import Window still opened... Closing...")
             self.import_window.close()
+        # Save the final global_properties
+        with open(find_loc("config.json"), "w") as end_config:
+            json.dump(global_properties, end_config, indent=2)
         return super().closeEvent(a0)
 
 
