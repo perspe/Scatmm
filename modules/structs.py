@@ -32,6 +32,9 @@ class SRes:
         elif self.Type == SType.ANGLE:
             self._REPR = f"A{self.ID}({self.Lmb},{self.Phi})"
             self._Type = ("Angle (θ)", self.Theta)
+        elif self.Type == SType.OPT:
+            self._REPR = f"O{self.ID}({self.Theta},{self.Phi})"
+            self._Type = ("Optimization (nm)", self.Lmb)
         else:
             raise Exception("Unknown Simulation Type")
         for layer in self.Layers:
@@ -55,6 +58,10 @@ class SRes:
             type = "Angular simulation:\n\n"
             type += f"θ : {self.Theta.min()} - {self.Theta.max()}\n"
             type += f"λ : {self.Lmb}\n"
+        elif self.Type == SType.OPT:
+            type = "Optimization:\n\n"
+            type += f"λ : {self.Lmb.min()} - {self.Lmb.max()}\n"
+            type += f"θ : {self.Theta}\n"
         else:
             raise Exception("Invalid SType")
 
@@ -66,6 +73,10 @@ class SRes:
             layer_info += f"{layer.name} : ({layer.thickness} nm)\n"
         summary = type + phi + pol + i_med + t_med + layer_info
         return summary
+
+    def update_ID(self, new_id: int):
+        self.ID = new_id
+        self.__post_init__()
 
     """ Aliases for the post init variables """
     @property

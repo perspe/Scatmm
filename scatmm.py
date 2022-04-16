@@ -86,6 +86,7 @@ class OptimizeWorkder(QtCore.QThread):
     updateValueSignal = QtCore.pyqtSignal(int)
     updateTextSignal = QtCore.pyqtSignal(str)
     updateOptButton = QtCore.pyqtSignal(bool)
+    returnOptRes = QtCore.pyqtSignal(object)
 
     def __init__(self, figure_handler, particle_info, lmb, compare_data, theta,
                  phi, pol, ref_medium, trn_medium, thickness, layer_list,
@@ -180,6 +181,12 @@ class OptimizeWorkder(QtCore.QThread):
             self.figure.plot(self.smm_args["lmb"], trn, ":")
         elif self.abs_check:
             self.figure.plot(self.smm_args["lmb"], 1 - trn - ref, ":")
+        exp_results = SRes(1, SType.OPT, self.layer_list, self.smm_args["theta"],
+                self.smm_args["phi"], self.smm_args["pol"],
+                self.smm_args["i_med"],
+                self.smm_args["t_med"],
+                self.smm_args["lmb"], ref, trn)
+        self.returnOptRes.emit(exp_results)
         self.figure_canvas.draw()
 
 
@@ -919,10 +926,15 @@ class SMMGUI(QMainWindow):
         logging.debug(f"Updating progress bar to {value}")
         return self.ui.opt_progressBar.setValue(value)
 
-    def updateTextBrower(self, text: str):
+    def updateTextBrowser(self, text: str):
         """Connects the textBrowser with the worker thread"""
         logging.debug("Updating Optimization text browser")
         return self.ui.opt_res_text.append(text)
+
+    def updateResults(self, results) -> None:
+        logging.debug("Added optimization results to list")
+        results.update_ID(len(self.sim_results))
+        self.sim_results.append(results)
 
     def updateOptButton(self, status) -> None:
         """Connects the Optimization button with the worker thread"""
@@ -965,7 +977,6 @@ class SMMGUI(QMainWindow):
         """
         Perform Results Optimization (Splits into a new worker thread)
         """
-        from modules.pso import particle_swarm
         # Check if there is imported data
         if self.imported_data is None or len(self.imported_data) == 0:
             logging.warning("Missing Imported Data for Optimization")
@@ -1016,8 +1027,9 @@ class SMMGUI(QMainWindow):
                 (ref_check, trn_check, abs_check))
             # Connect the new thread with functions from the main thread
             self.opt_worker.updateValueSignal.connect(self.update_progress_bar)
-            self.opt_worker.updateTextSignal.connect(self.updateTextBrower)
+            self.opt_worker.updateTextSignal.connect(self.updateTextBrowser)
             self.opt_worker.updateOptButton.connect(self.updateOptButton)
+            self.opt_worker.returnOptRes.connect(self.updateResults)
             # Start worker
             self.opt_worker.start()
         # The ValueError and Exception are handled inside the calling functions
