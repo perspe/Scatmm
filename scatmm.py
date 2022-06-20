@@ -32,7 +32,7 @@ from modules.s_matrix import Layer3D
 from modules.structs import SRes, SType
 from smm_uis.smm_main import Ui_SMM_Window
 
-VERSION = "3.6.2"
+VERSION = "3.6.3"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -329,12 +329,15 @@ class SMMGUI(QMainWindow):
         self.ui.sim_param_check_lmb.stateChanged.connect(self.sim_lmb)
         self.ui.sim_tab_sim_button.clicked.connect(self.simulate)
         self.ui.sim_tab_clear_button.clicked.connect(self.clear_sim_buffer)
-        self.ui.sim_tab_export_button.clicked.connect(self.export_simulation)
         self.clear_button = self.ui.sim_tab_clear_button
         self.ui.import_button.clicked.connect(self.import_data)
         self.ui.opt_tab_sim_button.clicked.connect(self.pre_optimize_checks)
         # Connect menu buttons
         self.ui.actionView_Database.triggered.connect(self.view_database)
+        self.ui.actionClear.triggered.connect(self.clear_sim_buffer)
+        self.ui.actionClear_Plots.triggered.connect(self.clear_plot)
+        self.ui.actionExport.triggered.connect(self.export_simulation)
+        self.ui.actionImport.triggered.connect(self.import_data)
         self.ui.actionExit.triggered.connect(self.close)
         self.ui.actionProperties.triggered.connect(self.open_properties)
         self.ui.actionHelp.triggered.connect(
