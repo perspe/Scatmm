@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SMM_Window(object):
     def setupUi(self, SMM_Window):
         SMM_Window.setObjectName("SMM_Window")
-        SMM_Window.resize(1330, 636)
+        SMM_Window.resize(1261, 636)
         font = QtGui.QFont()
         font.setFamily("Arial")
         font.setPointSize(13)
@@ -20,6 +20,8 @@ class Ui_SMM_Window(object):
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap("logo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         SMM_Window.setWindowIcon(icon)
+        SMM_Window.setDockNestingEnabled(False)
+        SMM_Window.setDockOptions(QtWidgets.QMainWindow.AllowTabbedDocks|QtWidgets.QMainWindow.AnimatedDocks)
         self.centralwidget = QtWidgets.QWidget(SMM_Window)
         self.centralwidget.setObjectName("centralwidget")
         self.horizontalLayout_5 = QtWidgets.QHBoxLayout(self.centralwidget)
@@ -844,7 +846,7 @@ class Ui_SMM_Window(object):
         self.horizontalLayout_5.addWidget(self.figure_widget)
         SMM_Window.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(SMM_Window)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1330, 26))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1261, 26))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")

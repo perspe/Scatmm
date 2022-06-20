@@ -14,7 +14,7 @@ import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator
-from PyQt5.QtWidgets import QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QSizePolicy
 import appdirs
 import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -77,6 +77,7 @@ with open(find_loc("config.json"), "r") as user_config:
 
 # Default plot properties
 mstyle.use("smm_style")
+
 
 class OptimizeWorkder(QtCore.QThread):
     """
@@ -181,11 +182,11 @@ class OptimizeWorkder(QtCore.QThread):
             self.figure.plot(self.smm_args["lmb"], trn, ":")
         elif self.abs_check:
             self.figure.plot(self.smm_args["lmb"], 1 - trn - ref, ":")
-        exp_results = SRes(1, SType.OPT, self.layer_list, self.smm_args["theta"],
-                self.smm_args["phi"], self.smm_args["pol"],
-                self.smm_args["i_med"],
-                self.smm_args["t_med"],
-                self.smm_args["lmb"], ref, trn)
+        exp_results = SRes(1, SType.OPT, self.layer_list,
+                           self.smm_args["theta"], self.smm_args["phi"],
+                           self.smm_args["pol"], self.smm_args["i_med"],
+                           self.smm_args["t_med"], self.smm_args["lmb"], ref,
+                           trn)
         self.returnOptRes.emit(exp_results)
         self.figure_canvas.draw()
 
@@ -205,8 +206,8 @@ class SMMGUI(QMainWindow):
         self.fig_layout = self.ui.figure_layout
         self.main_canvas = PltFigure(self.fig_layout, "Wavelength (nm)",
                                      "R/T/Abs")
-        self.addToolBar(QtCore.Qt.TopToolBarArea,
-                        NavigationToolbar2QT(self.main_canvas, self))
+        mpl_toolbar = NavigationToolbar2QT(self.main_canvas, self)
+        self.addToolBar(QtCore.Qt.TopToolBarArea, mpl_toolbar)
         # Alias to add plots to the figure
         self.main_figure = self.main_canvas.axes
         # Initialize database
