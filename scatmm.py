@@ -80,14 +80,6 @@ with open(find_loc("config.json"), "r") as user_config:
 # Default plot properties
 mstyle.use("smm_style")
 
-# """ Usefull structures """
-# @dataclass(slots=True, frozen=True)
-# class MyClass():
-#     """ Daclass to store the """
-#     abs: npt.NDArray
-#     gid: uuid.UUID
-
-
 class OptimizeWorkder(QtCore.QThread):
     """
     Worker thread to perform the optimization algorithm
