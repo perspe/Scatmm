@@ -282,11 +282,19 @@ class ImpPrevWindow(QWidget):
 
     """ Functions to preview data """
 
-    def data_prev(self):
+    def data_prev(self) -> None:
         """
         Show a preview of the data
         """
         data = self.data.values
+        if self.data is None:
+            return
+        if ImpFlag.DB in self.imp_flag and self.data.shape[1] < 3:
+            logging.info(f"Invalid Shape to preview data {self.data.shape=}")
+            return
+        elif ImpFlag.DATA in self.imp_flag and self.data.shape[1] < 2:
+            logging.info(f"Invalid Shape to preview data {self.data.shape=}")
+            return
         # Plot the results
         # Preview chosen material
         self.preview_import = FigWidget("Preview Data")

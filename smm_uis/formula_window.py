@@ -307,7 +307,7 @@ class FormulaWindow(QMainWindow):
                                 "Material added Successfully to Database",
                                 QMessageBox.Ok, QMessageBox.Ok)
         self.parent.update_db_preview()
-        self.parent.update_mat_comboboxes()
+        self.parent.db_updated.emit()
 
     def update_xvar(self) -> None:
         """ Update the overall representation of xvar, between E and Wvl """

@@ -1,7 +1,7 @@
 """ Class for the DB Window """
 import logging
 from PyQt5 import QtGui
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import QMessageBox, QWidget
 from modules.fig_class import FigWidget, PltFigure
@@ -14,6 +14,7 @@ from .imp_window import ImpPrevWindow
 
 class DBWindow(QWidget):
     """ Main Class for the DB Window """
+    db_updated = pyqtSignal()
     def __init__(self, parent, database):
         """ Initialize the elements of the main window """
         self.database = database
@@ -56,27 +57,6 @@ class DBWindow(QWidget):
             ]
             self.data.insertRow(index, data)
 
-    def update_mat_comboboxes(self):
-        """
-        Update checkboxes in simulation and optimization tabs with db materials
-        """
-        logging.debug("Updating Simulation/Optimization comboboxes")
-        for smat, omat in zip(self.parent.sim_mat, self.parent.opt_mat):
-            # Keep the already chosen variable
-            s_mat_curr_name = smat.currentText()
-            o_mat_curr_name = omat.currentText()
-            logging.debug(f"{s_mat_curr_name=}::{o_mat_curr_name=}")
-            smat.clear()
-            omat.clear()
-            smat.addItems(self.database.content)
-            omat.addItems(self.database.content)
-            if s_mat_curr_name in self.database.content:
-                logging.debug(f"Updating {s_mat_curr_name=}")
-                smat.setCurrentText(s_mat_curr_name)
-            if o_mat_curr_name in self.database.content:
-                logging.debug(f"Updating {o_mat_curr_name=}")
-                omat.setCurrentText(o_mat_curr_name)
-
     """ Functions for the different buttons in the DB Interface """
 
     def add_db_material(self):
@@ -109,7 +89,7 @@ class DBWindow(QWidget):
         else:
             self.database.add_content(name, import_data.values[:, [0, 1, 2]])
         self.update_db_preview()
-        self.update_mat_comboboxes()
+        self.db_updated.emit()
         self.db_import_window.close()
 
     def add_formula(self):
@@ -140,7 +120,7 @@ class DBWindow(QWidget):
             mat_choice = self.database.content[choice]
             ret = self.database.rmv_content(mat_choice)
             # Rebuild the material comboboxes in the main gui
-            self.update_mat_comboboxes()
+            self.db_updated.emit()
             if ret == 0:
                 QMessageBox.information(self, "Removed Successfully",
                                         "Material Removed Successfully!!",

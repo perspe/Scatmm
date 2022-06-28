@@ -14,7 +14,7 @@ import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator
-from PyQt5.QtWidgets import QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QVBoxLayout
 import appdirs
 import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -31,8 +31,10 @@ from modules.s_matrix import smm_angle, smm_broadband, smm_layer
 from modules.s_matrix import Layer3D
 from modules.structs import SRes, SType
 from smm_uis.smm_main import Ui_SMM_Window
+from smm_uis.sim_layer_widget import SimLayerLayout
+from smm_uis.opt_layer_widget import OptLayerLayout
 
-VERSION = "3.6.2"
+VERSION = "3.7.0"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -77,6 +79,14 @@ with open(find_loc("config.json"), "r") as user_config:
 
 # Default plot properties
 mstyle.use("smm_style")
+
+# """ Usefull structures """
+# @dataclass(slots=True, frozen=True)
+# class MyClass():
+#     """ Daclass to store the """
+#     abs: npt.NDArray
+#     gid: uuid.UUID
+
 
 class OptimizeWorkder(QtCore.QThread):
     """
@@ -181,11 +191,11 @@ class OptimizeWorkder(QtCore.QThread):
             self.figure.plot(self.smm_args["lmb"], trn, ":")
         elif self.abs_check:
             self.figure.plot(self.smm_args["lmb"], 1 - trn - ref, ":")
-        exp_results = SRes(1, SType.OPT, self.layer_list, self.smm_args["theta"],
-                self.smm_args["phi"], self.smm_args["pol"],
-                self.smm_args["i_med"],
-                self.smm_args["t_med"],
-                self.smm_args["lmb"], ref, trn)
+        exp_results = SRes(1, SType.OPT, self.layer_list,
+                           self.smm_args["theta"], self.smm_args["phi"],
+                           self.smm_args["pol"], self.smm_args["i_med"],
+                           self.smm_args["t_med"], self.smm_args["lmb"], ref,
+                           trn)
         self.returnOptRes.emit(exp_results)
         self.figure_canvas.draw()
 
@@ -196,58 +206,34 @@ class SMMGUI(QMainWindow):
         Initialize necessary variables for the GUI and aliases to the important
         structures
         """
-        logging.info("Initializing UI/Connecting buttons to functions")
         super(SMMGUI, self).__init__()
+        logging.info("Initializing UI/Connecting buttons to functions")
         self.ui = Ui_SMM_Window()
         self.ui.setupUi(self)
-        # Initialize the Main Figure
+        # Initialize the Main Figure and toolbar
         logging.debug("Initializing variable aliases")
         self.fig_layout = self.ui.figure_layout
         self.main_canvas = PltFigure(self.fig_layout, "Wavelength (nm)",
                                      "R/T/Abs")
-        self.addToolBar(QtCore.Qt.TopToolBarArea,
-                        NavigationToolbar2QT(self.main_canvas, self))
+        mpl_toolbar = NavigationToolbar2QT(self.main_canvas, self)
+        self.addToolBar(QtCore.Qt.TopToolBarArea, mpl_toolbar)
         # Alias to add plots to the figure
         self.main_figure = self.main_canvas.axes
         # Initialize database
         db_file = os.path.join("Database", "database")
         self.database = Database(find_loc(db_file))
-        # Validator for doubles
-        self.double_validator = QDoubleValidator(self)
-        self.double_validator.setLocale(QtCore.QLocale("en_US"))
-        # Initialize list with the buttons in the opt and sim tabs
-        self.sim_mat = [self.ui.sim_tab_sim_mat1, self.ui.sim_tab_sim_mat2]
-        self.ui.sim_tab_sim_mat_size1.setValidator(self.double_validator)
-        self.ui.sim_tab_sim_mat_size2.setValidator(self.double_validator)
-        for sim_mat_i in self.sim_mat:
-            sim_mat_i.addItems(self.database.content)
-        self.sim_mat_size = [
-            self.ui.sim_tab_sim_mat_size1, self.ui.sim_tab_sim_mat_size2
-        ]
-        self.opt_mat = [self.ui.opt_tab_sim_mat1, self.ui.opt_tab_sim_mat2]
-        self.ui.opt_tab_sim_mat_size_max1.setValidator(self.double_validator)
-        self.ui.opt_tab_sim_mat_size_max2.setValidator(self.double_validator)
-        self.ui.opt_tab_sim_mat_size_min1.setValidator(self.double_validator)
-        self.ui.opt_tab_sim_mat_size_min2.setValidator(self.double_validator)
-        for opt_mat_i in self.opt_mat:
-            opt_mat_i.addItems(self.database.content)
-        self.opt_mat_size_min = [
-            self.ui.opt_tab_sim_mat_size_min1,
-            self.ui.opt_tab_sim_mat_size_min2
-        ]
-        self.opt_mat_size_max = [
-            self.ui.opt_tab_sim_mat_size_max1,
-            self.ui.opt_tab_sim_mat_size_max2
-        ]
-        self.sim_check = [
-            self.ui.sim_tab_sim_check1, self.ui.sim_tab_sim_check2
-        ]
-        # List to record the ploted absorptions
-        self.abs_list = [False, False]
-        self.layer_absorption: Any = [None, None]
-        self.layer_abs_gid: Any = [None, None]
-        # List to store the previous simulation results
-        self.sim_results = []
+        # Create the sim_tab widget
+        self._simLayout = QVBoxLayout(self.ui.sim_tab_sim_frame)
+        self._simLayout.setContentsMargins(0, 0, 0, 0)
+        self.simWidget = SimLayerLayout(self, self.database.content, 2)
+        self._simLayout.addWidget(self.simWidget)
+        # Create the opt_tab_widget
+        self._optLayout = QVBoxLayout(self.ui.opt_tab_sim_frame)
+        self._optLayout.setContentsMargins(0, 0, 0, 0)
+        self.optWidget = OptLayerLayout(self, self.database.content, 2)
+        self._optLayout.addWidget(self.optWidget)
+        # Store Simulations
+        self.sim_results: List[SRes] = []
         # Store imported data
         self.imported_data: Any = []
         # Window variables
@@ -261,18 +247,12 @@ class SMMGUI(QMainWindow):
             self.global_properties = json.load(config)
         # Initialize main helper dictionaries for simulations
         self.sim_config = {
-            "check": self.sim_check,
-            "materials": self.sim_mat,
-            "size": self.sim_mat_size,
             "ref_n": self.ui.sim_tab_ref_n,
             "ref_k": self.ui.sim_tab_ref_k,
             "trn_n": self.ui.sim_tab_trn_n,
             "trn_k": self.ui.sim_tab_trn_k
         }
         self.opt_config = {
-            "materials": self.opt_mat,
-            "size_low": self.opt_mat_size_min,
-            "size_high": self.opt_mat_size_max,
             "ref_n": self.ui.opt_tab_ref_n,
             "ref_k": self.ui.opt_tab_ref_k,
             "trn_n": self.ui.opt_tab_trn_n,
@@ -297,21 +277,21 @@ class SMMGUI(QMainWindow):
         """
         Associate all UI elements with action functions
         """
-        self.ui.sim_tab_add_layer_button.clicked.connect(
-            lambda: self.add_layer("sim"))
-        self.ui.opt_tab_add_layer_button.clicked.connect(
-            lambda: self.add_layer("opt"))
-        self.ui.sim_tab_rem_layer_button.clicked.connect(
-            lambda: self.rmv_layer("sim"))
-        self.ui.opt_tab_rem_layer_button.clicked.connect(
-            lambda: self.rmv_layer("opt"))
-        for checkbox in self.sim_check:
-            checkbox.stateChanged.connect(self.plot_abs_layer)
+        # Connect Sim and Opt Widgets
+        self.ui.sim_tab_add_layer_button.clicked.connect(self.add_sim_layer)
+        self.ui.sim_tab_rem_layer_button.clicked.connect(self.rmv_sim_layer)
+        self.simWidget.abs_clicked.connect(
+            lambda nlayer, state, id: self.plot_abs_layer(nlayer, state, id))
+        self.ui.opt_tab_add_layer_button.clicked.connect(self.add_opt_layer)
+        self.ui.opt_tab_rem_layer_button.clicked.connect(self.rmv_opt_layer)
         # Add Validators to several entries
         self.ui.sim_param_lmb_max.setValidator(QIntValidator(self))
         self.ui.sim_param_lmb_min.setValidator(QIntValidator(self))
         self.ui.sim_param_theta.setValidator(QIntValidator(0, 89, self))
         self.ui.sim_param_phi.setValidator(QIntValidator(0, 360, self))
+        # Validator for the interface inputs
+        self._double_validator = QDoubleValidator(self)
+        self._double_validator.setLocale(QtCore.QLocale("en_US"))
         double_validators = [
             self.ui.sim_tab_ref_k, self.ui.sim_tab_ref_n,
             self.ui.sim_tab_trn_k, self.ui.sim_tab_trn_n,
@@ -319,7 +299,7 @@ class SMMGUI(QMainWindow):
             self.ui.opt_tab_trn_k, self.ui.opt_tab_trn_n
         ]
         for validator in double_validators:
-            validator.setValidator(self.double_validator)
+            validator.setValidator(self._double_validator)
         # Regex validator for the polarization vectors
         pol_regex = QtCore.QRegExp("[0-9]+\\.?[0-9]*j?")
         self.ui.sim_param_pte.setValidator(QRegExpValidator(pol_regex))
@@ -328,13 +308,14 @@ class SMMGUI(QMainWindow):
         self.ui.sim_param_check_angle.stateChanged.connect(self.sim_angle)
         self.ui.sim_param_check_lmb.stateChanged.connect(self.sim_lmb)
         self.ui.sim_tab_sim_button.clicked.connect(self.simulate)
-        self.ui.sim_tab_clear_button.clicked.connect(self.clear_sim_buffer)
-        self.ui.sim_tab_export_button.clicked.connect(self.export_simulation)
-        self.clear_button = self.ui.sim_tab_clear_button
         self.ui.import_button.clicked.connect(self.import_data)
         self.ui.opt_tab_sim_button.clicked.connect(self.pre_optimize_checks)
         # Connect menu buttons
         self.ui.actionView_Database.triggered.connect(self.view_database)
+        self.ui.actionClear.triggered.connect(self.clear_sim_buffer)
+        self.ui.actionClear_Plots.triggered.connect(self.clear_plot)
+        self.ui.actionExport.triggered.connect(self.export_simulation)
+        self.ui.actionImport.triggered.connect(self.import_data)
         self.ui.actionExit.triggered.connect(self.close)
         self.ui.actionProperties.triggered.connect(self.open_properties)
         self.ui.actionHelp.triggered.connect(
@@ -369,7 +350,7 @@ class SMMGUI(QMainWindow):
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
             # Disable absorption checkboxes
-            self.reinit_abs_checkbox(disable=True)
+            self.simWidget.reinit_abs_checkbox(True)
         elif not self.ui.sim_param_check_lmb.isChecked() and int == 0:
             self.ui.sim_param_check_lmb.setChecked(True)
             self.main_canvas.reinit()
@@ -379,7 +360,7 @@ class SMMGUI(QMainWindow):
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
             # Enable absorption checkboxes
-            self.reinit_abs_checkbox(disable=False)
+            self.simWidget.reinit_abs_checkbox(True)
 
     def sim_lmb(self, int):
         """ Change simulation to broadband simulation """
@@ -393,7 +374,7 @@ class SMMGUI(QMainWindow):
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
             # Enable absorption checkboxes
-            self.reinit_abs_checkbox(disable=False)
+            self.simWidget.reinit_abs_checkbox(False)
         elif not self.ui.sim_param_check_angle.isChecked() and int == 0:
             self.ui.sim_param_check_angle.setChecked(True)
             self.main_canvas.reinit()
@@ -402,7 +383,7 @@ class SMMGUI(QMainWindow):
             # Disable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
-            self.reinit_abs_checkbox(disable=True)
+            self.simWidget.reinit_abs_checkbox(True)
 
     """ Properties Button and associated functions """
 
@@ -482,148 +463,22 @@ class SMMGUI(QMainWindow):
 
     """ Layer Management """
 
-    def add_layer(self, tab):
-        """
-        Add a new layer (combobox, hspacer and qlineedit) to a specific tab
-        """
-        font = QtGui.QFont()
-        font.setPointSize(11)
-        if tab == "sim":
-            logging.info("Adding Sim layer")
-            # Add a new CheckBox
-            self.sim_check.append(
-                QtWidgets.QCheckBox(self.ui.sim_tab_sim_frame))
-            if self.ui.sim_param_check_angle.isChecked():
-                self.sim_check[-1].setDisabled(True)
-            self.abs_list.append(False)
-            self.layer_absorption.append(None)
-            self.layer_abs_gid.append(None)
-            self.sim_check[-1].setText("")
-            self.ui.gridLayout_2.addWidget(self.sim_check[-1],
-                                           len(self.sim_check), 0, 1, 1)
-            self.sim_check[-1].stateChanged.connect(self.plot_abs_layer)
-            # Add a new combobox
-            self.sim_mat.append(QtWidgets.QComboBox(self.ui.sim_tab_sim_frame))
-            sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                               QtWidgets.QSizePolicy.Fixed)
-            sizePolicy.setHorizontalStretch(3)
-            sizePolicy.setVerticalStretch(0)
-            sizePolicy.setHeightForWidth(
-                self.sim_mat[-1].sizePolicy().hasHeightForWidth())
-            self.sim_mat[-1].setSizePolicy(sizePolicy)
-            self.sim_mat[-1].setFont(font)
-            self.sim_mat[-1].setObjectName(
-                f"sim_tab_sim_mat{len(self.sim_mat)+1}")
-            self.ui.gridLayout_2.addWidget(self.sim_mat[-1], len(self.sim_mat),
-                                           1, 1, 1)
-            self.sim_mat[-1].addItems(self.database.content)
-            self.sim_mat_size.append(
-                QtWidgets.QLineEdit(self.ui.sim_tab_sim_frame))
-            sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                               QtWidgets.QSizePolicy.Fixed)
-            sizePolicy.setHorizontalStretch(1)
-            sizePolicy.setVerticalStretch(0)
-            sizePolicy.setHeightForWidth(
-                self.sim_mat_size[-1].sizePolicy().hasHeightForWidth())
-            self.sim_mat_size[-1].setSizePolicy(sizePolicy)
-            self.sim_mat_size[-1].setFont(font)
-            self.sim_mat_size[-1].setAlignment(QtCore.Qt.AlignCenter)
-            self.sim_mat_size[-1].setObjectName(
-                f"sim_tab_sim_mat_size{len(self.sim_mat_size)+1}")
-            self.ui.gridLayout_2.addWidget(self.sim_mat_size[-1],
-                                           len(self.sim_mat_size), 3, 1, 1)
-            self.sim_mat_size[-1].setValidator(self.double_validator)
-        else:
-            logging.info("Adding Optimization layer")
-            # Add combobox for the material
-            self.opt_mat.append(QtWidgets.QComboBox(self.ui.opt_tab_sim_frame))
-            sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                               QtWidgets.QSizePolicy.Fixed)
-            sizePolicy.setHorizontalStretch(3)
-            sizePolicy.setVerticalStretch(0)
-            sizePolicy.setHeightForWidth(
-                self.opt_mat[-1].sizePolicy().hasHeightForWidth())
-            self.opt_mat[-1].setFont(font)
-            self.opt_mat[-1].setSizePolicy(sizePolicy)
-            self.opt_mat[-1].setObjectName(
-                f"opt_tab_sim_mat{len(self.opt_mat)+1}")
-            self.ui.gridLayout_4.addWidget(self.opt_mat[-1], len(self.opt_mat),
-                                           0, 1, 1)
-            self.opt_mat[-1].addItems(self.database.content)
-            # Add QLineEdit for the min size
-            self.opt_mat_size_min.append(
-                QtWidgets.QLineEdit(self.ui.opt_tab_sim_frame))
-            sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                               QtWidgets.QSizePolicy.Fixed)
-            sizePolicy.setHorizontalStretch(1)
-            sizePolicy.setVerticalStretch(0)
-            sizePolicy.setHeightForWidth(
-                self.opt_mat_size_min[-1].sizePolicy().hasHeightForWidth())
-            self.opt_mat_size_min[-1].setSizePolicy(sizePolicy)
-            self.opt_mat_size_min[-1].setFont(font)
-            self.opt_mat_size_min[-1].setAlignment(QtCore.Qt.AlignCenter)
-            self.opt_mat_size_min[-1].setObjectName(
-                f"opt_tab_sim_mat_size_min{len(self.opt_mat_size_min)+1}")
-            self.ui.gridLayout_4.addWidget(self.opt_mat_size_min[-1],
-                                           len(self.opt_mat_size_min), 2, 1, 1)
-            # Add QLineEdit for the max size
-            self.opt_mat_size_max.append(
-                QtWidgets.QLineEdit(self.ui.opt_tab_sim_frame))
-            sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                               QtWidgets.QSizePolicy.Fixed)
-            sizePolicy.setHorizontalStretch(1)
-            sizePolicy.setVerticalStretch(0)
-            sizePolicy.setHeightForWidth(
-                self.opt_mat_size_max[-1].sizePolicy().hasHeightForWidth())
-            self.opt_mat_size_max[-1].setSizePolicy(sizePolicy)
-            self.opt_mat_size_max[-1].setAlignment(QtCore.Qt.AlignCenter)
-            self.opt_mat_size_max[-1].setFont(font)
-            self.opt_mat_size_max[-1].setObjectName(
-                f"opt_tab_sim_mat_size_max{len(self.opt_mat_size_max)+1}")
-            self.ui.gridLayout_4.addWidget(self.opt_mat_size_max[-1],
-                                           len(self.opt_mat_size_max), 3, 1, 1)
-            self.opt_mat_size_max[-1].setValidator(self.double_validator)
-            self.opt_mat_size_min[-1].setValidator(self.double_validator)
+    def add_sim_layer(self):
+        """ Add a new layer to the simulation tab """
+        angle_check: bool = self.ui.sim_param_check_angle.isChecked()
+        self.simWidget.add_layer(self.database.content, disable=angle_check)
 
-    def rmv_layer(self, tab):
-        """
-        Remove a layer from a specific tab
-        """
-        if tab == "sim":
-            logging.info("Remove Simulation layer")
-            if len(self.sim_mat) == 1:
-                QMessageBox.warning(self, "Error: Number of Layers",
-                                    "Minimum number of layers is 1!!",
-                                    QMessageBox.Close, QMessageBox.Close)
-                return
-            self.ui.gridLayout_2.removeWidget(self.sim_mat[-1])
-            self.sim_mat[-1].deleteLater()
-            del self.sim_mat[-1]
-            self.ui.gridLayout_2.removeWidget(self.sim_mat_size[-1])
-            self.sim_mat_size[-1].deleteLater()
-            del self.sim_mat_size[-1]
-            self.ui.gridLayout_2.removeWidget(self.sim_check[-1])
-            self.sim_check[-1].deleteLater()
-            del self.sim_check[-1]
-            del self.abs_list[-1]
-            del self.layer_absorption[-1]
-            del self.layer_abs_gid[-1]
-        else:
-            logging.info("Remove Optimization layer")
-            if len(self.opt_mat) == 1:
-                QMessageBox.warning(self, "Error: Number of Layers",
-                                    "Minimum number of layers is 1!!",
-                                    QMessageBox.Close, QMessageBox.Close)
-                return
-            self.ui.gridLayout_4.removeWidget(self.opt_mat[-1])
-            self.opt_mat[-1].deleteLater()
-            del self.opt_mat[-1]
-            self.ui.gridLayout_4.removeWidget(self.opt_mat_size_min[-1])
-            self.opt_mat_size_min[-1].deleteLater()
-            del self.opt_mat_size_min[-1]
-            self.ui.gridLayout_4.removeWidget(self.opt_mat_size_max[-1])
-            self.opt_mat_size_max[-1].deleteLater()
-            del self.opt_mat_size_max[-1]
+    def rmv_sim_layer(self, index: int = -1):
+        """ Remove a specific layer from the stack """
+        self.simWidget.rmv_layer(index)
+
+    def add_opt_layer(self):
+        """ Add a new layer to the simulation tab """
+        self.optWidget.add_layer(self.database.content)
+
+    def rmv_opt_layer(self, index: int = -1):
+        """ Remove a specific layer from the stack """
+        self.optWidget.rmv_layer(index)
 
     """ Aliases to get information necessary for simulation/optimization """
 
@@ -648,7 +503,9 @@ class SMMGUI(QMainWindow):
             raise ValueError(error)
         return theta, phi, pol, lmb_min, lmb_max
 
-    def get_medium_config(self, data_structure):
+    def get_medium_config(
+        self, data_structure
+    ) -> Tuple[Tuple[complex, complex], Tuple[complex, complex]]:
         """
         Get data for the transmission and reflection media
         """
@@ -656,28 +513,24 @@ class SMMGUI(QMainWindow):
         try:
             ref_medium_n = float(data_structure["ref_n"].text())
             ref_medium_k = float(data_structure["ref_k"].text())
-            ref_medium = ((ref_medium_n + 1j * ref_medium_k)**2, 1)
+            ref_medium = ((ref_medium_n + 1j * ref_medium_k)**2, 1 + 0j)
             trn_medium_n = float(data_structure["trn_n"].text())
             trn_medium_k = float(data_structure["trn_k"].text())
-            trn_medium = ((trn_medium_n + 1j * trn_medium_k)**2, 1)
+            trn_medium = ((trn_medium_n + 1j * trn_medium_k)**2, 1 + 0j)
             logging.debug(f"Retrieved: {ref_medium}:{trn_medium}")
         except ValueError as error:
             raise ValueError(error)
-
         return ref_medium, trn_medium
 
     def get_sim_config(self) -> List[Layer3D]:
         """ Return the thickness from simulation tab """
         layer_list: List[Layer3D] = []
-        for material, thickness in zip(self.sim_config["materials"],
-                                       self.sim_config["size"]):
-            thick: float = float(thickness.text())
-            mat_i: str = material.currentText()
-            logging.debug(f"{thick=}, {mat_i=}")
-            db_data: npt.NDArray = self.database[mat_i]
+        layer_info: List[Tuple[str, float]] = self.simWidget.layer_info()
+        for layer in layer_info:
+            db_data: npt.NDArray = self.database[layer[0]]
             layer_list.append(
-                Layer3D(mat_i,
-                        thick,
+                Layer3D(layer[0],
+                        layer[1],
                         db_data[:, 0],
                         db_data[:, 1],
                         db_data[:, 2],
@@ -686,29 +539,27 @@ class SMMGUI(QMainWindow):
 
     def get_opt_config(self) -> Tuple[List[List[float]], List[Layer3D]]:
         """ Get optimization info """
-        thick: List[List[float]] = []
+        try:
+            layer_info = self.optWidget.layer_info()
+        except ValueError as error:
+            logging.error(error)
+            QMessageBox.warning(self, "Thickness Error",
+                                "Optimization thicknesses not defined!!",
+                                QMessageBox.Close, QMessageBox.Close)
+            raise ValueError
         layer_list: List[Layer3D] = []
-        for material, low_t, upp_t in zip(self.opt_config["materials"],
-                                          self.opt_config["size_low"],
-                                          self.opt_config["size_high"]):
-            try:
-                thick.append([float(low_t.text()), float(upp_t.text())])
-            except ValueError as error:
-                logging.error(error)
-                QMessageBox.warning(self, "Thickness Error",
-                                    "Optimization thicknesses not defined!!",
-                                    QMessageBox.Close, QMessageBox.Close)
-                raise ValueError
-            mat_i = material.currentText()
-            db_data = self.database[mat_i]
+        thickness_list: List[List[float]] = []
+        for layer_mat, thickness in layer_info:
+            db_data = self.database[layer_mat]
+            thickness_list.append(list(thickness))
             layer_list.append(
-                Layer3D(mat_i,
-                        float(low_t.text()),
+                Layer3D(layer_mat,
+                        thickness[0],
                         db_data[:, 0],
                         db_data[:, 1],
                         db_data[:, 2],
                         kind='cubic'))
-        return thick, layer_list
+        return thickness_list, layer_list
 
     """ Simulation and associated funcitons """
 
@@ -754,7 +605,7 @@ class SMMGUI(QMainWindow):
                                lmb_min, ref, trn)
                 self.sim_results.append(results)
             # Reinitialize the absorption checkboxes
-            self.reinit_abs_checkbox()
+            self.simWidget.reinit_abs_checkbox()
             logging.info("Finished Simulation")
         except MatOutsideBounds as message:
             logging.warning("Material Outside Bounds")
@@ -765,8 +616,8 @@ class SMMGUI(QMainWindow):
             logging.info("Updating exportUI with new simulation")
             self.export_ui.update_sims(self.sim_results)
         # Update the number of simulations in the clear button
-        self.ui.sim_tab_clear_button.setText(
-            f"Clear ({len(self.sim_results)})")
+        self.ui.tab_widget.setTabText(0, f"Simulation ({len(self.sim_results)})")
+        self.simWidget.reinit_abs_checkbox()
 
     def sim_plot_data(self, x, ref, trn) -> None:
         """
@@ -799,30 +650,23 @@ class SMMGUI(QMainWindow):
         logging.info("Clearing all results from simulation stack")
         self.sim_results = []
         self.main_canvas.reinit()
-        self.clear_button.setText("Clear")
+        self.ui.tab_widget.setTabText(0, "Simulation")
         self.imported_data = []
-        self.reinit_abs_checkbox()
+        self.simWidget.reinit_abs_checkbox()
 
-    def plot_abs_layer(self, _) -> None:
-        """ Determine whick layer absorption was toggled and
-        plot the cumulative absorption for all checked layers"""
+    def plot_abs_layer(self, layer_index: int, cb_state: bool,
+                       id: uuid.UUID) -> None:
+        """ Plot absorption for each checked layer """
         logging.info("Plotting absorption for single Layer")
         # Check if there are simulations
         if len(self.sim_results) == 0:
             logging.warning("No simulation has been made yet")
-            self.reinit_abs_checkbox()
-            return
-        # Check if the number of checkboxes is equal to the number of layers
-        # of the last simulation
-        if len(self.sim_results[-1].Layers) != len(self.sim_check):
-            logging.warning("Number of checkboxes is different from number"\
-                    "of simulion materials")
-            self.reinit_abs_checkbox()
+            self.simWidget.reinit_abs_checkbox()
             return
         # Check if the last simulation was not angular
         if self.sim_results[-1].Type == SType.ANGLE:
             logging.warning("Previous simulation was angle...")
-            self.reinit_abs_checkbox()
+            self.simWidget.reinit_abs_checkbox()
             return
         # Get all the data from the last simulations
         theta = self.sim_results[-1].Theta
@@ -832,56 +676,20 @@ class SMMGUI(QMainWindow):
         ref_medium = self.sim_results[-1].INC_MED
         trn_medium = self.sim_results[-1].TRN_MED
         layer_list = self.sim_results[-1].Layers
-        # Check for the different indexes
-        for index, check_index in enumerate(self.sim_check):
-            # Determine which button was clicked and update associated Structs
-            if self.abs_list[index] != check_index.isChecked():
-                logging.debug(f"Checkbox index: {index} has changed")
-                self.abs_list[index] = check_index.isChecked()
-                if check_index.isChecked():
-                    logging.debug("Checkbox has been checked")
-                    abs = smm_layer(layer_list, index + 1, theta, phi, lmb,
-                                    pol, ref_medium, trn_medium)
-                    self.layer_absorption[index] = abs
-                    # Determine the cumulative absorption
-                    abs_list = list(
-                        filter(lambda x: x is not None, self.layer_absorption))
-                    abs_tot = np.sum(np.array(abs_list), axis=0)
-                    check_index.setText(str(len(abs_list)))
-                    # Define a random ID for each partiular layer absorption
-                    logging.debug(f"Plot Absorption for {layer_list[index]}")
-                    self.layer_abs_gid[index] = uuid.uuid1()
-                    self.main_figure.plot(
-                        lmb,
-                        abs_tot,
-                        "--",
-                        gid=self.layer_abs_gid[index],
-                        label=f"A{len(self.sim_results)}-Layer:{index}")
-                    self.main_canvas.draw()
-                else:
-                    logging.debug("Checkbox has been unchecked: Deleting plot")
-                    check_index.setText("")
-                    self.delete_plot(self.layer_abs_gid[index])
-                    self.main_canvas.draw()
-                    self.layer_abs_gid[index] = None
-                    self.layer_absorption[index] = None
-        return
-
-    def reinit_abs_checkbox(self, disable=False) -> None:
-        """ Reinit all the absorption checkboxes and components """
-        logging.info("Reiniting Absorption checkboxes")
-        for index, checkbox in enumerate(self.sim_check):
-            logging.debug(f"Clearing info for checkbox: {index}")
-            checkbox.blockSignals(True)
-            if disable:
-                checkbox.setDisabled(True)
-            else:
-                checkbox.setDisabled(False)
-            checkbox.setText("")
-            checkbox.setChecked(False)
-            checkbox.blockSignals(False)
-            self.abs_list[index] = False
-            self.layer_absorption[index] = None
+        if not cb_state:
+            self.delete_plot(id)
+            self.main_canvas.draw()
+            return
+        abs = smm_layer(layer_list, layer_index + 1, theta, phi, lmb, pol,
+                        ref_medium, trn_medium)
+        # Define a random ID for each partiular layer absorption and plot
+        self.main_figure.plot(
+            lmb,
+            abs,
+            "--",
+            gid=id,
+            label=f"A{len(self.sim_results)}-Layer:{layer_index}")
+        self.main_canvas.draw()
 
     def clear_plot(self) -> None:
         """ Clear all the plots without removing imported data """
@@ -941,7 +749,6 @@ class SMMGUI(QMainWindow):
         logging.debug(f"Updating Optimization/Simulation button: {status}")
         self.ui.opt_tab_sim_button.setEnabled(status)
         self.ui.sim_tab_sim_button.setEnabled(status)
-        return
 
     def pre_optimize_checks(self) -> None:
         """
@@ -1042,9 +849,8 @@ class SMMGUI(QMainWindow):
                                 QMessageBox.Close)
         except (ValueError, Exception) as error:
             logging.warning(error)
-            return
 
-    """ Open the Database Window """
+    """ Connection to the Database Window """
 
     def view_database(self) -> None:
         """
@@ -1053,7 +859,12 @@ class SMMGUI(QMainWindow):
         from smm_uis.db_window import DBWindow
         logging.info("Calling the Database Window")
         self.db_ui = DBWindow(self, self.database)
+        self.db_ui.db_updated.connect(self.update_mat_cb)
         self.db_ui.show()
+
+    def update_mat_cb(self):
+        self.simWidget.update_cb_items(self.database.content)
+        self.optWidget.update_cb_items(self.database.content)
 
     """ Import data from file """
 
@@ -1068,8 +879,6 @@ class SMMGUI(QMainWindow):
                                            | ImpFlag.DATA | ImpFlag.NONAME)
         self.import_window.imp_clicked.connect(self._import)
         self.import_window.show()
-
-    QtCore.pyqtSlot(object, str)
 
     def _import(self, import_data, name):
         logging.debug(f"Imported data detected:\n {import_data=}\n{name=}")
@@ -1091,11 +900,14 @@ class SMMGUI(QMainWindow):
     def dragEnterEvent(self, event) -> None:
         """ Check for correct datatype to accept drops """
         logging.debug("Drag event Detected")
-        if event.mimeData().hasUrls:
+        if event.mimeData().hasUrls():
             logging.debug("Acceptable event data...")
             event.accept()
         else:
             event.ignore()
+
+    def dragMoveEvent(self, a0: QtGui.QDragMoveEvent) -> None:
+        return super().dragMoveEvent(a0)
 
     def dropEvent(self, event) -> None:
         """ Check if only a single file was imported and then
@@ -1123,6 +935,7 @@ class SMMGUI(QMainWindow):
         self.import_window.show()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        """ Clean all possible open windows """
         if self.properties_window is not None:
             logging.info("Properties Window still opened... Closing...")
             self.properties_window.close()
@@ -1133,8 +946,8 @@ class SMMGUI(QMainWindow):
             logging.info("Import Window still opened... Closing...")
             self.import_window.close()
         # Save the final global_properties
-        with open(find_loc("config.json"), "w") as end_config:
-            json.dump(global_properties, end_config, indent=2)
+        # with open(find_loc("config.json"), "w") as end_config:
+        #     json.dump(global_properties, end_config, indent=2)
         return super().closeEvent(a0)
 
 
