@@ -53,7 +53,7 @@ def _update_parameters(param, vel, max_param, min_param, inertia_w, ind_cog,
 def particle_swarm(func,
                    param_dict,
                    maximize=True,
-                   swarm_properties=(0.75, 1.49, 1.49),
+                   swarm_properties=(0.729, 2.05, 2.05),
                    n_particles=25,
                    n_iter=50,
                    export=False,
@@ -81,8 +81,8 @@ def particle_swarm(func,
     # Random array with the start value for the velocities
     # pbest and gbest arrays
     param_names = list(param_dict.keys())
-    param_max = np.array(list([p_max[1] for p_max in param_dict.values()]))
-    param_min = np.array(list([p_min[0] for p_min in param_dict.values()]))
+    param_max = np.array([p_max[1] for p_max in param_dict.values()])
+    param_min = np.array([p_min[0] for p_min in param_dict.values()])
     param_space = [
         np.random.uniform(param_dict[param][0],
                           param_dict[param][1],
@@ -90,8 +90,8 @@ def particle_swarm(func,
     ]
     param_space = np.stack(param_space)
     vel_space = [
-        np.random.uniform(param_dict[param][0],
-                          param_dict[param][1],
+        np.random.uniform(-max(param_dict[param]),
+                          max(param_dict[param]),
                           size=(n_particles)) for param in param_names
     ]
     vel_space = np.stack(vel_space)

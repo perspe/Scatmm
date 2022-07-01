@@ -1,23 +1,23 @@
 {
   "n_particles": [
     "int",
-    60
+    30
   ],
   "n_iter": [
     "int",
-    40
+    60
   ],
   "w": [
     "float",
-    0.55
+    0.45
   ],
   "c1": [
     "float",
-    1.2
+    1.55
   ],
   "c2": [
     "float",
-    1.2
+    1.55
   ],
   "sim_points": [
     "int",
