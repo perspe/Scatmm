@@ -77,8 +77,6 @@ with open(find_loc("config.json"), "r") as user_config:
     global_properties.update(user_properties)
     logging.debug(f"{global_properties=}")
 
-# Default plot properties
-mstyle.use("smm_style")
 
 class OptimizeWorkder(QtCore.QThread):
     """
@@ -947,6 +945,8 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     # Update matplotlib color to match qt application
     color = app.palette().color(QPalette.Background)
+    # Default plot properties
+    mstyle.use("smm_style")
     mpl.rcParams["axes.facecolor"] = f"{color.name()}"
     mpl.rcParams["figure.facecolor"] = f"{color.name()}"
     SMM = SMMGUI()
