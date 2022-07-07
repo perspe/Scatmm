@@ -34,7 +34,7 @@ from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.sim_layer_widget import SimLayerLayout
 from smm_uis.opt_layer_widget import OptLayerLayout
 
-VERSION = "3.7.0"
+VERSION = "3.7.1"
 
 log_config = {
     "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
@@ -153,11 +153,11 @@ class OptimizeWorkder(QtCore.QThread):
             lowest_error, best_thick, _, _ = particle_swarm(
                 optimize_function,
                 thick,
-                swarm_properties=(self.particle_info["w"],
-                                  self.particle_info["c1"],
-                                  self.particle_info["c2"]),
-                n_iter=self.particle_info["n_iter"],
-                n_particles=self.particle_info["n_particles"],
+                inert_prop=(self.particle_info["w"], 0.4, True),
+                ind_cog=self.particle_info["c1"],
+                soc_learning=self.particle_info["c2"],
+                iterations=self.particle_info["n_iter"],
+                particles=self.particle_info["n_particles"],
                 maximize=False)
         except MatOutsideBounds as error:
             self.updateValueSignal.emit(0)

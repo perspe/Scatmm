@@ -4,10 +4,11 @@ Functions:
     - particle_swarm: Implements the algorithm
 """
 import logging
+import os
 from random import random
+from typing import Dict, List, Tuple
 
 import numpy as np
-
 
 def _update_parameters(param, vel, max_param, min_param, inertia_w, ind_cog,
                        soc_learning, pbest, gbest):
@@ -51,22 +52,25 @@ def _update_parameters(param, vel, max_param, min_param, inertia_w, ind_cog,
 
 
 def particle_swarm(func,
-                   param_dict,
-                   maximize=True,
-                   swarm_properties=(0.729, 2.05, 2.05),
-                   n_particles=25,
-                   n_iter=50,
-                   export=False,
+                   param_dict: Dict[str, List[float]],
+                   *,
+                   maximize: bool = True,
+                   inert_prop: Tuple[float, float, bool] = (0.9, 0.4, True),
+                   ind_cog: float = 2.05,
+                   soc_learning: float = 2.05,
+                   particles: int = 25,
+                   iterations: int = 50,
+                   export: bool = False,
                    **func_kwargs):
     """Implementation of the particle swarm algorithm
     Args:
         - func: function to be optimized
         - param_dict: dictionary with parameters and variation range
         - maximize: maximize or minimize the problem (default: maximize)
-        - swarm_properties: values for inertia_w, ind_cog, soc_learning
-            (default: (0.75, 1.49, 1.49))
-        - n_particles: Number of particles (default: 25)
-        - n_iter: Maximum number of iterations (default: 50)
+        - inert_prop: Inertial weight factor (the 2 and 3 term is to
+        change the value with the iterations
+        - particles: Number of particles (default: 25)
+        - iterations: Maximum number of iterations (default: 50)
         - export: Export files with the parameter variation with iterations
         - func_kwargs: Extra arguments to pass to the function
     Return:
@@ -76,6 +80,14 @@ def particle_swarm(func,
         - gbest_array: Array with the gfitness value for each iteration
     """
     logging.info("Starting Particle Swarm Algorithm")
+    # Create an array for the inertial factor variation
+    inert_factor_low, inert_factor_up, inert_sweep = inert_prop
+    if inert_sweep:
+        inert_factor = np.linspace(inert_factor_low, inert_factor_up,
+                                   iterations)
+    else:
+        inert_factor = np.ones(iterations) * inert_factor_up
+    logging.debug(f"Inertial factor array:\n{inert_factor}")
     # Variable initialization
     # Random array with the start value for the parameters
     # Random array with the start value for the velocities
@@ -86,13 +98,13 @@ def particle_swarm(func,
     param_space = [
         np.random.uniform(param_dict[param][0],
                           param_dict[param][1],
-                          size=(n_particles)) for param in param_names
+                          size=(particles)) for param in param_names
     ]
     param_space = np.stack(param_space)
     vel_space = [
         np.random.uniform(-max(param_dict[param]),
                           max(param_dict[param]),
-                          size=(n_particles)) for param in param_names
+                          size=(particles)) for param in param_names
     ]
     vel_space = np.stack(vel_space)
     # Calculation of the function for the initial parameters
@@ -117,13 +129,14 @@ def particle_swarm(func,
     if export:
         export_param = np.concatenate(
             (param_space.T, func_results[:, np.newaxis], vel_space.T), axis=1)
-        np.savetxt(f"PSO_Results/results_{iteration}", export_param)
+        np.savetxt(os.path.join("PSO_Results", f"results_{iteration}"),
+                   export_param)
         iteration += 1
-    while iteration < n_iter:
+    while iteration < iterations:
         param_space, vel_space = _update_parameters(
-            param_space, vel_space, param_max, param_min, swarm_properties[0],
-            swarm_properties[1], swarm_properties[2], pbest, gbest[:,
-                                                                   np.newaxis])
+            param_space, vel_space, param_max, param_min,
+            inert_factor[iteration - 1], ind_cog, soc_learning, pbest,
+            gbest[:, np.newaxis])
         # Update gbest and pbest
         func_input = {
             param_name: param_space[i]
@@ -152,10 +165,12 @@ def particle_swarm(func,
             export_param = np.concatenate(
                 (param_space.T, func_results[:, np.newaxis], vel_space.T),
                 axis=1)
-            np.savetxt(f"PSO_Results/results_{iteration}", export_param)
+            np.savetxt(os.path.join("PSO_Results", f"results_{iteration}"),
+                       export_param)
         iteration += 1
     if export:
-        np.savetxt("PSO_Results/gfitness_res", np.array(gbest_array).T)
+        np.savetxt(os.path.join("PSO_Results", f"gfitness_res"),
+                   np.array(gbest_array).T)
     return gfitness, gbest, pbest, gbest_array
 
 
