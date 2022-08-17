@@ -12,11 +12,14 @@ from .smm_view_database import Ui_Database
 from .formula_window import FormulaWindow
 from .imp_window import ImpPrevWindow
 
+
 class DBWindow(QWidget):
-    """ Main Class for the DB Window """
+    """Main Class for the DB Window"""
+
     db_updated = pyqtSignal()
+
     def __init__(self, parent, database):
-        """ Initialize the elements of the main window """
+        """Initialize the elements of the main window"""
         self.database = database
         self.parent = parent
         super(DBWindow, self).__init__()
@@ -32,7 +35,7 @@ class DBWindow(QWidget):
         self.initializeUI()
 
     def initializeUI(self):
-        """ Connect elements to specific functions """
+        """Connect elements to specific functions"""
         self.ui.add_material.clicked.connect(self.add_db_material)
         self.ui.add_formula.clicked.connect(self.add_formula)
         self.ui.rmv_material.clicked.connect(self.rmv_db_material)
@@ -45,7 +48,8 @@ class DBWindow(QWidget):
         logging.debug("Updating DB list")
         self.data.clear()
         self.data.setHorizontalHeaderLabels(
-            ["Material", "Min Wav (µm)", "Max Wav (µm)"])
+            ["Material", "Min Wav (µm)", "Max Wav (µm)"]
+        )
         for index, material in enumerate(self.database.content):
             data_array = self.database[material]
             lmb_min = np.min(data_array[:, 0])
@@ -53,7 +57,7 @@ class DBWindow(QWidget):
             data = [
                 QStandardItem(material),
                 QStandardItem(str(np.around(lmb_min / 1000, 2))),
-                QStandardItem(str(np.around(lmb_max / 1000, 2)))
+                QStandardItem(str(np.around(lmb_max / 1000, 2))),
             ]
             self.data.insertRow(index, data)
 
@@ -76,10 +80,13 @@ class DBWindow(QWidget):
         override = QMessageBox.NoButton
         if name in self.database.content:
             override = QMessageBox.question(
-                    self, "Material name in Database",
-                    "The Database already has a material with this name.." +
-                    "\nOverride the material?", QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes)
+                self,
+                "Material name in Database",
+                "The Database already has a material with this name.."
+                + "\nOverride the material?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
         logging.debug(f"{override=}")
         if override == QMessageBox.No:
             return
@@ -93,7 +100,7 @@ class DBWindow(QWidget):
         self.db_import_window.close()
 
     def add_formula(self):
-        """ Open a new UI with the formula manager """
+        """Open a new UI with the formula manager"""
         self.formula_window = FormulaWindow(self)
         self.formula_window.show()
 
@@ -103,9 +110,13 @@ class DBWindow(QWidget):
         """
         choice = self.db_table.currentIndex().row()
         if choice < 0:
-            QMessageBox.information(self, "Choose a material",
-                                    "No material chosen to be removed!!",
-                                    QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.information(
+                self,
+                "Choose a material",
+                "No material chosen to be removed!!",
+                QMessageBox.Ok,
+                QMessageBox.Ok,
+            )
             # Put focus on the database window
             self.setFocus(True)
             self.activateWindow()
@@ -113,18 +124,25 @@ class DBWindow(QWidget):
             return
         # Ask the user for confirmation to delete the material
         answer = QMessageBox.question(
-            self, "Remove Material",
+            self,
+            "Remove Material",
             f"Do you really want to delete {self.database.content[choice]}?",
-            QMessageBox.No | QMessageBox.Yes, QMessageBox.Yes)
+            QMessageBox.No | QMessageBox.Yes,
+            QMessageBox.Yes,
+        )
         if answer == QMessageBox.Yes:
             mat_choice = self.database.content[choice]
             ret = self.database.rmv_content(mat_choice)
             # Rebuild the material comboboxes in the main gui
             self.db_updated.emit()
             if ret == 0:
-                QMessageBox.information(self, "Removed Successfully",
-                                        "Material Removed Successfully!!",
-                                        QMessageBox.Ok, QMessageBox.Ok)
+                QMessageBox.information(
+                    self,
+                    "Removed Successfully",
+                    "Material Removed Successfully!!",
+                    QMessageBox.Ok,
+                    QMessageBox.Ok,
+                )
             self.update_db_preview()
         # Put focus on the Database window
         self.setFocus(True)
@@ -138,9 +156,13 @@ class DBWindow(QWidget):
         """
         choice = self.db_table.currentIndex().row()
         if choice < 0:
-            QMessageBox.information(self, "Choose a material",
-                                    "No material chosen for preview!!",
-                                    QMessageBox.Ok, QMessageBox.Ok)
+            QMessageBox.information(
+                self,
+                "Choose a material",
+                "No material chosen for preview!!",
+                QMessageBox.Ok,
+                QMessageBox.Ok,
+            )
             # Put focus on the database window
             self.setFocus(True)
             self.activateWindow()
@@ -152,12 +174,10 @@ class DBWindow(QWidget):
         interp_n = interp1d(lmb, n)
         interp_k = interp1d(lmb, k)
         # Preview chosen material
-        self.preview_choice = FigWidget(
-            f"Preview {self.database.content[choice]}")
-        self.preview_choice_fig = PltFigure(self.preview_choice.layout,
-                                            "Wavelength (nm)",
-                                            "n/k",
-                                            width=7)
+        self.preview_choice = FigWidget(f"Preview {self.database.content[choice]}")
+        self.preview_choice_fig = PltFigure(
+            self.preview_choice.layout, "Wavelength (nm)", "n/k", width=7
+        )
         self.n_plot = self.preview_choice_fig.axes
         self.n_plot.set_ylabel("n")
         self.n_plot.plot(lmb, n, "b.", label="n")

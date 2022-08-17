@@ -3,14 +3,21 @@ import uuid
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import QLocale, QMimeData, Qt, pyqtSignal
-from PyQt5.QtWidgets import QAction, QApplication, QCheckBox, QMenu, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (
+    QAction,
+    QApplication,
+    QCheckBox,
+    QMenu,
+    QVBoxLayout,
+    QWidget,
+)
 from matplotlib import logging
 
 from .smm_simlayer_widget import Ui_SimLayer
 
 log_config = {
-    "format": '%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:'\
-            '%(lineno)d:%(message)s',
+    "format": "%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:"
+    "%(lineno)d:%(message)s",
     "level": logging.DEBUG,
 }
 logging.basicConfig(**log_config)
@@ -32,13 +39,13 @@ class SimLayerWidget(QWidget):
         thickness, material, uuid: Internal variables stored
         update_materials: Update all the Combobox materials
     """
+
     checked = pyqtSignal(bool, uuid.UUID)
     deleted = pyqtSignal(uuid.UUID)
 
-    def __init__(self,
-                 materials: List[str],
-                 check: bool = False,
-                 disable: bool = False):
+    def __init__(
+        self, materials: List[str], check: bool = False, disable: bool = False
+    ):
         QWidget.__init__(self)
         self.ui = Ui_SimLayer()
         self.ui.setupUi(self)
@@ -53,10 +60,8 @@ class SimLayerWidget(QWidget):
         _double_validator.setLocale(QLocale("en_US"))
         self.ui.thickness_edit.setValidator(_double_validator)
         # Add connectors
-        self.ui.abs_cb.clicked.connect(
-            lambda x: self.checked.emit(x, self._uuid))
-        self.ui.del_button.clicked.connect(
-            lambda: self.deleted.emit(self._uuid))
+        self.ui.abs_cb.clicked.connect(lambda x: self.checked.emit(x, self._uuid))
+        self.ui.del_button.clicked.connect(lambda: self.deleted.emit(self._uuid))
         self.show()
 
     def mouseMoveEvent(self, a0: QtGui.QMouseEvent) -> None:
@@ -76,7 +81,7 @@ class SimLayerWidget(QWidget):
     """ Interaction with interanal widgets """
 
     def clear_abs_cb(self, disable: bool = False):
-        """ Clear the Absorption CheckBox """
+        """Clear the Absorption CheckBox"""
         self.ui.abs_cb.blockSignals(True)
         self.ui.abs_cb.setChecked(False)
         self.ui.abs_cb.setDisabled(disable)
@@ -95,7 +100,7 @@ class SimLayerWidget(QWidget):
         return self._uuid
 
     def update_materials(self, materials: List[str]) -> None:
-        """ Update all the materials in the Combobox """
+        """Update all the materials in the Combobox"""
         curr_item: str = self.ui.mat_cb.currentText()
         self.ui.mat_cb.clear()
         self.ui.mat_cb.addItems(materials)
@@ -120,6 +125,7 @@ class SimLayerLayout(QWidget):
         reinit_abs_checkbox: Reinitialize all the abs checkboxes
         layer_info: return all the info from all the layers
     """
+
     abs_clicked = pyqtSignal(int, bool, uuid.UUID)
 
     def __init__(self, parent, materials: List[str], layers: int = 2):
@@ -143,11 +149,10 @@ class SimLayerLayout(QWidget):
 
     """ Functions to manage the layers """
 
-    def add_layer(self,
-                  materials: List[str],
-                  check: bool = False,
-                  disable: bool = False) -> None:
-        """ Add a new layer """
+    def add_layer(
+        self, materials: List[str], check: bool = False, disable: bool = False
+    ) -> None:
+        """Add a new layer"""
         widget = SimLayerWidget(materials, check, disable)
         widget.deleted.connect(lambda x: self.rmv_layer_id(x))
         widget.checked.connect(lambda x, y: self.clicked_abs(x, y))
@@ -155,7 +160,7 @@ class SimLayerLayout(QWidget):
         self.reinit_abs_checkbox(disable=True)
 
     def rmv_layer(self, index: int) -> None:
-        """ Remove layer from particular index """
+        """Remove layer from particular index"""
         if self.vlayout.count() <= 1:
             logging.info("There should be at least one singular layer")
             return
@@ -164,14 +169,14 @@ class SimLayerLayout(QWidget):
         self.reinit_abs_checkbox(disable=True)
 
     def rmv_layer_id(self, id: uuid.UUID) -> None:
-        """ Delete particular item from uuid """
+        """Delete particular item from uuid"""
         for n in range(self.vlayout.count()):
             widget = self.vlayout.itemAt(n).widget()
             if widget.uuid == id:
                 self.rmv_layer(n)
 
     def layer_info(self) -> List[Tuple[str, float]]:
-        """ Return all the information about the current layers """
+        """Return all the information about the current layers"""
         info: List[Tuple[str, float]] = []
         for n in range(self.vlayout.count()):
             widget = self.vlayout.itemAt(n).widget()
@@ -182,13 +187,13 @@ class SimLayerLayout(QWidget):
         return info
 
     def update_cb_items(self, materials: List[str]) -> None:
-        """ Add a new item to the combobox """
+        """Add a new item to the combobox"""
         for n in range(self.vlayout.count()):
             widget = self.vlayout.itemAt(n).widget()
             widget.update_materials(materials)
 
     def reinit_abs_checkbox(self, disable: bool = False) -> None:
-        """ Clear all the absorption checkboxes """
+        """Clear all the absorption checkboxes"""
         for n in range(self.vlayout.count()):
             logging.debug(f"Clear CB {n}")
             widget = self.vlayout.itemAt(n).widget()
@@ -229,7 +234,7 @@ class SimLayerLayout(QWidget):
         return super().dragMoveEvent(a0)
 
     def dropEvent(self, a0: QtGui.QDropEvent) -> None:
-        """ Handle the widget drop """
+        """Handle the widget drop"""
         pos = a0.pos()
         widget = a0.source()
         index = self.vlayout.indexOf(widget)
@@ -245,16 +250,12 @@ class SimLayerLayout(QWidget):
             curr_item = self.vlayout.itemAt(n).widget()
             next_item = self.vlayout.itemAt(n + 1).widget()
             self._parent.setTabOrder(curr_item.ui.abs_cb, curr_item.ui.mat_cb)
-            self._parent.setTabOrder(curr_item.ui.mat_cb,
-                                     curr_item.ui.thickness_edit)
-            self._parent.setTabOrder(curr_item.ui.thickness_edit,
-                                     next_item.ui.abs_cb)
+            self._parent.setTabOrder(curr_item.ui.mat_cb, curr_item.ui.thickness_edit)
+            self._parent.setTabOrder(curr_item.ui.thickness_edit, next_item.ui.abs_cb)
             self._parent.setTabOrder(next_item.ui.abs_cb, next_item.ui.mat_cb)
-            self._parent.setTabOrder(next_item.ui.mat_cb,
-                                     next_item.ui.thickness_edit)
+            self._parent.setTabOrder(next_item.ui.mat_cb, next_item.ui.thickness_edit)
             self.vlayout.itemAt(n).widget().setDisabled(False)
-        self.vlayout.itemAt(self.vlayout.count() -
-                            1).widget().setDisabled(False)
+        self.vlayout.itemAt(self.vlayout.count() - 1).widget().setDisabled(False)
         a0.accept()
         logging.debug("Droped object")
         self.reinit_abs_checkbox(disable=True)
@@ -272,7 +273,7 @@ class SimLayerLayout(QWidget):
 
     """ Add Context Menu """
 
-    #TODO
+    # TODO
     def contextMenuEvent(self, a0: QtGui.QContextMenuEvent) -> None:
         logging.debug("Entering Context Menu")
         context = QMenu(self)

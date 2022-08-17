@@ -6,8 +6,9 @@ import logging
 
 @dataclass()
 class SRes:
-    """ Dataclass to store all simulation related information """
-    ID: int # Simulation Number in the stack
+    """Dataclass to store all simulation related information"""
+
+    ID: int  # Simulation Number in the stack
     # Simulation parameters -- allowed comparison
     Type: Enum
     Layers: list
@@ -25,7 +26,7 @@ class SRes:
     _Type: tuple = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
-        """ Create internal variables to represent the particular class """
+        """Create internal variables to represent the particular class"""
         if self.Type == SType.WVL:
             self._REPR = f"W{self.ID}({self.Theta},{self.Phi})"
             self._Type = ("Wavelength (nm)", self.Lmb)
@@ -38,12 +39,11 @@ class SRes:
         else:
             raise Exception("Unknown Simulation Type")
         for layer in self.Layers:
-            self._REPR += "|" + layer.name[:5] + "(" + str(
-                layer.thickness) + ")"
+            self._REPR += "|" + layer.name[:5] + "(" + str(layer.thickness) + ")"
         logging.debug(f"{self._REPR=}")
 
     def description(self):
-        """ Return a detailed description of the Layer """
+        """Return a detailed description of the Layer"""
         layer_info = "----------------------\nLayers:\n"
         type = ""
         phi = ""
@@ -79,6 +79,7 @@ class SRes:
         self.__post_init__()
 
     """ Aliases for the post init variables """
+
     @property
     def repr(self):
         return self._REPR
@@ -88,7 +89,8 @@ class SRes:
 
 
 class SType(Enum):
-    """ Enum to for the different Simulation types """
+    """Enum to for the different Simulation types"""
+
     WVL = auto()
     ANGLE = auto()
     OPT = auto()

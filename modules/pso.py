@@ -10,8 +10,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-def _update_parameters(param, vel, max_param, min_param, inertia_w, ind_cog,
-                       soc_learning, pbest, gbest):
+
+def _update_parameters(
+    param, vel, max_param, min_param, inertia_w, ind_cog, soc_learning, pbest, gbest
+):
     """
     Update equation for the particle swarm algorithm
     V_ij^(t+1) =
@@ -51,17 +53,19 @@ def _update_parameters(param, vel, max_param, min_param, inertia_w, ind_cog,
     return param_new, v_new
 
 
-def particle_swarm(func,
-                   param_dict: Dict[str, List[float]],
-                   *,
-                   maximize: bool = True,
-                   inert_prop: Tuple[float, float, bool] = (0.9, 0.4, True),
-                   ind_cog: float = 2.05,
-                   soc_learning: float = 2.05,
-                   particles: int = 25,
-                   iterations: int = 50,
-                   export: bool = False,
-                   **func_kwargs):
+def particle_swarm(
+    func,
+    param_dict: Dict[str, List[float]],
+    *,
+    maximize: bool = True,
+    inert_prop: Tuple[float, float, bool] = (0.9, 0.4, True),
+    ind_cog: float = 2.05,
+    soc_learning: float = 2.05,
+    particles: int = 25,
+    iterations: int = 50,
+    export: bool = False,
+    **func_kwargs,
+):
     """Implementation of the particle swarm algorithm
     Args:
         - func: function to be optimized
@@ -83,8 +87,7 @@ def particle_swarm(func,
     # Create an array for the inertial factor variation
     inert_factor_low, inert_factor_up, inert_sweep = inert_prop
     if inert_sweep:
-        inert_factor = np.linspace(inert_factor_low, inert_factor_up,
-                                   iterations)
+        inert_factor = np.linspace(inert_factor_low, inert_factor_up, iterations)
     else:
         inert_factor = np.ones(iterations) * inert_factor_up
     logging.debug(f"Inertial factor array:\n{inert_factor}")
@@ -96,22 +99,21 @@ def particle_swarm(func,
     param_max = np.array([p_max[1] for p_max in param_dict.values()])
     param_min = np.array([p_min[0] for p_min in param_dict.values()])
     param_space = [
-        np.random.uniform(param_dict[param][0],
-                          param_dict[param][1],
-                          size=(particles)) for param in param_names
+        np.random.uniform(param_dict[param][0], param_dict[param][1], size=(particles))
+        for param in param_names
     ]
     param_space = np.stack(param_space)
     vel_space = [
-        np.random.uniform(-max(param_dict[param]),
-                          max(param_dict[param]),
-                          size=(particles)) for param in param_names
+        np.random.uniform(
+            -max(param_dict[param]), max(param_dict[param]), size=(particles)
+        )
+        for param in param_names
     ]
     vel_space = np.stack(vel_space)
     # Calculation of the function for the initial parameters
     # Create the global best (gbest) and particle best (pbest) arrays
     func_input = {
-        param_name: param_space[i]
-        for i, param_name in enumerate(param_names)
+        param_name: param_space[i] for i, param_name in enumerate(param_names)
     }
     func_results = func(**func_input, **func_kwargs)
     if maximize:
@@ -128,19 +130,25 @@ def particle_swarm(func,
     iteration = 0
     if export:
         export_param = np.concatenate(
-            (param_space.T, func_results[:, np.newaxis], vel_space.T), axis=1)
-        np.savetxt(os.path.join("PSO_Results", f"results_{iteration}"),
-                   export_param)
+            (param_space.T, func_results[:, np.newaxis], vel_space.T), axis=1
+        )
+        np.savetxt(os.path.join("PSO_Results", f"results_{iteration}"), export_param)
         iteration += 1
     while iteration < iterations:
         param_space, vel_space = _update_parameters(
-            param_space, vel_space, param_max, param_min,
-            inert_factor[iteration - 1], ind_cog, soc_learning, pbest,
-            gbest[:, np.newaxis])
+            param_space,
+            vel_space,
+            param_max,
+            param_min,
+            inert_factor[iteration - 1],
+            ind_cog,
+            soc_learning,
+            pbest,
+            gbest[:, np.newaxis],
+        )
         # Update gbest and pbest
         func_input = {
-            param_name: param_space[i]
-            for i, param_name in enumerate(param_names)
+            param_name: param_space[i] for i, param_name in enumerate(param_names)
         }
         func_results = func(**func_input, **func_kwargs)
         if maximize:
@@ -163,30 +171,29 @@ def particle_swarm(func,
         pbest[:, pfitness_mask] = param_space[:, pfitness_mask]
         if export:
             export_param = np.concatenate(
-                (param_space.T, func_results[:, np.newaxis], vel_space.T),
-                axis=1)
-            np.savetxt(os.path.join("PSO_Results", f"results_{iteration}"),
-                       export_param)
+                (param_space.T, func_results[:, np.newaxis], vel_space.T), axis=1
+            )
+            np.savetxt(
+                os.path.join("PSO_Results", f"results_{iteration}"), export_param
+            )
         iteration += 1
     if export:
-        np.savetxt(os.path.join("PSO_Results", f"gfitness_res"),
-                   np.array(gbest_array).T)
+        np.savetxt(
+            os.path.join("PSO_Results", f"gfitness_res"), np.array(gbest_array).T
+        )
     return gfitness, gbest, pbest, gbest_array
 
 
 if __name__ == "__main__":
 
     def test_func(x, y):
-        return -np.exp(-x**2) * np.exp(-y**2)
+        return -np.exp(-(x**2)) * np.exp(-(y**2))
 
     def test_func_2(x, y):
         return np.sin(x) * np.sin(y) / (x * y)
 
-    fit, gbest, pbest, _ = particle_swarm(test_func_2, {
-        "x": [-5, 5],
-        "y": [-5, 5]
-    },
-                                          maximize=True,
-                                          export=False)
+    fit, gbest, pbest, _ = particle_swarm(
+        test_func_2, {"x": [-5, 5], "y": [-5, 5]}, maximize=True, export=False
+    )
     print("----Results-----")
     print(fit, gbest, pbest, sep="\n")

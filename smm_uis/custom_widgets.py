@@ -19,22 +19,27 @@ class CustomSlider(QtWidgets.QWidget):
         resolution (int): Resolution of the slider (bigger == more resolution)
         fixed_lim (bool): Fix the min and max values of the slider
     """
+
     changed = pyqtSignal(bool)
 
-    def __init__(self,
-                 var_name: str,
-                 default_value: float,
-                 slider_min: float = 1,
-                 slider_max: float = 10,
-                 resolution: int = 1000,
-                 fixed_lim: bool = False) -> None:
+    def __init__(
+        self,
+        var_name: str,
+        default_value: float,
+        slider_min: float = 1,
+        slider_max: float = 10,
+        resolution: int = 1000,
+        fixed_lim: bool = False,
+    ) -> None:
         super().__init__()
         # Base variables
         self._var_name = var_name
         self._slider_min: float = slider_min
         self._slider_max: float = slider_max
         self._resolution: int = resolution
-        logging.debug(f"{var_name=}::{default_value=}::{slider_min=}::{slider_max=}::{resolution=}")
+        logging.debug(
+            f"{var_name=}::{default_value=}::{slider_min=}::{slider_max=}::{resolution=}"
+        )
         # Regex to limit values added in text boxes
         num_regex = QRegExp("[0-9]+\\.?[0-9]*")
         # Start building the widget layout
@@ -81,7 +86,7 @@ class CustomSlider(QtWidgets.QWidget):
         self._update_slider(value=default_value)
 
     def initializeUI(self) -> None:
-        """ Connect elements to functions """
+        """Connect elements to functions"""
         self._max_edit.editingFinished.connect(self._change_max_edit)
         self._min_edit.editingFinished.connect(self._change_min_edit)
         self._curr_value.editingFinished.connect(self._update_slider)
@@ -90,19 +95,19 @@ class CustomSlider(QtWidgets.QWidget):
         self._qslider.sliderMoved.connect(self._update_label)
 
     def curr_value(self) -> float:
-        """ Get the current value in the slider, normalized for the 
-        actual limits """
+        """Get the current value in the slider, normalized for the
+        actual limits"""
         curr_value: int = self._qslider.value()
         updated_curr_value: float = self._slider_min + (
-            self._slider_max - self._slider_min) * (curr_value /
-                                                    self._resolution)
+            self._slider_max - self._slider_min
+        ) * (curr_value / self._resolution)
         return updated_curr_value
 
     def _update_slider(self, value=None):
-        """ Update slider after the value label is changed """
+        """Update slider after the value label is changed"""
         str_val = self._curr_value.text()
         if value is None:
-            if str_val == '':
+            if str_val == "":
                 logging.debug("Empty text label... Returning to prev_value")
                 self._update_label()
                 return
@@ -112,30 +117,29 @@ class CustomSlider(QtWidgets.QWidget):
             value = self._slider_min
         if value > self._slider_max:
             value = self._slider_max
-        diff = (value - self._slider_min) / (self._slider_max -
-                                             self._slider_min)
+        diff = (value - self._slider_min) / (self._slider_max - self._slider_min)
         self._qslider.setValue(int(diff * self._resolution))
         # Reupdate label to account for resolution mismatch
         self._update_label()
 
     def _update_label(self) -> None:
-        """ Update Label from Slider Value """
+        """Update Label from Slider Value"""
         updated_curr_value: float = self.curr_value()
         self._curr_value.setText(f"{updated_curr_value:.3f}")
 
     def _change_max_edit(self) -> None:
-        """ Update max bound for the slider """
+        """Update max bound for the slider"""
         value = self._max_edit.text()
-        if value == '':
+        if value == "":
             self._max_edit.setText(str(self._slider_max))
         else:
             self._slider_max: float = float(self._max_edit.text())
         self._update_slider()
 
     def _change_min_edit(self) -> None:
-        """ Update min bound for the slider """
+        """Update min bound for the slider"""
         value = self._min_edit.text()
-        if value == '':
+        if value == "":
             self._min_edit.setText(str(self._slider_min))
         else:
             self._slider_min: float = float(self._min_edit.text())
@@ -150,7 +154,7 @@ class CustomSlider(QtWidgets.QWidget):
 
 
 if __name__ == "__main__":
-    """ Test Custom widgets """
+    """Test Custom widgets"""
     app = QtWidgets.QApplication(sys.argv)
     widget = CustomSlider("Eg")
     widget.show()

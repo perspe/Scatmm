@@ -9,7 +9,7 @@ import logging
 import os
 
 
-class Database():
+class Database:
     def __init__(self, db_file: str) -> None:
         """
         Load all contents in database to variable
@@ -24,7 +24,7 @@ class Database():
         logging.debug(f"{self.content=}")
 
     def add_content(self, name: str, data: npt.NDArray) -> None:
-        """ Add content to the Database """
+        """Add content to the Database"""
         with open(self.db_file, "a") as db_file:
             db_file.write(name + "\n")
         self.content.append(name)
@@ -32,7 +32,7 @@ class Database():
         logging.info(f"Added material '{name}' to Database")
 
     def rmv_content(self, name: str) -> int:
-        """ Remove material from the Database """
+        """Remove material from the Database"""
         with open(self.db_file, "r") as db_file:
             lines: List[str] = db_file.readlines()
         with open(self.db_file, "w") as db_file:
@@ -55,7 +55,7 @@ class Database():
 
     def find_index(self, name: str) -> int:
         """
-        Find index for a particular element in the database 
+        Find index for a particular element in the database
         Return:
             index > 0: Index
             index < 0: No index found
@@ -67,11 +67,12 @@ class Database():
         return index
 
     def __getitem__(self, name: Union[str, int]) -> npt.NDArray:
-        """ Syntax to access a certain item in DB Database[index/name] """
+        """Syntax to access a certain item in DB Database[index/name]"""
         logging.debug(f"Accessing {name}")
         if isinstance(name, int):
             return np.loadtxt(
-                os.path.join(self.prepend_path, self.content[name] + ".txt"))
+                os.path.join(self.prepend_path, self.content[name] + ".txt")
+            )
         elif isinstance(name, str):
             return np.loadtxt(os.path.join(self.prepend_path, name + ".txt"))
 
