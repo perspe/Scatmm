@@ -1,13 +1,17 @@
+# Paths
 Test_Results
+Video
 modules/build
+config/Database/Backup
+.ipynb_checkpoints
+.virtual_documents
+
+# Files
 *.svg
 *.xcf
 *Designer_UIs*
-config/Database/Backup
-Video
-.ipynb_checkpoints
-.virtual_documents
 *__pycache__*
-scatmm.log
 *.cache*
+*.so
+scatmm.log
 todo

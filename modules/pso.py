@@ -47,9 +47,8 @@ def _update_parameters(
     mask_min = param_new < min_param
     mask_max = param_new > max_param
     param_new[mask_min] = min_param[mask_min]
-    v_new[mask_min] = -v_new[mask_min]
+    v_new[mask_min & mask_max] = 0
     param_new[mask_max] = max_param[mask_max]
-    v_new[mask_max] = -v_new[mask_max]
     return param_new, v_new
 
 

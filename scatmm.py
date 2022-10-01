@@ -45,7 +45,7 @@ logging.basicConfig(**log_config)
 logging.getLogger("matplotlib").setLevel(logging.INFO)
 
 # Check if there is a user folder with the config data
-# If there isnt... Copy everything to that folder
+# If there isn't... Copy everything to that folder
 config_dir = os.path.join(appdirs.user_data_dir(), "scatmm")
 if not os.path.isdir(config_dir):
     logging.info("Copying config data to user directory")
@@ -156,7 +156,7 @@ class OptimizeWorkder(QtCore.QThread):
             self.iterator += 1
             return point_error
 
-        # Datastructure for the particle swarm algorithm
+        # Data structure for the particle swarm algorithm
         thick = {
             "thick_" + str(i): [thick_i[0], thick_i[1]]
             for i, thick_i in enumerate(self.thickness)
@@ -471,7 +471,7 @@ class SMMGUI(QMainWindow):
         for key in self.global_properties.keys():
             self.propertie_values[key].setText(str(self.global_properties[key][1]))
 
-        # Atribute actions to the different buttons
+        # Attribute actions to the different buttons
         logging.debug("Connect buttons to functions")
         self.properties_ui.properties_close_button.clicked.connect(
             self.properties_window.close
@@ -594,7 +594,7 @@ class SMMGUI(QMainWindow):
             )
         return thickness_list, layer_list
 
-    """ Simulation and associated funcitons """
+    """ Simulation and associated functions """
 
     def simulate(self) -> None:
         """ "
@@ -741,7 +741,7 @@ class SMMGUI(QMainWindow):
         abs = smm_layer(
             layer_list, layer_index + 1, theta, phi, lmb, pol, ref_medium, trn_medium
         )
-        # Define a random ID for each partiular layer absorption and plot
+        # Define a random ID for each particular layer absorption and plot
         self.main_figure.plot(
             lmb,
             abs,
