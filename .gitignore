@@ -13,5 +13,7 @@ config/Database/Backup
 *__pycache__*
 *.cache*
 *.so
+*.pyd
+py_smm_base.cpp
 scatmm.log
 todo
