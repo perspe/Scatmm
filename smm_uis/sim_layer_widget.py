@@ -2,7 +2,7 @@ from typing import List, Tuple
 import uuid
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QLocale, QMimeData, Qt, pyqtSignal
+from PyQt5.QtCore import QLocale, QMimeData, QPoint, Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
@@ -62,6 +62,7 @@ class SimLayerWidget(QWidget):
         # Add connectors
         self.ui.abs_cb.clicked.connect(lambda x: self.checked.emit(x, self._uuid))
         self.ui.del_button.clicked.connect(lambda: self.deleted.emit(self._uuid))
+        self.setStyleSheet("background: #FFFFFFFF")
         self.show()
 
     def mouseMoveEvent(self, a0: QtGui.QMouseEvent) -> None:
@@ -74,6 +75,7 @@ class SimLayerWidget(QWidget):
             pixmap = QtGui.QPixmap(self.size())
             self.render(pixmap)
             drag.setPixmap(pixmap)
+            drag.setHotSpot(QPoint(10, 20))
             # Move the item
             drag.exec_(Qt.MoveAction)
         return super().mouseMoveEvent(a0)
