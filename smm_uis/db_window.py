@@ -1,5 +1,6 @@
 """ Class for the DB Window """
 import logging
+from typing import Union
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
@@ -29,8 +30,8 @@ class DBWindow(QWidget):
         self.db_table = self.ui.database_table
         self.db_table.setModel(self.data)
         self.data.setColumnCount(3)
-        self.db_import_window = None
-        self.formula_window = None
+        self.import_window: Union[None, QWidget] = None
+        self.formula_window: Union[None, QWidget] = None
         self.update_db_preview()
         self.initializeUI()
 
@@ -67,14 +68,17 @@ class DBWindow(QWidget):
         """
         Open a new UI to manage importing new data
         """
-        self.db_import_window = ImpPrevWindow(self)
-        self.db_import_window.imp_clicked.connect(self._import)
-        self.db_import_window.show()
+        if self.import_window is not None:
+            self.import_window.raise_()
+            return
+        self.import_window = ImpPrevWindow(self)
+        self.import_window.imp_clicked.connect(self._import)
+        self.import_window.show()
 
     @pyqtSlot(object, str)
     def _import(self, import_data, name):
         logging.debug(f"Imported data detected:\n {import_data=}\n{name=}")
-        if self.db_import_window is None:
+        if self.import_window is None:
             logging.critical("Unknown Error")
             return
         override = QMessageBox.NoButton
@@ -97,10 +101,13 @@ class DBWindow(QWidget):
             self.database.add_content(name, import_data.values[:, [0, 1, 2]])
         self.update_db_preview()
         self.db_updated.emit()
-        self.db_import_window.close()
+        self.import_window.close()
 
     def add_formula(self):
         """Open a new UI with the formula manager"""
+        if self.formula_window is not None:
+            self.formula_window.raise_()
+            return
         self.formula_window = FormulaWindow(self)
         self.formula_window.show()
 
@@ -191,8 +198,9 @@ class DBWindow(QWidget):
         self.preview_choice.show()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        if self.db_import_window is not None:
-            self.db_import_window.close()
+        if self.import_window is not None:
+            self.import_window.close()
         if self.formula_window is not None:
             self.formula_window.close()
+        self.parent.db_ui = None
         return super().closeEvent(a0)

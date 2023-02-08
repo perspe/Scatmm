@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import sys
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Union
 import uuid
 import webbrowser
 
@@ -34,7 +34,7 @@ from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.sim_layer_widget import SimLayerLayout
 from smm_uis.opt_layer_widget import OptLayerLayout
 
-VERSION = "3.7.1"
+VERSION = "3.7.2"
 
 log_config = {
     "format": "%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:"
@@ -248,10 +248,10 @@ class SMMGUI(QMainWindow):
         # Store imported data
         self.imported_data: Any = []
         # Window variables
-        self.export_ui = None
-        self.db_ui = None
-        self.properties_window = None
-        self.import_window = None
+        self.export_ui: Union[None, QtWidgets.QWidget] = None
+        self.db_ui: Union[None, QtWidgets.QWidget] = None
+        self.properties_window: Union[None, QtWidgets.QWidget] = None
+        self.import_window: Union[None, QtWidgets.QWidget] = None
         # Load simulation default properties
         logging.debug("Loading default global properties")
         with open(find_loc("config.json"), "r") as config:
@@ -339,9 +339,9 @@ class SMMGUI(QMainWindow):
         )
         self.ui.actionAbout.triggered.connect(self.aboutDialog)
         self.ui.clear_button.clicked.connect(self.clear_plot)
-        logging.debug("All buttons connected to functions")
         # Set default value for progress bar
         self.ui.opt_progressBar.setValue(0)
+        logging.debug("Initialization complete...")
 
     def aboutDialog(self):
         """Show the about dialog"""
@@ -781,7 +781,9 @@ class SMMGUI(QMainWindow):
         logging.info("Opening Export Simulation Window")
         if len(self.sim_results) > 0:
             from smm_uis.export_window import ExpWindow
-
+            if self.export_ui is not None:
+                self.export_ui.raise_()
+                return
             self.export_ui = ExpWindow(self, self.sim_results)
             self.export_ui.show()
         else:
@@ -949,6 +951,9 @@ class SMMGUI(QMainWindow):
         from smm_uis.db_window import DBWindow
 
         logging.info("Calling the Database Window")
+        if self.db_ui is not None:
+            self.db_ui.raise_()
+            return
         self.db_ui = DBWindow(self, self.database)
         self.db_ui.db_updated.connect(self.update_mat_cb)
         self.db_ui.show()
@@ -963,9 +968,11 @@ class SMMGUI(QMainWindow):
         """
         Function for import button - import data for simulation/optimization
         """
-        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
-
         logging.info("Import Button Clicked")
+        if self.import_window is not None:
+            self.import_window.raise_()
+            return
+        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
         self.import_window = ImpPrevWindow(
             self, imp_flag=ImpFlag.BUTTON | ImpFlag.DATA | ImpFlag.NONAME
         )
@@ -1004,15 +1011,13 @@ class SMMGUI(QMainWindow):
     def dropEvent(self, event) -> None:
         """Check if only a single file was imported and then
         import the data from that file"""
-        logging.debug("Handling Drop event")
-        print(event.mimeData().hasFormat("widget/layer_widget"))
+        logging.debug("Handling Drop event...")
         if event.mimeData().hasFormat("widget/layer_widget"):
             logging.debug("Clear locked layer widgets")
             self.optWidget.setEnabledAll(True)
             return
         if not event.mimeData().hasUrls():
             return
-        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
         url = event.mimeData().urls()
         if len(url) > 1:
             logging.warning("Invalid number of files dragged..")
@@ -1028,6 +1033,7 @@ class SMMGUI(QMainWindow):
         if os.path.isdir(filepath):
             logging.info("Invalid File Type")
             return
+        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
         self.import_window = ImpPrevWindow(
             self, imp_flag=ImpFlag.DRAG | ImpFlag.DATA, filepath=filepath
         )

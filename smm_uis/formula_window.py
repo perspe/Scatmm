@@ -1,9 +1,9 @@
 from enum import Enum, auto
 import logging
-from typing import List, Union
+from typing import List
 
 from PyQt5 import QtCore
-from PyQt5.QtGui import QRegExpValidator
+from PyQt5.QtGui import QRegExpValidator, QCloseEvent
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QSizePolicy, QSpacerItem
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from modules.dispersion import (
@@ -91,8 +91,8 @@ def convert_observable(lmb, n, k, wanted: Observable):
 
 
 class FormulaWindow(QMainWindow):
-    def __init__(self, parent: Union[QtCore.QObject, None] = None) -> None:
-        self.parent: Union[QtCore.QObject, None] = parent
+    def __init__(self, parent: QtCore.QObject) -> None:
+        self.parent = parent
         super(FormulaWindow, self).__init__()
         logging.debug("Opened Formula Window")
         self.ui = Ui_Formula()
@@ -515,3 +515,8 @@ class FormulaWindow(QMainWindow):
         e = CustomSlider("E", val_sellmeier_abs["E"], 0.5, 10)
         self.slider_list = [a, b, c, d, e]
         self._update_layout(layout)
+
+    """ QWidgets Methods """
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        self.parent.formula_window = None
+        return super().closeEvent(a0)
