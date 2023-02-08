@@ -168,6 +168,8 @@ class FormulaWindow(QMainWindow):
         double_regex = QtCore.QRegExp("[0-9]+\\.?[0-9]*j?")
         self.ui.xmin_value.setValidator(QRegExpValidator(double_regex))
         self.ui.xmax_value.setValidator(QRegExpValidator(double_regex))
+        filename_regex = QtCore.QRegExp("[^/:{}\[\]'\"]*")
+        self.ui.mat_name.setValidator(QRegExpValidator(filename_regex))
         # Connect buttons and signals to functions
         self.ui.method_cb.currentIndexChanged.connect(self.update_method)
         self.ui.add_db_button.clicked.connect(self.add_database)

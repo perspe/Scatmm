@@ -104,7 +104,7 @@ class ImpPrevWindow(QWidget):
         self.data: DataFrame = DataFrame()
         self.preview_import = None
         self.import_args = {
-            "sep": " ",
+            "sep": "\s+",
             "decimal": ".",
             "skiprows": 0,
             "header": None,
@@ -138,6 +138,8 @@ class ImpPrevWindow(QWidget):
         # Connect to preview function
         if ImpFlag.DB in self.imp_flag:
             self.ui.preview_button.clicked.connect(self.db_prev)
+            filename_regex = QRegExp("[^/:{}\[\]'\"]*")
+            self.ui.mat_name_edit.setValidator(QRegExpValidator(filename_regex))
         elif ImpFlag.DATA in self.imp_flag:
             self.ui.preview_button.clicked.connect(self.data_prev)
         if ImpFlag.DRAG in self.imp_flag:
@@ -153,8 +155,8 @@ class ImpPrevWindow(QWidget):
         )
         ignore_cols_regex = QRegExp("^[0-9, ]*")
         self.ui.choose_columns_edit.setValidator(QRegExpValidator(ignore_cols_regex))
-        # Dont accept numbers in the other line edit
-        other_regex = QRegExp("[^0-9]+")
+        # Don't accept numbers in the other line edit
+        other_regex = QRegExp("^[^?][^0-9]*")
         self.ui.other_edit.setValidator(QRegExpValidator(other_regex))
         # Buttons that should update the table view preview
         self.ui.decimal_group.buttonClicked.connect(
