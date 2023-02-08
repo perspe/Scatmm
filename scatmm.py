@@ -993,24 +993,26 @@ class SMMGUI(QMainWindow):
 
     def dragEnterEvent(self, event) -> None:
         """Check for correct datatype to accept drops"""
-        logging.debug("Drag event Detected")
         if event.mimeData().hasUrls():
             logging.debug("Acceptable event data...")
             event.accept()
+        elif event.mimeData().hasFormat("widget/layer_widget"):
+            event.accept()
         else:
             event.ignore()
-
-    def dragMoveEvent(self, a0: QtGui.QDragMoveEvent) -> None:
-        return super().dragMoveEvent(a0)
-
+    
     def dropEvent(self, event) -> None:
         """Check if only a single file was imported and then
         import the data from that file"""
-        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
-
         logging.debug("Handling Drop event")
+        print(event.mimeData().hasFormat("widget/layer_widget"))
+        if event.mimeData().hasFormat("widget/layer_widget"):
+            logging.debug("Clear locked layer widgets")
+            self.optWidget.setEnabledAll(True)
+            return
         if not event.mimeData().hasUrls():
             return
+        from smm_uis.imp_window import ImpPrevWindow, ImpFlag
         url = event.mimeData().urls()
         if len(url) > 1:
             logging.warning("Invalid number of files dragged..")
@@ -1043,9 +1045,6 @@ class SMMGUI(QMainWindow):
         if self.import_window is not None:
             logging.info("Import Window still opened... Closing...")
             self.import_window.close()
-        # Save the final global_properties
-        # with open(find_loc("config.json"), "w") as end_config:
-        #     json.dump(global_properties, end_config, indent=2)
         return super().closeEvent(a0)
 
 

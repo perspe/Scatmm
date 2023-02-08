@@ -2,17 +2,17 @@ from typing import List, Tuple
 import uuid
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QLocale, QMimeData, QPoint, Qt, pyqtSignal
+from PyQt5.QtCore import (
+    QLocale, QMimeData, QPoint, Qt, pyqtSignal, QByteArray
+)
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
-    QCheckBox,
     QMenu,
     QVBoxLayout,
     QWidget,
 )
-from matplotlib import logging
-
+import logging
 from .smm_simlayer_widget import Ui_SimLayer
 
 log_config = {
@@ -50,7 +50,7 @@ class SimLayerWidget(QWidget):
         self.ui = Ui_SimLayer()
         self.ui.setupUi(self)
         # Item identifier
-        self._uuid = uuid.uuid4()
+        self._uuid: uuid.UUID = uuid.uuid4()
         # Setup all the elements
         self.ui.mat_cb.addItems(materials)
         self.ui.abs_cb.setChecked(check)
@@ -62,14 +62,15 @@ class SimLayerWidget(QWidget):
         # Add connectors
         self.ui.abs_cb.clicked.connect(lambda x: self.checked.emit(x, self._uuid))
         self.ui.del_button.clicked.connect(lambda: self.deleted.emit(self._uuid))
-        self.setStyleSheet("background: #FFFFFFFF")
         self.show()
 
-    def mouseMoveEvent(self, a0: QtGui.QMouseEvent) -> None:
+    def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
+        """Initiate drag Event"""
         if a0.buttons() == Qt.LeftButton and self.ui.move_label.underMouse():
-            logging.debug("Detected Mouse Movement")
+            logging.debug("Move Label clicked... Starting Drag")
             drag = QtGui.QDrag(self)
             mime = QMimeData()
+            mime.setData("widget/layer_widget", QByteArray())
             drag.setMimeData(mime)
             # Add a image to indicate the drag effect
             pixmap = QtGui.QPixmap(self.size())
@@ -78,9 +79,8 @@ class SimLayerWidget(QWidget):
             drag.setHotSpot(QPoint(10, 20))
             # Move the item
             drag.exec_(Qt.MoveAction)
-        return super().mouseMoveEvent(a0)
 
-    """ Interaction with interanal widgets """
+    """ Interaction with internal widgets """
 
     def clear_abs_cb(self, disable: bool = False):
         """Clear the Absorption CheckBox"""
@@ -136,9 +136,6 @@ class SimLayerLayout(QWidget):
         self.setAcceptDrops(True)
         self.vlayout = QVBoxLayout()
         self.vlayout.setContentsMargins(10, 0, 10, 0)
-        # Add Actions for the menu
-        add_above_action = QAction("Add Layer Above", self)
-        self._actions = [add_above_action]
         # Add the default number of layers
         for _ in range(layers):
             layer_widget = SimLayerWidget(materials)
@@ -148,6 +145,11 @@ class SimLayerLayout(QWidget):
         self.reinit_abs_checkbox(disable=True)
         self.setLayout(self.vlayout)
         self.show()
+
+    def create_actions(self):
+        """ Create all the actions """
+        add_above_action = QAction("Add Layer Above", self)
+        self._actions = [add_above_action]
 
     """ Functions to manage the layers """
 
@@ -201,6 +203,11 @@ class SimLayerLayout(QWidget):
             widget = self.vlayout.itemAt(n).widget()
             widget.clear_abs_cb(disable)
 
+    def setEnabledAll(self, enabled: bool=True) -> None:
+        """ Re enable all layer widgets """
+        for n in range(self.vlayout.count()):
+            self.vlayout.itemAt(n).widget().setEnabled(enabled)
+
     """ Signals """
 
     def clicked_abs(self, state: bool, id: uuid.UUID) -> None:
@@ -223,20 +230,20 @@ class SimLayerLayout(QWidget):
 
     def dragEnterEvent(self, a0: QtGui.QDragEnterEvent):
         if a0.mimeData().hasUrls():
-            logging.debug(f"Drag with URL")
-            return super().dragEnterEvent(a0)
-        else:
-            logging.debug(f"Drag with SimWidget")
+            logging.debug(f"Drag entered with URL")
+        elif a0.mimeData().hasFormat("widget/layer_widget"):
+            logging.debug(f"Drag entered with SimWidget")
             source = a0.source()
+            self.setEnabledAll(False)
             source.setDisabled(True)
             a0.accept()
-            return super().dragEnterEvent(a0)
-
-    def dragMoveEvent(self, a0: QtGui.QDragMoveEvent) -> None:
-        return super().dragMoveEvent(a0)
+        else:
+            raise Exception("Not expected drag type")
+        return super().dragEnterEvent(a0)
 
     def dropEvent(self, a0: QtGui.QDropEvent) -> None:
         """Handle the widget drop"""
+        logging.debug(f"Drop Event Initiated")
         pos = a0.pos()
         widget = a0.source()
         index = self.vlayout.indexOf(widget)
@@ -247,7 +254,8 @@ class SimLayerLayout(QWidget):
                 logging.debug(f"Droping to position {place_location}")
                 self.vlayout.insertWidget(place_location, widget)
                 break
-        # Reenable all widgets and set the right tab order
+
+        # Set correct tab order
         for n in range(self.vlayout.count() - 1):
             curr_item = self.vlayout.itemAt(n).widget()
             next_item = self.vlayout.itemAt(n + 1).widget()
@@ -258,20 +266,17 @@ class SimLayerLayout(QWidget):
             self._parent.setTabOrder(next_item.ui.mat_cb, next_item.ui.thickness_edit)
             self.vlayout.itemAt(n).widget().setDisabled(False)
         self.vlayout.itemAt(self.vlayout.count() - 1).widget().setDisabled(False)
-        a0.accept()
-        logging.debug("Droped object")
         self.reinit_abs_checkbox(disable=True)
+        a0.accept()
         return super().dropEvent(a0)
 
     def dragLeaveEvent(self, a0: QtGui.QDragLeaveEvent) -> None:
         """
-        Perform cleanup in case the the object is draged outside the region
+        Perform cleanup in case the object is dragged outside the region
         """
         logging.debug(f"Drag Left acceptable region...")
-        a0.setAccepted(False)
-        for n in range(self.vlayout.count()):
-            self.vlayout.itemAt(n).widget().setDisabled(False)
-        return super().dragLeaveEvent(a0)
+        self.setEnabledAll(False)
+        a0.ignore()
 
     """ Add Context Menu """
 
