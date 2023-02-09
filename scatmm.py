@@ -13,8 +13,15 @@ import uuid
 import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QPalette, QRegExpValidator
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QVBoxLayout
+from PyQt5.QtGui import (
+    QDoubleValidator,
+    QIntValidator,
+    QKeySequence,
+    QPalette,
+    QRegExpValidator,
+)
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QShortcut, QVBoxLayout
+from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 import appdirs
 import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -22,7 +29,6 @@ import matplotlib.style as mstyle
 import numpy as np
 from numpy.linalg import norm
 import numpy.typing as npt
-
 from modules.database import Database
 from modules.fig_class import PltFigure
 from modules.pso import particle_swarm
@@ -34,6 +40,8 @@ from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.sim_layer_widget import SimLayerLayout
 from smm_uis.opt_layer_widget import OptLayerLayout
 
+ABS_PATH = os.path.split(os.path.abspath(__file__))[0]
+print(ABS_PATH)
 VERSION = "3.7.2"
 
 log_config = {
@@ -283,6 +291,7 @@ class SMMGUI(QMainWindow):
         # Initialize all the UI elements
         self.initializeUI()
         self.show()
+        self.easter_eggs()
 
     def initializeUI(self):
         """
@@ -342,6 +351,45 @@ class SMMGUI(QMainWindow):
         # Set default value for progress bar
         self.ui.opt_progressBar.setValue(0)
         logging.debug("Initialization complete...")
+
+    """ General Alias Functions """
+
+    def _add_shortcut(self, shortcut: str, widget, run_func):
+        """Alias to add a shortcut to a window"""
+        self.poly_music = QShortcut(QKeySequence(shortcut), widget)
+        self.poly_music.activated.connect(run_func)
+
+    """ Easter Egg Stuff """
+
+    def easter_eggs(self):
+        """Add some easter eggs"""
+        # Play keygen music
+        self._add_shortcut("Ctrl+Alt+M", self, self.play_poly_music)
+        self.player = None
+
+    def play_poly_music(self):
+        if self.player is None:
+            logging.debug("Initializing Player")
+            file_url = QtCore.QUrl.fromLocalFile(
+                os.path.join(ABS_PATH, "music", "keygen.ogg")
+            )
+            content = QMediaContent(file_url)
+            self.player = QMediaPlayer(None, QMediaPlayer.LowLatency)
+            self.player.setMedia(content)
+            self.player.play()
+            return
+
+        if (
+            self.player.state() == QMediaPlayer.StoppedState
+            or self.player.state() == QMediaPlayer.PausedState
+        ):
+            logging.debug("Playing Music...")
+            self.player.play()
+        elif self.player.state() == QMediaPlayer.PlayingState:
+            logging.debug("Stopping Music...")
+            self.player.pause()
+        else:
+            logging.warning("Not Considered State")
 
     def aboutDialog(self):
         """Show the about dialog"""
@@ -781,6 +829,7 @@ class SMMGUI(QMainWindow):
         logging.info("Opening Export Simulation Window")
         if len(self.sim_results) > 0:
             from smm_uis.export_window import ExpWindow
+
             if self.export_ui is not None:
                 self.export_ui.raise_()
                 return
@@ -955,6 +1004,7 @@ class SMMGUI(QMainWindow):
             self.db_ui.raise_()
             return
         self.db_ui = DBWindow(self, self.database)
+        self._add_shortcut("Ctrl+Alt+M", self.db_ui, self.play_poly_music)
         self.db_ui.db_updated.connect(self.update_mat_cb)
         self.db_ui.show()
 
@@ -973,6 +1023,7 @@ class SMMGUI(QMainWindow):
             self.import_window.raise_()
             return
         from smm_uis.imp_window import ImpPrevWindow, ImpFlag
+
         self.import_window = ImpPrevWindow(
             self, imp_flag=ImpFlag.BUTTON | ImpFlag.DATA | ImpFlag.NONAME
         )
@@ -1007,7 +1058,7 @@ class SMMGUI(QMainWindow):
             event.ignore()
         else:
             event.ignore()
-    
+
     def dropEvent(self, event) -> None:
         """Check if only a single file was imported and then
         import the data from that file"""
@@ -1034,6 +1085,7 @@ class SMMGUI(QMainWindow):
             logging.info("Invalid File Type")
             return
         from smm_uis.imp_window import ImpPrevWindow, ImpFlag
+
         self.import_window = ImpPrevWindow(
             self, imp_flag=ImpFlag.DRAG | ImpFlag.DATA, filepath=filepath
         )
