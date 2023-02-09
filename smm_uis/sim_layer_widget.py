@@ -144,6 +144,7 @@ class SimLayerLayout(QWidget):
             self.vlayout.addWidget(layer_widget)
         self.reinit_abs_checkbox(disable=True)
         self.setLayout(self.vlayout)
+        self.create_actions()
         self.show()
 
     def create_actions(self):
@@ -234,7 +235,7 @@ class SimLayerLayout(QWidget):
         elif a0.mimeData().hasFormat("widget/layer_widget"):
             logging.debug(f"Drag entered with SimWidget")
             source = a0.source()
-            self.setEnabledAll(False)
+            self.setEnabledAll(True)
             source.setDisabled(True)
             a0.accept()
         else:
@@ -275,8 +276,7 @@ class SimLayerLayout(QWidget):
         Perform cleanup in case the object is dragged outside the region
         """
         logging.debug(f"Drag Left acceptable region...")
-        self.setEnabledAll(False)
-        a0.ignore()
+        self.setEnabledAll(True)
 
     """ Add Context Menu """
 

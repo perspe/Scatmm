@@ -115,6 +115,7 @@ class OptLayerLayout(QWidget):
             layer_widget.deleted.connect(lambda x: self.rmv_layer_id(x))
             self.vlayout.addWidget(layer_widget)
         self.setLayout(self.vlayout)
+        self.create_actions()
         self.show()
 
     def create_actions(self):
@@ -175,7 +176,7 @@ class OptLayerLayout(QWidget):
         elif a0.mimeData().hasFormat("widget/layer_widget"):
             logging.debug(f"Drag entered with OptWidget")
             source = a0.source()
-            self.setEnabledAll(False)
+            self.setEnabledAll(True)
             source.setDisabled(True)
             a0.accept()
         else:
@@ -214,8 +215,7 @@ class OptLayerLayout(QWidget):
     def dragLeaveEvent(self, a0: QtGui.QDragLeaveEvent) -> None:
         """Perform cleanup in case the object is dragged outside the region"""
         logging.debug(f"Drag Left acceptable region...")
-        self.setEnabledAll(False)
-        a0.accept()
+        self.setEnabledAll(True)
         return super().dragLeaveEvent(a0)
 
     """ Add Context Menu """

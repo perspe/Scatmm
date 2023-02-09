@@ -1004,7 +1004,7 @@ class SMMGUI(QMainWindow):
             logging.debug("Acceptable event data...")
             event.accept()
         elif event.mimeData().hasFormat("widget/layer_widget"):
-            event.accept()
+            event.ignore()
         else:
             event.ignore()
     
