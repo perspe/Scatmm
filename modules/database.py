@@ -7,6 +7,53 @@ from shutil import copyfile
 from typing import List, Union
 import logging
 import os
+import h5py
+
+class H5Database:
+    def __init__(self, db_file: str) -> None:
+        logging.info(f"Loading Database: {db_file}")
+        self._db_file: str = db_file
+        self._prepend_path: str = os.path.dirname(db_file)
+        self._content: List[str] = []
+        with h5py.File(self._db_file, "a") as db:
+            if "root" not in db.keys():
+                db.create_group("root")
+            print(db.keys())
+            root = db["root"]
+            self._content = [mat_name for mat_name in root.keys()]
+        logging.debug(f"DB Content: {self._content}")
+
+    def add_content(self, name: str, data: npt.NDArray) -> int:
+        """
+        Add content to the database
+        Return (0, -1) on success or fail
+        """
+        if name in self._content:
+            return -1
+        with h5py.File(self._db_file, "r+") as db:
+            root = db["root"]
+            mat_group = root.create_group(name)
+            mat_group.create_dataset("data", data.shape, data=data)
+            mat_group.create_dataset("min", (data.shape[1],), data=np.min(data, axis=0))
+            mat_group.create_dataset("max", (data.shape[1],), data=np.max(data, axis=0))
+        self._content.append(name)
+        return 0
+
+    def rmv_content(self, name: Union[str, int]):
+        rmv_material: str = name if isinstance(name, str) else self._content[name]
+        rmv_index = self._content.index(rmv_material)
+        logging.debug(f"Removing {rmv_material}::{rmv_index}")
+        print(f"Removing {rmv_material}::{rmv_index}")
+        with h5py.File(self._db_file, "r+") as db:
+            root = db["root"]
+            del root[rmv_material]
+        self._content.pop(rmv_index)
+
+    """ Properties """
+
+    @property
+    def content(self):
+        return self._content
 
 
 class Database:
