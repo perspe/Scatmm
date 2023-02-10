@@ -371,7 +371,7 @@ class SMMGUI(QMainWindow):
         if self.player is None:
             logging.debug("Initializing Player")
             file_url = QtCore.QUrl.fromLocalFile(
-                os.path.join(ABS_PATH, "music", "keygen.aac")
+                os.path.join(ABS_PATH, "music", "keygen.mp3")
             )
             content = QMediaContent(file_url)
             self.player = QMediaPlayer(None, QMediaPlayer.LowLatency)
