@@ -177,8 +177,9 @@ class OptimizeWorkder(QtCore.QThread):
                 inert_prop=(self.particle_info["w"], 0.4, True),
                 ind_cog=self.particle_info["c1"],
                 soc_learning=self.particle_info["c2"],
-                iterations=self.particle_info["n_iter"],
+                iterations=(self.particle_info["n_iter"], 100, False),
                 particles=self.particle_info["n_particles"],
+                progress=False,
                 maximize=False,
             )
         except MatOutsideBounds as error:
