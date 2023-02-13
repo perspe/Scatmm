@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SMM_Window(object):
     def setupUi(self, SMM_Window):
         SMM_Window.setObjectName("SMM_Window")
-        SMM_Window.resize(1345, 618)
+        SMM_Window.resize(1345, 621)
         font = QtGui.QFont()
         font.setFamily("Arial")
         font.setPointSize(13)
@@ -32,8 +32,8 @@ class Ui_SMM_Window(object):
         self.horizontalLayout_5.setContentsMargins(5, 10, 5, 10)
         self.horizontalLayout_5.setObjectName("horizontalLayout_5")
         self.tab_widget = QtWidgets.QTabWidget(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
-        sizePolicy.setHorizontalStretch(3)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(2)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.tab_widget.sizePolicy().hasHeightForWidth())
         self.tab_widget.setSizePolicy(sizePolicy)
@@ -672,7 +672,7 @@ class Ui_SMM_Window(object):
         self.horizontalLayout_5.addWidget(self.right_frame)
         self.figure_widget = QtWidgets.QWidget(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
-        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setHorizontalStretch(2)
         sizePolicy.setVerticalStretch(1)
         sizePolicy.setHeightForWidth(self.figure_widget.sizePolicy().hasHeightForWidth())
         self.figure_widget.setSizePolicy(sizePolicy)

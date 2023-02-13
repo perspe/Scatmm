@@ -33,8 +33,9 @@ class PltFigure(FigureCanvasQTAgg):
         self.draw_axes()
         super(PltFigure, self).__init__(fig)
         parent.addWidget(self)
-        self.mpl_connect("button_press_event", self.mouse_event)
-        self.mpl_connect("motion_notify_event", self.mouse_moved)
+        self._press = self.mpl_connect("button_press_event", self.mouse_event)
+        # self.mpl_connect("pick_event", self.onpick)
+        self._motion = self.mpl_connect("motion_notify_event", self.mouse_moved)
 
     def draw_axes(self, xlabel=None, ylabel=None):
         """Draw x/y labels"""
@@ -71,13 +72,18 @@ class PltFigure(FigureCanvasQTAgg):
             x_min, x_max = self.axes.get_xlim()
             if self._vline is None:
                 self._vline = self.axes.axvline(
-                    event.xdata, linestyle="--", color="k", picker=True
+                    event.xdata, linestyle="--", color="k", picker=True, gid="vline", pickradius=5
                 )
             elif abs(event.xdata - self._vline.get_xdata()[0]) / (x_max - x_min) < 0.01:
                 logging.debug(event.xdata - self._vline.get_xdata()[0])
                 self._vline.remove()
                 self._vline = None
         self.draw()
+
+    def disconect(self):
+        logging.debug("Disconecting vertical line actions")
+        self.mpl_disconnect(self._press)
+        self.mpl_disconnect(self._button)
 
     def reinit(self):
         """Clean and then reinit the figure elements"""
