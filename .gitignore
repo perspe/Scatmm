@@ -21,5 +21,6 @@ scatmm.log
 todo
 
 ## Windows installation files/folders
+pyinstaller_batch.bat
 installer.bat
 installer.nsi
