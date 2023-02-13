@@ -2,13 +2,13 @@
 Test_Results
 Video
 modules/build
+build
+dist
 config/Database/Backup
 .ipynb_checkpoints
 .virtual_documents
 
 # Files
-EFMA.ipynb
-solar_data.csv
 *.svg
 *.xcf
 *Designer_UIs*
@@ -19,3 +19,7 @@ solar_data.csv
 py_smm_base.cpp
 scatmm.log
 todo
+
+## Windows installation files/folders
+installer.bat
+installer.nsi
