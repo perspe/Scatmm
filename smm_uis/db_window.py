@@ -260,8 +260,9 @@ class DBWindow(QWidget):
                 self.n_plot.legend()
                 self.plot_canvas.draw()
                 break
-        self._figure_action_list.pop(index)
-        self._ploted_info.pop(index)
+        if len(self._figure_action_list) != 0:
+            self._figure_action_list.pop(index)
+            self._ploted_info.pop(index)
         logging.debug(f"Updated action list:\n{self._figure_action_list}")
 
     def _delete_plot(self, id: uuid.UUID):
