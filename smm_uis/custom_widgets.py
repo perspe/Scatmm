@@ -22,6 +22,7 @@ class CustomSlider(QtWidgets.QWidget):
     """
 
     changed = pyqtSignal(bool)
+    released = pyqtSignal()
 
     def __init__(
         self,
@@ -96,6 +97,7 @@ class CustomSlider(QtWidgets.QWidget):
         self._curr_value.editingFinished.connect(self._update_slider)
         self._qslider.valueChanged.connect(self._update_label)
         self._qslider.valueChanged.connect(self.changed.emit)
+        self._qslider.sliderReleased.connect(self.released.emit)
         self._qslider.sliderMoved.connect(self._update_label)
 
     def curr_value(self) -> float:

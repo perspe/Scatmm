@@ -388,6 +388,7 @@ class FormulaWindow(QMainWindow):
         for slider in self.slider_list:
             layout.addWidget(slider)
             slider.changed.connect(self._update_plot)
+            slider.released.connect(self._rebuild_plot)
         verticalSpacer = QSpacerItem(20, 80, QSizePolicy.Minimum, QSizePolicy.Expanding)
         layout.addItem(verticalSpacer)
 
