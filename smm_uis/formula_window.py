@@ -405,7 +405,9 @@ class FormulaWindow(QMainWindow):
         val_tauc_lorentz["N peak"] = n_peaks
         self._clear_variable_layout()
         # Rebuild all widgets
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_tl_peaks)
         einf = CustomSlider("ε∞", val_tauc_lorentz["ε∞"], 1, 5)
@@ -426,7 +428,9 @@ class FormulaWindow(QMainWindow):
         self._clear_variable_layout()
         n_peaks = int(val_tauc_lorentz["N peak"])
         # Rebuild all widgets
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_tl_peaks)
         einf = CustomSlider("ε∞", val_tauc_lorentz["ε∞"], 1, 5)
@@ -446,10 +450,13 @@ class FormulaWindow(QMainWindow):
         """Update the number of custom Sliders for the peaks"""
         self._save_changed_values()
         n_peaks: int = int(self.slider_list[0].curr_value())
+        logging.debug(f"Update number of peaks to: {n_peaks}")
         val_new_amorphous["N peak"] = n_peaks
         self._clear_variable_layout()
         # Rebuild all widgets
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_na_peaks)
         ninf = CustomSlider("n∞", val_new_amorphous["n∞"], 1, 5)
@@ -468,7 +475,9 @@ class FormulaWindow(QMainWindow):
     def MNewAmorphous(self) -> None:
         self._clear_variable_layout()
         n_peaks = int(val_new_amorphous["N peak"])
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         n_peak.changed.connect(self._update_na_peaks)
         self.ui.variable_layout.addWidget(n_peak)
         ninf = CustomSlider("n∞", val_new_amorphous["n∞"], 1, 5)

@@ -18,6 +18,7 @@ class CustomSlider(QtWidgets.QWidget):
         slider_max (float): maximum value for the slider
         resolution (int): Resolution of the slider (bigger == more resolution)
         fixed_lim (bool): Fix the min and max values of the slider
+        int_change (bool): set slider to not track the slider (for slider int change)
     """
 
     changed = pyqtSignal(bool)
@@ -30,6 +31,7 @@ class CustomSlider(QtWidgets.QWidget):
         slider_max: float = 10,
         resolution: int = 1000,
         fixed_lim: bool = False,
+        int_change: bool = False,
     ) -> None:
         super().__init__()
         # Base variables
@@ -70,6 +72,8 @@ class CustomSlider(QtWidgets.QWidget):
         self._qslider.setMaximum(self._resolution)
         self._qslider.setTickPosition(QtWidgets.QSlider.TicksAbove)
         self._qslider.setTickInterval(int(self._resolution / 10))
+        self._qslider.setSingleStep(int(self._resolution / 10))
+        self._qslider.setTracking(not int_change)
         layout.addWidget(self._qslider, 1, 1)
         # Add Indicator for current Slider value
         self._curr_value = QtWidgets.QLineEdit()
