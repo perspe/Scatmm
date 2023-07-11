@@ -392,10 +392,11 @@ class FormulaWindow(QMainWindow):
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        n = CustomSlider("n", val_const["n"], 1, 5)
-        k = CustomSlider("k", val_const["k"], 0, 5)
+        n = CustomSlider("n", val_const["n"], 1, 3)
+        k = CustomSlider("k", val_const["k"], 0, 1)
         self.slider_list = [n, k]
         self._update_layout(layout)
+        self._update_plot()
 
     def _update_tl_peaks(self) -> None:
         """Update the number of custom Sliders for the peaks"""
