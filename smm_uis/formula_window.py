@@ -164,6 +164,7 @@ class FormulaWindow(QMainWindow):
         self._left_plot = nplot[0]
         self._right_plot = kplot[0]
         self.update_method()
+        self._update_plot()
 
     def initializeUI(self) -> None:
         """Connect functions to buttons"""
@@ -400,7 +401,7 @@ class FormulaWindow(QMainWindow):
         k = CustomSlider("k", val_const["k"], 0, 1)
         self.slider_list = [n, k]
         self._update_layout(layout)
-        self._update_plot()
+        self._rebuild_plot()
 
     def _update_tl_peaks(self) -> None:
         """Update the number of custom Sliders for the peaks"""
@@ -449,7 +450,7 @@ class FormulaWindow(QMainWindow):
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        self._update_plot()
+        self._rebuild_plot()
 
     def _update_na_peaks(self) -> None:
         """Update the number of custom Sliders for the peaks"""
@@ -496,7 +497,7 @@ class FormulaWindow(QMainWindow):
             self.slider_list.extend(slider_peak)
         self._update_layout(self.ui.variable_layout)
         self.slider_list.insert(0, n_peak)
-        self._update_plot()
+        self._rebuild_plot()
 
     def MCauchy(self) -> None:
         self._clear_variable_layout()
@@ -506,6 +507,7 @@ class FormulaWindow(QMainWindow):
         c = CustomSlider("C", val_cauchy["C"], 0.5, 10)
         self.slider_list = [a, b, c]
         self._update_layout(layout)
+        self._rebuild_plot()
 
     def MCauchyAbs(self) -> None:
         self._clear_variable_layout()
@@ -518,6 +520,7 @@ class FormulaWindow(QMainWindow):
         f = CustomSlider("F", val_cauchy_abs["F"], 0.5, 10)
         self.slider_list = [a, b, c, d, e, f]
         self._update_layout(layout)
+        self._rebuild_plot()
 
     def MSellmeierAbs(self) -> None:
         self._clear_variable_layout()
@@ -529,6 +532,7 @@ class FormulaWindow(QMainWindow):
         e = CustomSlider("E", val_sellmeier_abs["E"], 0.5, 10)
         self.slider_list = [a, b, c, d, e]
         self._update_layout(layout)
+        self._rebuild_plot()
 
     """ QWidgets Methods """
 
