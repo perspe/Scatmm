@@ -527,6 +527,8 @@ class FormulaWindow(QMainWindow):
         self._update_layout(layout)
 
     """ QWidgets Methods """
+
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.parent.formula_window = None
+        logging.debug("Cleaning formula window variable")
+        self.parent._formula_window = None
         return super().closeEvent(a0)
