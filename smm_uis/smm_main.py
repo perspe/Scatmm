@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SMM_Window(object):
     def setupUi(self, SMM_Window):
         SMM_Window.setObjectName("SMM_Window")
-        SMM_Window.resize(1345, 621)
+        SMM_Window.resize(1345, 632)
         font = QtGui.QFont()
         font.setFamily("Arial")
         font.setPointSize(13)
@@ -688,7 +688,7 @@ class Ui_SMM_Window(object):
         self.horizontalLayout_5.addWidget(self.figure_widget)
         SMM_Window.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(SMM_Window)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1345, 26))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1345, 32))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")

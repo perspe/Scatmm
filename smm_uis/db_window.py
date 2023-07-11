@@ -119,7 +119,8 @@ class DBWindow(QWidget):
     def add_from_formula(self):
         """Open a new UI with the formula manager"""
         if self._formula_window is not None:
-            self._formula_window.raise_()
+            logging.debug("There's already a formula window")
+            self._formula_window._raise()
             return
         self._formula_window = FormulaWindow(self)
         self._formula_window.show()
