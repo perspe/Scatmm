@@ -153,14 +153,17 @@ class FormulaWindow(QMainWindow):
         self.right_plot.tick_params(axis="y", colors="r")
         # InitializeUI and update plot info
         self.initializeUI()
+        # Open window before finalizing the plot
+        # Guarantees the plot is fully drawn
+        self.show()
         # Make the first plot iteration
-        self.methods[self.ui.method_cb.currentText()]()
-        self._update_nk()
-        nplot = self.left_plot.plot(self._e, self._left, c="b")
-        kplot = self.right_plot.plot(self._e, self._right, c="r")
+        self._left = np.linspace(0, 100, self._xres)
+        self._right = np.linspace(0, 100, self._xres)
+        nplot = self.left_plot.plot(self._e, self._left, c="b", animated=True)
+        kplot = self.right_plot.plot(self._e, self._right, c="r", animated=True)
         self._left_plot = nplot[0]
         self._right_plot = kplot[0]
-        self._rebuild_plot()
+        self.update_method()
 
     def initializeUI(self) -> None:
         """Connect functions to buttons"""
@@ -188,7 +191,6 @@ class FormulaWindow(QMainWindow):
         logging.debug(f"Method Updated to: {new_method}")
         self._save_changed_values()
         self.methods[new_method]()
-        self._update_nk()
         self._rebuild_plot()
         self._curr_method = new_method
 
@@ -222,7 +224,7 @@ class FormulaWindow(QMainWindow):
         self._update_nk()
         self._left_plot.set_ydata(self._left)
         self._right_plot.set_ydata(self._right)
-        self.plot_canvas.draw()
+        self.plot_canvas.fast_draw([self._left_plot, self._right_plot])
 
     def _rebuild_plot(self) -> None:
         """Rebuild plot after xvar or xlims is changed"""
@@ -238,7 +240,7 @@ class FormulaWindow(QMainWindow):
             self._left_plot.set_ydata(self._left)
             self._right_plot.set_xdata(self._lmb)
             self._right_plot.set_ydata(self._left)
-        # Update ylimits to accompain data change
+        # Update ylimits to accompany data change
         self.left_plot.set_ylim(
             np.min(self._left) - np.min(self._left) * 0.2,
             np.max(self._left) + np.max(self._left) * 0.2,
@@ -249,6 +251,8 @@ class FormulaWindow(QMainWindow):
         )
         self.left_plot.set_xlim(self._xmin, self._xmax)
         self.plot_canvas.draw()
+        self.plot_canvas.reset_figBuffer()
+        self._update_plot()
 
     def update_left_axis(self):
         """Update the left axis variable and recreate the plot"""
