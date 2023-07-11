@@ -54,8 +54,9 @@ class DBWindow(QWidget):
         self.data.setColumnCount(3)
         self._update_table_view()
         # Setup plot area for double y and alias the axes of both sides
-        self.plot_canvas = PltFigure(self.ui.figure_widget, "Wavelength (nm)", "n")
-        self.plot_canvas.disconect()
+        self.plot_canvas = PltFigure(
+            self.ui.figure_widget, "Wavelength (nm)", "n", interactive=False
+        )
         self.n_plot = self.plot_canvas.axes
         self.n_plot.spines["left"].set_color("b")
         self.n_plot.spines["right"].set_color("r")
@@ -229,7 +230,7 @@ class DBWindow(QWidget):
         plot_menu.exec_(self.ui.widget.mapToGlobal(position))
 
     def _add_plots(self, selected_indexes: List[QModelIndex]):
-        """ Add plots from current table selected indexes """
+        """Add plots from current table selected indexes"""
         plotted_materials: List[str] = [material for material, _ in self._ploted_info]
         for model_index in selected_indexes:
             mat_index: int = model_index.row()
@@ -251,7 +252,7 @@ class DBWindow(QWidget):
         self.plot_canvas.draw()
 
     def _delete_plot_action(self):
-        """ Remove plot from preview """
+        """Remove plot from preview"""
         logging.debug("Updating Preview Plot")
         index = 0
         for index, action in enumerate(self._figure_action_list):
@@ -302,12 +303,12 @@ class DBWindow(QWidget):
         self.k_plot.set_xlim(wvl_min, wvl_max)
 
     def _preview_material(self):
-        """ Preview selected materials """
+        """Preview selected materials"""
         selected_indexes: List[QModelIndex] = [self.db_table.currentIndex()]
         self._add_plots(selected_indexes)
 
     def _remove_preview(self):
-        """ Remove material preview """
+        """Remove material preview"""
         curr_index: int = self.db_table.currentIndex().row()
         selected_material: str = self.database.content[curr_index]
         index: int = 0
@@ -321,7 +322,7 @@ class DBWindow(QWidget):
         self.plot_canvas.draw()
 
     def _table_actions(self):
-        """ Alias to add create all table actions """
+        """Alias to add create all table actions"""
         preview_action: QAction = QAction("Preview Material", self)
         remove_preview: QAction = QAction("Remove Preview", self)
         export_material: QAction = QAction("Export Material", self)
@@ -334,7 +335,7 @@ class DBWindow(QWidget):
         ]
 
     def tableContext(self, position):
-        """ Create the table content menu """
+        """Create the table content menu"""
         table_menu = QMenu(self)
         # Determine if the remove action (entry 1) is clickable based on wether the
         # selected material is plotted or not

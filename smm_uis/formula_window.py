@@ -136,7 +136,7 @@ class FormulaWindow(QMainWindow):
         self._lmb = _nm_to_ev * (1 / self._e)
         # Create the figure to plot the data (with 2 y axis for n and k)
         self.plot_canvas = PltFigure(
-            self.ui.plot_layout, self.ui.units_cb.currentText(), "n"
+            self.ui.plot_layout, self.ui.units_cb.currentText(), "n", interactive=False
         )
         self.addToolBar(
             QtCore.Qt.TopToolBarArea, NavigationToolbar2QT(self.plot_canvas, self)
@@ -251,8 +251,7 @@ class FormulaWindow(QMainWindow):
             np.max(self._right) + np.max(self._right) * 0.2,
         )
         self.left_plot.set_xlim(self._xmin, self._xmax)
-        self.plot_canvas.draw()
-        self.plot_canvas.reset_figBuffer()
+        self.plot_canvas.bufferRedraw()
         self._update_plot()
 
     def update_left_axis(self):

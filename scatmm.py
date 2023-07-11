@@ -414,7 +414,7 @@ class SMMGUI(QMainWindow):
             # Reinitialize plot
             self.main_canvas.reinit()
             self.main_canvas.draw_axes(xlabel="Angle (θ)")
-            self.main_canvas.draw()
+            self.main_canvas.bufferRedraw()
             # Disable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
@@ -424,7 +424,7 @@ class SMMGUI(QMainWindow):
             self.ui.sim_param_check_lmb.setChecked(True)
             self.main_canvas.reinit()
             self.main_canvas.draw_axes(xlabel="Wavelength (nm)")
-            self.main_canvas.draw()
+            self.main_canvas.bufferRedraw()
             # Enable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
@@ -438,7 +438,7 @@ class SMMGUI(QMainWindow):
             self.ui.sim_param_check_angle.setChecked(False)
             self.main_canvas.reinit()
             self.main_canvas.draw_axes(xlabel="Wavelength (nm)")
-            self.main_canvas.draw()
+            self.main_canvas.bufferRedraw()
             # Enable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(False)
             self.sim_data["theta"].setDisabled(False)
@@ -448,7 +448,7 @@ class SMMGUI(QMainWindow):
             self.ui.sim_param_check_angle.setChecked(True)
             self.main_canvas.reinit()
             self.main_canvas.draw_axes(xlabel="Angle (θ)")
-            self.main_canvas.draw()
+            self.main_canvas.bufferRedraw()
             # Disable non-necessary text-boxes
             self.sim_data["lmb_max"].setDisabled(True)
             self.sim_data["theta"].setDisabled(True)
@@ -751,7 +751,7 @@ class SMMGUI(QMainWindow):
         if abs_check:
             logging.debug("Absorption Checkbox detected")
             self.main_figure.plot(x, 1 - ref - trn, label="A Sim(" + simulations + ")")
-        self.main_canvas.draw()
+        self.main_canvas.bufferRedraw()
 
     def clear_sim_buffer(self) -> None:
         """
@@ -787,7 +787,7 @@ class SMMGUI(QMainWindow):
         layer_list = self.sim_results[-1].Layers
         if not cb_state:
             self.delete_plot(id)
-            self.main_canvas.draw()
+            self.main_canvas.bufferRedraw()
             return
         abs = smm_layer(
             layer_list, layer_index + 1, theta, phi, lmb, pol, ref_medium, trn_medium
@@ -800,7 +800,7 @@ class SMMGUI(QMainWindow):
             gid=id,
             label=f"A{len(self.sim_results)}-Layer:{layer_index}",
         )
-        self.main_canvas.draw()
+        self.main_canvas.bufferRedraw()
 
     def clear_plot(self) -> None:
         """Clear all the plots without removing imported data"""
@@ -813,7 +813,7 @@ class SMMGUI(QMainWindow):
                 label="Import Data",
                 gid="Imported_Data",
             )
-        self.main_canvas.draw()
+        self.main_canvas.bufferRedraw()
 
     def delete_plot(self, id) -> None:
         """Delete a specific plot defined by guid"""
@@ -955,7 +955,7 @@ class SMMGUI(QMainWindow):
             compare_data = compare_data[wvl_mask]
             self.main_canvas.reinit()
             self.main_figure.plot(lmb, compare_data, "--")
-            self.main_canvas.draw()
+            self.main_canvas.bufferRedraw()
             # Create a new worker thread to do the optimization
             self.ui.opt_res_text.clear()
             self.ui.opt_res_text.append("Simulation started...")
@@ -1047,7 +1047,7 @@ class SMMGUI(QMainWindow):
             label="Import Data",
             gid="Imported_Data",
         )
-        self.main_canvas.draw()
+        self.main_canvas.bufferRedraw()
         self.import_window.close()
 
     """ Drag and Drop Functionality """
