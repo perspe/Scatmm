@@ -26,6 +26,7 @@ import appdirs
 import matplotlib as mpl
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 import matplotlib.style as mstyle
+# import matplotlib.pyplot as plt
 import numpy as np
 from numpy.linalg import norm
 import numpy.typing as npt
@@ -34,7 +35,7 @@ from modules.fig_class import PltFigure
 from modules.pso import particle_swarm
 from modules.s_matrix import MatOutsideBounds
 from modules.s_matrix import smm_angle, smm_broadband, smm_layer
-from modules.s_matrix import Layer3D
+from modules.s_matrix import Layer3D, Layer_Type
 from modules.structs import SRes, SType
 from smm_uis.smm_main import Ui_SMM_Window
 from smm_uis.sim_layer_widget import SimLayerLayout
@@ -42,7 +43,7 @@ from smm_uis.opt_layer_widget import OptLayerLayout
 
 ABS_PATH = os.path.split(os.path.abspath(__file__))[0]
 print(ABS_PATH)
-VERSION = "3.8.0"
+VERSION = "3.8.1"
 
 log_config = {
     "format": "%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:"
@@ -594,9 +595,9 @@ class SMMGUI(QMainWindow):
             raise ValueError(error)
         return ref_medium, trn_medium
 
-    def get_sim_config(self) -> List[Layer3D]:
+    def get_sim_config(self) -> List[Layer_Type]:
         """Return the thickness from simulation tab"""
-        layer_list: List[Layer3D] = []
+        layer_list: List[Layer_Type] = []
         layer_info: List[Tuple[str, float]] = self.simWidget.layer_info()
         for layer in layer_info:
             db_data: npt.NDArray = self.database[layer[0]]
@@ -667,6 +668,7 @@ class SMMGUI(QMainWindow):
             return
 
         # Do the simulation
+        pol = tuple(pol)
         try:
             if self.ui.sim_param_check_lmb.isChecked():
                 ref, trn = smm_broadband(
@@ -1115,5 +1117,6 @@ if __name__ == "__main__":
     mstyle.use("smm_style")
     mpl.rcParams["axes.facecolor"] = f"{color.name()}"
     mpl.rcParams["figure.facecolor"] = f"{color.name()}"
+    # plt.style.use("dark_background")
     SMM = SMMGUI()
     sys.exit(app.exec_())

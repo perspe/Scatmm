@@ -153,14 +153,17 @@ class FormulaWindow(QMainWindow):
         self.right_plot.tick_params(axis="y", colors="r")
         # InitializeUI and update plot info
         self.initializeUI()
+        # Open window before finalizing the plot
+        # Guarantees the plot is fully drawn
+        self.show()
         # Make the first plot iteration
-        self.methods[self.ui.method_cb.currentText()]()
-        self._update_nk()
-        nplot = self.left_plot.plot(self._e, self._left, c="b")
-        kplot = self.right_plot.plot(self._e, self._right, c="r")
+        self._left = np.linspace(0, 100, self._xres)
+        self._right = np.linspace(0, 100, self._xres)
+        nplot = self.left_plot.plot(self._e, self._left, c="b", animated=True)
+        kplot = self.right_plot.plot(self._e, self._right, c="r", animated=True)
         self._left_plot = nplot[0]
         self._right_plot = kplot[0]
-        self._rebuild_plot()
+        self.update_method()
 
     def initializeUI(self) -> None:
         """Connect functions to buttons"""
@@ -188,7 +191,6 @@ class FormulaWindow(QMainWindow):
         logging.debug(f"Method Updated to: {new_method}")
         self._save_changed_values()
         self.methods[new_method]()
-        self._update_nk()
         self._rebuild_plot()
         self._curr_method = new_method
 
@@ -222,7 +224,7 @@ class FormulaWindow(QMainWindow):
         self._update_nk()
         self._left_plot.set_ydata(self._left)
         self._right_plot.set_ydata(self._right)
-        self.plot_canvas.draw()
+        self.plot_canvas.fast_draw([self._left_plot, self._right_plot])
 
     def _rebuild_plot(self) -> None:
         """Rebuild plot after xvar or xlims is changed"""
@@ -238,7 +240,7 @@ class FormulaWindow(QMainWindow):
             self._left_plot.set_ydata(self._left)
             self._right_plot.set_xdata(self._lmb)
             self._right_plot.set_ydata(self._left)
-        # Update ylimits to accompain data change
+        # Update ylimits to accompany data change
         self.left_plot.set_ylim(
             np.min(self._left) - np.min(self._left) * 0.2,
             np.max(self._left) + np.max(self._left) * 0.2,
@@ -249,6 +251,8 @@ class FormulaWindow(QMainWindow):
         )
         self.left_plot.set_xlim(self._xmin, self._xmax)
         self.plot_canvas.draw()
+        self.plot_canvas.reset_figBuffer()
+        self._update_plot()
 
     def update_left_axis(self):
         """Update the left axis variable and recreate the plot"""
@@ -392,10 +396,11 @@ class FormulaWindow(QMainWindow):
         """
         self._clear_variable_layout()
         layout = self.ui.variable_layout
-        n = CustomSlider("n", val_const["n"], 1, 5)
-        k = CustomSlider("k", val_const["k"], 0, 5)
+        n = CustomSlider("n", val_const["n"], 1, 3)
+        k = CustomSlider("k", val_const["k"], 0, 1)
         self.slider_list = [n, k]
         self._update_layout(layout)
+        self._update_plot()
 
     def _update_tl_peaks(self) -> None:
         """Update the number of custom Sliders for the peaks"""
@@ -405,7 +410,9 @@ class FormulaWindow(QMainWindow):
         val_tauc_lorentz["N peak"] = n_peaks
         self._clear_variable_layout()
         # Rebuild all widgets
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_tl_peaks)
         einf = CustomSlider("ε∞", val_tauc_lorentz["ε∞"], 1, 5)
@@ -426,7 +433,9 @@ class FormulaWindow(QMainWindow):
         self._clear_variable_layout()
         n_peaks = int(val_tauc_lorentz["N peak"])
         # Rebuild all widgets
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_tl_peaks)
         einf = CustomSlider("ε∞", val_tauc_lorentz["ε∞"], 1, 5)
@@ -446,10 +455,13 @@ class FormulaWindow(QMainWindow):
         """Update the number of custom Sliders for the peaks"""
         self._save_changed_values()
         n_peaks: int = int(self.slider_list[0].curr_value())
+        logging.debug(f"Update number of peaks to: {n_peaks}")
         val_new_amorphous["N peak"] = n_peaks
         self._clear_variable_layout()
         # Rebuild all widgets
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         self.ui.variable_layout.addWidget(n_peak)
         n_peak.changed.connect(self._update_na_peaks)
         ninf = CustomSlider("n∞", val_new_amorphous["n∞"], 1, 5)
@@ -468,7 +480,9 @@ class FormulaWindow(QMainWindow):
     def MNewAmorphous(self) -> None:
         self._clear_variable_layout()
         n_peaks = int(val_new_amorphous["N peak"])
-        n_peak = CustomSlider("N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True)
+        n_peak = CustomSlider(
+            "N peak", n_peaks, 1, 11, resolution=100, fixed_lim=True, int_change=True
+        )
         n_peak.changed.connect(self._update_na_peaks)
         self.ui.variable_layout.addWidget(n_peak)
         ninf = CustomSlider("n∞", val_new_amorphous["n∞"], 1, 5)
@@ -517,6 +531,8 @@ class FormulaWindow(QMainWindow):
         self._update_layout(layout)
 
     """ QWidgets Methods """
+
     def closeEvent(self, a0: QCloseEvent) -> None:
-        self.parent.formula_window = None
+        logging.debug("Cleaning formula window variable")
+        self.parent._formula_window = None
         return super().closeEvent(a0)

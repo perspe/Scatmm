@@ -5,6 +5,7 @@ modules/build
 build
 dist
 config/Database/Backup
+typings
 .ipynb_checkpoints
 .virtual_documents
 

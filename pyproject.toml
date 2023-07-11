@@ -1,0 +1,7 @@
+[tool.pyright]
+ignore = ["smm_uis", "typings"]
+exclude = ["smm_uis", "typings"]
+reportMissingImports = true
+useLibraryCodeForTypes = false
+
+pythonPlatform = "Linux"
