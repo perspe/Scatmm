@@ -28,14 +28,28 @@ class PltFigure(FigureCanvasQTAgg):
         self.xlabel = xlabel
         self.ylabel = ylabel
         self._vline = None
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes: Any = fig.add_subplot(111)
+        self._fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes: Any = self._fig.add_subplot(111)
         self.draw_axes()
-        super(PltFigure, self).__init__(fig)
+        super(PltFigure, self).__init__(self._fig)
         parent.addWidget(self)
         self._press = self.mpl_connect("button_press_event", self.mouse_event)
         # self.mpl_connect("pick_event", self.onpick)
         self._motion = self.mpl_connect("motion_notify_event", self.mouse_moved)
+        # Variable to store the figure buffer for fast redraw
+        self._fig_buffer = self.copy_from_bbox(self._fig.bbox)
+
+    @property
+    def figBuffer(self):
+        return self._fig_buffer
+
+    @figBuffer.setter
+    def figBuffer(self, value):
+        self._fig_buffer = value
+
+    def reset_figBuffer(self):
+        """ Overwrite the figBuffer variable to accommodate new plot changes """
+        self._fig_buffer = self.copy_from_bbox(self._fig.bbox)
 
     def draw_axes(self, xlabel=None, ylabel=None):
         """Draw x/y labels"""
@@ -48,6 +62,14 @@ class PltFigure(FigureCanvasQTAgg):
         self.axes.xaxis.grid(True, linestyle="--")
         self.axes.set_ylabel(self.ylabel)
         self.axes.set_xlabel(self.xlabel)
+
+    def fast_draw(self, lines):
+        logging.debug(lines)
+        self._fig.canvas.restore_region(self._fig_buffer)
+        for line in lines:
+            self.axes.draw_artist(line)
+        self._fig.canvas.blit(self._fig.bbox)
+        self._fig.canvas.flush_events()
 
     def mouse_moved(self, event):
         """Detect if mouse was moved.. If vline is in range... move it"""
@@ -78,7 +100,8 @@ class PltFigure(FigureCanvasQTAgg):
                 logging.debug(event.xdata - self._vline.get_xdata()[0])
                 self._vline.remove()
                 self._vline = None
-        self.draw()
+        # self.
+        # self.draw()
 
     def disconect(self):
         logging.debug("Disconecting vertical line actions")
