@@ -37,6 +37,7 @@ class PltFigure(FigureCanvasQTAgg):
         bufferRedraw: wrapper around draw to also save the figure to the buffer
         deleteLinesGID: delete lines from the plot from their gid
     """
+
     def __init__(
         self, parent, xlabel, ylabel, width=6, height=5, dpi=100, interactive=True
     ):
@@ -53,18 +54,16 @@ class PltFigure(FigureCanvasQTAgg):
         parent.addWidget(self)
         # Add connections to mouse events
         if interactive:
-            self._press = self.mpl_connect("button_press_event", self.mouse_event)
-            self._motion = self.mpl_connect("motion_notify_event", self.mouse_moved)
-            self._release = self.mpl_connect(
-                "button_release_event", self.mouse_released
-            )
+            self.mpl_connect("button_press_event", self.mouse_event)
+            self.mpl_connect("motion_notify_event", self.mouse_moved)
+            self.mpl_connect("button_release_event", self.mouse_released)
         # Variable to store the figure buffer for fast redraw
         self._fig_buffer = self.copy_from_bbox(self._fig.bbox)
 
     """ Initialization functions """
 
     def draw_axes(self, xlabel=None, ylabel=None):
-        """ Update x and ylabels for the plot """
+        """Update x and ylabels for the plot"""
         logging.debug("Draw/Labelling Axis")
         if xlabel:
             self.xlabel: str = xlabel
@@ -105,7 +104,12 @@ class PltFigure(FigureCanvasQTAgg):
             logging.debug(f"Vline: {xdata}")
             self.deleteLinesGID(["vline"])
             self._vline = self.axes.axvline(
-                xdata, linestyle="--", color="k", picker=True, gid="vline", pickradius=15
+                xdata,
+                linestyle="--",
+                color="k",
+                picker=True,
+                gid="vline",
+                pickradius=15,
             )
             self._fig_buffer = self.copy_from_bbox(self._fig.bbox)
             self.fast_draw([self._vline])
@@ -113,7 +117,7 @@ class PltFigure(FigureCanvasQTAgg):
             self._fig_buffer = self.copy_from_bbox(self._fig.bbox)
 
     def fast_draw(self, lines):
-        """ Fast draw line elements onto the canvas """
+        """Fast draw line elements onto the canvas"""
         self._fig.canvas.restore_region(self._fig_buffer)
         for line in lines:
             self.axes.draw_artist(line)
@@ -122,13 +126,14 @@ class PltFigure(FigureCanvasQTAgg):
 
     def bufferRedraw(self):
         """Wrapper around the draw function to also run reset_figBuffer"""
+        logging.debug("Rebuilding buffer cache")
         self.draw()
         self.reset_figBuffer()
 
     """ Interaction functions """
 
     def deleteLinesGID(self, lines):
-        """ Delete lines based on gid """
+        """Delete lines based on gid"""
         for line in self.axes.get_lines():
             if line.get_gid() in lines:
                 logging.debug(f"Removing line: {line.get_gid()}")
@@ -138,7 +143,7 @@ class PltFigure(FigureCanvasQTAgg):
     """ Mouse events """
 
     def mouse_moved(self, event):
-        """ Update vline position based on mouse movement """
+        """Update vline position based on mouse movement"""
         if event.inaxes != self.axes:
             return
         if event.button == MouseButton.LEFT and not self._vlineLock:
