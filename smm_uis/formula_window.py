@@ -311,7 +311,7 @@ class FormulaWindow(QMainWindow):
             QMessageBox.Ok,
             QMessageBox.Ok,
         )
-        self.parent.update_db_preview()
+        self.parent._update_table_view()
         self.parent.db_updated.emit()
 
     def update_xvar(self) -> None:
