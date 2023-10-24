@@ -3,6 +3,7 @@ import logging
 from typing import List
 
 from PyQt5 import QtCore
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QRegExpValidator, QCloseEvent
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QSizePolicy, QSpacerItem
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -17,6 +18,7 @@ from modules.dispersion import (
 from modules.fig_class import PltFigure
 import numpy as np
 import scipy.constants as scc
+import pandas as pd
 
 from .custom_widgets import CustomSlider
 from .smm_formula_mat import Ui_Formula
@@ -91,6 +93,8 @@ def convert_observable(lmb, n, k, wanted: Observable):
 
 
 class FormulaWindow(QMainWindow):
+    imp_clicked = pyqtSignal(object, str)
+
     def __init__(self, parent: QtCore.QObject) -> None:
         self.parent = parent
         super(FormulaWindow, self).__init__()
@@ -285,34 +289,10 @@ class FormulaWindow(QMainWindow):
                 QMessageBox.Ok,
             )
             return
-        data = np.c_[self._lmb, self._n, self._k]
-        override = QMessageBox.NoButton
-        if mat_name in self.parent.database.content:
-            override = QMessageBox.question(
-                self,
-                "Material name in Database",
-                "The Database already has a material with this name.."
-                + "\nOverride the material?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes,
-            )
-        if override == QMessageBox.No:
-            return
-        elif override == QMessageBox.Yes:
-            self.parent.database.rmv_content(mat_name)
-            self.parent.database.add_content(mat_name, data)
-        else:
-            self.parent.database.add_content(mat_name, data)
-
-        QMessageBox.information(
-            self,
-            "Success",
-            "Material added Successfully to Database",
-            QMessageBox.Ok,
-            QMessageBox.Ok,
+        data = pd.DataFrame(
+            np.c_[self._lmb, self._n, self._k], columns=["wvl", "n", "k"]
         )
-        self.parent._update_table_view()
-        self.parent.db_updated.emit()
+        self.imp_clicked.emit(data, mat_name)
 
     def update_xvar(self) -> None:
         """Update the overall representation of xvar, between E and Wvl"""
@@ -362,7 +342,7 @@ class FormulaWindow(QMainWindow):
 
     QtCore.pyqtSlot(object, str)
 
-    def _import(self, imported_data, name):
+    def _import(self, imported_data, _):
         """Plot the imported data"""
         if self.import_window is None:
             logging.critical("Unknown Error...")

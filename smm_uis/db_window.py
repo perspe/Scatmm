@@ -124,6 +124,7 @@ class DBWindow(QWidget):
             self._formula_window._raise()
             return
         self._formula_window = FormulaWindow(self)
+        self._formula_window.imp_clicked.connect(self._import)
         self._formula_window.show()
 
     def rmv_db_material(self):
@@ -175,7 +176,7 @@ class DBWindow(QWidget):
     def _import(self, import_data, name):
         """Function to add data to the database from formula or datafile"""
         logging.debug(f"Imported data detected:\n {import_data=}\n{name=}")
-        if self._import_window is None:
+        if self._import_window is None and self._formula_window is None:
             logging.critical("Unknown Error")
             return
         override = QMessageBox.NoButton
@@ -198,7 +199,8 @@ class DBWindow(QWidget):
             self.database.add_content(name, import_data.values[:, [0, 1, 2]])
         self._update_table_view()
         self.db_updated.emit()
-        self._import_window.close()
+        if self._import_window is not None:
+            self._import_window.close()
 
     """ Drag/Drop Events """
 

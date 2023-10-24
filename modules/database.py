@@ -73,7 +73,7 @@ class Database:
     def add_content(self, name: str, data: npt.NDArray) -> None:
         """Add content to the Database"""
         with open(self.db_file, "a") as db_file:
-            db_file.write(name + "\n")
+            db_file.write(name + "\r\n")
         self.content.append(name)
         np.savetxt(os.path.join(self.prepend_path, name + ".txt"), data)
         logging.info(f"Added material '{name}' to Database")
