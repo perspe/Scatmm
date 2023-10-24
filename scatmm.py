@@ -42,7 +42,7 @@ from smm_uis.sim_layer_widget import SimLayerLayout
 from smm_uis.opt_layer_widget import OptLayerLayout
 
 ABS_PATH = os.path.split(os.path.abspath(__file__))[0]
-print(ABS_PATH)
+logging.debug(ABS_PATH)
 VERSION = "3.8.2"
 
 log_config = {
@@ -73,10 +73,11 @@ def find_loc(filename):
         return os.path.join(config_dir, filename)
     else:
         logging.info(f"{filename} in local config")
-        return os.path.join("config", filename)
+        configdir = os.path.join(ABS_PATH, "config")
+        return os.path.join(configdir, filename)
 
 
-with open(os.path.join("config", "config.json"), "r") as global_config:
+with open(os.path.join(ABS_PATH, "config", "config.json"), "r") as global_config:
     global_properties = json.load(global_config)
     logging.debug(f"{global_properties=}")
 
@@ -1114,7 +1115,7 @@ if __name__ == "__main__":
     # Update matplotlib color to match qt application
     color = app.palette().color(QPalette.Background)
     # Default plot properties
-    mstyle.use("smm_style")
+    mstyle.use(os.path.join(ABS_PATH, "smm_style"))
     mpl.rcParams["axes.facecolor"] = f"{color.name()}"
     mpl.rcParams["figure.facecolor"] = f"{color.name()}"
     # plt.style.use("dark_background")
