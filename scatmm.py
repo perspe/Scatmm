@@ -58,7 +58,7 @@ logging.getLogger("matplotlib").setLevel(logging.INFO)
 config_dir = os.path.join(appdirs.user_data_dir(), "scatmm")
 if not os.path.isdir(config_dir):
     logging.info("Copying config data to user directory")
-    shutil.copytree("config", config_dir)
+    shutil.copytree(os.path.join(ABS_PATH, "config"), config_dir)
 
 
 def find_loc(filename):
