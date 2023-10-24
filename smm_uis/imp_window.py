@@ -204,32 +204,13 @@ class ImpPrevWindow(QWidget):
             self.ui.preview_button.setDisabled(False)
             self.ui.import_button.setDisabled(False)
 
-    
-
-
     def _imp_clicked(self):
         """Filter information before passing the signal to the parent window"""
         if self.data is None:
             return
-        if ImpFlag.DB in self.imp_flag and self.data.shape[1] < 3:
+        if self.data.shape[1] < self._checkValidCols():
             logging.info(f"Invalid Shape for Imported Data {self.data.shape=}")
-            return
-        elif ImpFlag.DATA in self.imp_flag and self.data.shape[1] < 2:
-            logging.info(f"Invalid Shape for Imported Data {self.data.shape=}")
-            return
         mat_name: str = self.ui.mat_name_edit.text()
-        if mat_name == "":
-            logging.critical(f"No name given to file...")
-            return
-        if ~ImpFlag.NONAME in self.imp_flag and mat_name == "":
-            QMessageBox.information(
-                self,
-                "No material name",
-                "Please select a material name before importing",
-                QMessageBox.Ok,
-                QMessageBox.Ok,
-            )
-            return
         self.imp_clicked.emit(self.data, mat_name)
 
     """ Update each button group value in self.import_args """
