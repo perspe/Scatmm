@@ -118,13 +118,7 @@ class ImpPrevWindow(QWidget):
         }
         # Things for preview table
         self.import_table = self.ui.tableView
-        if ImpFlag.DB in self.imp_flag:
-            self.import_model = TableModel(DataFrame(), 3)
-        elif ImpFlag.DATA in self.imp_flag:
-            self.import_model = TableModel(DataFrame(), 2)
-        else:
-            logging.critical(f"Unknown {self.mode}")
-            raise Exception("Unknown self.mode")
+        self.import_model = TableModel(DataFrame(), self._checkValidCols())
         self.import_table.setModel(self.import_model)
         self.ui.unit_combobox.addItems(list(Units.keys()))
         self.initializeUI()
@@ -180,20 +174,38 @@ class ImpPrevWindow(QWidget):
         self.ui.import_button.setDisabled(True)
         self.import_model.layoutChanged.connect(self.verifyDataIntegrity)
 
+    def _checkValidCols(self) -> int:
+        """ Check how many valid columns there are """
+        if ImpFlag.DB in self.imp_flag:
+            return 3
+        elif ImpFlag.DATA in self.imp_flag:
+            return 2
+        else:
+            logging.critical(f"Unknown {self.mode}")
+            raise Exception("Unknown self.mode")
+
     def verifyDataIntegrity(self):
         """ Determine if the data is good for import/preview """
-        logging.debug("Determine data quality for import/preview")
-        if self.ui.mat_name_edit.text() == "" or len(self.data) == 0:
-            logging.debug("Ivalid filename/Data")
-            self.ui.import_button.setDisabled(True)
-        elif not (np.floating == self.data.dtypes).all():
-            logging.debug("Problematic data found")
+        # Check if it is possible to activate the buttons
+        check_data_shape: bool = self.data.shape[1] < self._checkValidCols()
+        check_any_data: bool = len(self.data) == 0
+        check_valid_data = not (np.floating == self.data.dtypes).all()
+        if check_any_data or check_data_shape or check_valid_data:
+            logging.debug(f"Problematic data found: {check_any_data}:{check_data_shape}:{check_valid_data}")
             self.ui.import_button.setDisabled(True)
             self.ui.preview_button.setDisabled(True)
+            return
+        if self.ui.mat_name_edit.text() == "" and ImpFlag.NONAME not in self.imp_flag:
+            logging.debug("No name provided for import")
+            self.ui.import_button.setDisabled(True)
+            self.ui.preview_button.setDisabled(False)
         else:
             logging.debug("Invalid data found in array. Lock Import/Preview buttons")
             self.ui.preview_button.setDisabled(False)
             self.ui.import_button.setDisabled(False)
+
+    
+
 
     def _imp_clicked(self):
         """Filter information before passing the signal to the parent window"""
