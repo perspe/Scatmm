@@ -142,7 +142,7 @@ class ImpPrevWindow(QWidget):
         # Connect to preview function
         if ImpFlag.DB in self.imp_flag:
             self.ui.preview_button.clicked.connect(self.db_prev)
-            filename_regex = QRegExp("[^/:{}\[\]'\"]*")
+            filename_regex = QRegExp("[^\\\/:{}\[\]'\"?><*$]*")
             self.ui.mat_name_edit.setValidator(QRegExpValidator(filename_regex))
         elif ImpFlag.DATA in self.imp_flag:
             self.ui.preview_button.clicked.connect(self.data_prev)
