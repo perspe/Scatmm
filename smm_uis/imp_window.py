@@ -13,6 +13,7 @@ from pandas import DataFrame
 import pandas as pd
 from pandas.errors import ParserError
 from scipy.interpolate import interp1d
+import numpy as np
 
 from .smm_import_db_mat import Ui_ImportDB
 
@@ -55,6 +56,9 @@ class TableModel(QAbstractTableModel):
         if role == Qt.BackgroundRole and self._good_cols != 0:
             if index.column() >= self._good_cols:
                 return QtGui.QColor("#FF6666")
+            if not isinstance(self._data.iloc[index.row(), index.column()], float):
+                return QtGui.QColor("#FF6666")
+
 
     def rowCount(self, _) -> int:
         return self._data.shape[0]
@@ -171,6 +175,25 @@ class ImpPrevWindow(QWidget):
         self.ui.ignore_lines_bottom_edit.editingFinished.connect(self.update_skipfooter)
         self.ui.choose_columns_edit.editingFinished.connect(self.update_ignore_cols)
         self.ui.unit_combobox.currentTextChanged.connect(self.update_preview)
+        # Connect material name edit to determine when materials can be added
+        self.ui.mat_name_edit.textEdited.connect(self.verifyDataIntegrity)
+        self.ui.import_button.setDisabled(True)
+        self.import_model.layoutChanged.connect(self.verifyDataIntegrity)
+
+    def verifyDataIntegrity(self):
+        """ Determine if the data is good for import/preview """
+        logging.debug("Determine data quality for import/preview")
+        if self.ui.mat_name_edit.text() == "" or len(self.data) == 0:
+            logging.debug("Ivalid filename/Data")
+            self.ui.import_button.setDisabled(True)
+        elif not (np.floating == self.data.dtypes).all():
+            logging.debug("Problematic data found")
+            self.ui.import_button.setDisabled(True)
+            self.ui.preview_button.setDisabled(True)
+        else:
+            logging.debug("Invalid data found in array. Lock Import/Preview buttons")
+            self.ui.preview_button.setDisabled(False)
+            self.ui.import_button.setDisabled(False)
 
     def _imp_clicked(self):
         """Filter information before passing the signal to the parent window"""
@@ -182,7 +205,10 @@ class ImpPrevWindow(QWidget):
         elif ImpFlag.DATA in self.imp_flag and self.data.shape[1] < 2:
             logging.info(f"Invalid Shape for Imported Data {self.data.shape=}")
             return
-        mat_name = self.ui.mat_name_edit.text()
+        mat_name: str = self.ui.mat_name_edit.text()
+        if mat_name == "":
+            logging.critical(f"No name given to file...")
+            return
         if ~ImpFlag.NONAME in self.imp_flag and mat_name == "":
             QMessageBox.information(
                 self,
