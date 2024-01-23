@@ -56,7 +56,7 @@ class TableModel(QAbstractTableModel):
         if role == Qt.BackgroundRole and self._good_cols != 0:
             if index.column() >= self._good_cols:
                 return QtGui.QColor("#FF6666")
-            if not isinstance(self._data.iloc[index.row(), index.column()], float):
+            if not isinstance(self._data.iloc[index.row(), index.column()], (int, float)):
                 return QtGui.QColor("#FF6666")
 
 
@@ -378,5 +378,5 @@ class ImpPrevWindow(QWidget):
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         if self.preview_import is not None:
             self.preview_import.close()
-        self.parent.import_window=None
+        self.parent._import_window=None
         return super().closeEvent(a0)

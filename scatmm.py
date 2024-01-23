@@ -43,7 +43,7 @@ from smm_uis.opt_layer_widget import OptLayerLayout
 
 ABS_PATH = os.path.split(os.path.abspath(__file__))[0]
 logging.debug(ABS_PATH)
-VERSION = "3.8.2"
+VERSION = "3.8.3"
 
 log_config = {
     "format": "%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:"
@@ -262,7 +262,7 @@ class SMMGUI(QMainWindow):
         self.export_ui: Union[None, QtWidgets.QWidget] = None
         self.db_ui: Union[None, QtWidgets.QWidget] = None
         self.properties_window: Union[None, QtWidgets.QWidget] = None
-        self.import_window: Union[None, QtWidgets.QWidget] = None
+        self._import_window: Union[None, QtWidgets.QWidget] = None
         # Load simulation default properties
         logging.debug("Loading default global properties")
         with open(find_loc("config.json"), "r") as config:
@@ -347,7 +347,7 @@ class SMMGUI(QMainWindow):
         self.ui.actionExit.triggered.connect(self.close)
         self.ui.actionProperties.triggered.connect(self.open_properties)
         self.ui.actionHelp.triggered.connect(
-            lambda: webbrowser.open_new_tab(os.path.join("Help", "help.html"))
+            lambda: webbrowser.open_new_tab(os.path.join(ABS_PATH, "Help", "help.html"))
         )
         self.ui.actionAbout.triggered.connect(self.aboutDialog)
         self.ui.clear_button.clicked.connect(self.clear_plot)
@@ -1023,20 +1023,20 @@ class SMMGUI(QMainWindow):
         Function for import button - import data for simulation/optimization
         """
         logging.info("Import Button Clicked")
-        if self.import_window is not None:
-            self.import_window.raise_()
+        if self._import_window is not None:
+            self._import_window.raise_()
             return
         from smm_uis.imp_window import ImpPrevWindow, ImpFlag
 
-        self.import_window = ImpPrevWindow(
+        self._import_window = ImpPrevWindow(
             self, imp_flag=ImpFlag.BUTTON | ImpFlag.DATA | ImpFlag.NONAME
         )
-        self.import_window.imp_clicked.connect(self._import)
-        self.import_window.show()
+        self._import_window.imp_clicked.connect(self._import)
+        self._import_window.show()
 
     def _import(self, import_data, name):
         logging.debug(f"Imported data detected:\n {import_data=}\n{name=}")
-        if self.import_window is None:
+        if self._import_window is None:
             logging.critical("Unknown error")
             return
         self.imported_data = import_data.values[:, [0, 1]]
@@ -1049,7 +1049,7 @@ class SMMGUI(QMainWindow):
             gid="Imported_Data",
         )
         self.main_canvas.bufferRedraw()
-        self.import_window.close()
+        self._import_window.close()
 
     """ Drag and Drop Functionality """
 
@@ -1090,11 +1090,11 @@ class SMMGUI(QMainWindow):
             return
         from smm_uis.imp_window import ImpPrevWindow, ImpFlag
 
-        self.import_window = ImpPrevWindow(
+        self._import_window = ImpPrevWindow(
             self, imp_flag=ImpFlag.DRAG | ImpFlag.DATA, filepath=filepath
         )
-        self.import_window.imp_clicked.connect(self._import)
-        self.import_window.show()
+        self._import_window.imp_clicked.connect(self._import)
+        self._import_window.show()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         """Clean all possible open windows"""
@@ -1104,9 +1104,9 @@ class SMMGUI(QMainWindow):
         if self.db_ui is not None:
             logging.info("Database Window still opened... Closing...")
             self.db_ui.close()
-        if self.import_window is not None:
+        if self._import_window is not None:
             logging.info("Import Window still opened... Closing...")
-            self.import_window.close()
+            self._import_window.close()
         return super().closeEvent(a0)
 
 

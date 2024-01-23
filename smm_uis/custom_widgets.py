@@ -119,11 +119,14 @@ class CustomSlider(QtWidgets.QWidget):
                 return
             value: float = float(str_val)
         logging.debug(f" Updating slider: {value=}")
-        if value < self._slider_min:
+        if value <= self._slider_min:
             value = self._slider_min
-        if value > self._slider_max:
+        if value >= self._slider_max:
             value = self._slider_max
-        diff = (value - self._slider_min) / (self._slider_max - self._slider_min)
+        denomitator: float = self._slider_max - self._slider_min
+        if denomitator == 0:
+            denomitator = 1
+        diff = (value - self._slider_min) / denomitator
         self._qslider.setValue(int(diff * self._resolution))
         # Reupdate label to account for resolution mismatch
         self._update_label()
