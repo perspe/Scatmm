@@ -43,7 +43,7 @@ from smm_uis.opt_layer_widget import OptLayerLayout
 
 ABS_PATH = os.path.split(os.path.abspath(__file__))[0]
 logging.debug(ABS_PATH)
-VERSION = "3.8.2"
+VERSION = "3.8.3"
 
 log_config = {
     "format": "%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:"
@@ -347,7 +347,7 @@ class SMMGUI(QMainWindow):
         self.ui.actionExit.triggered.connect(self.close)
         self.ui.actionProperties.triggered.connect(self.open_properties)
         self.ui.actionHelp.triggered.connect(
-            lambda: webbrowser.open_new_tab(os.path.join("Help", "help.html"))
+            lambda: webbrowser.open_new_tab(os.path.join(ABS_PATH, "Help", "help.html"))
         )
         self.ui.actionAbout.triggered.connect(self.aboutDialog)
         self.ui.clear_button.clicked.connect(self.clear_plot)
