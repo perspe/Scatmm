@@ -103,7 +103,7 @@ class FormulaWindow(QMainWindow):
         self.ui.setupUi(self)
         # Internal variables of interest
         # Connect Combobox names to functions
-        self.import_window = None
+        self._import_window = None
         self.observables = {
             "n": lambda x, y, z: convert_observable(x, y, z, wanted=Observable.N),
             "k": lambda x, y, z: convert_observable(x, y, z, wanted=Observable.K),
@@ -334,24 +334,24 @@ class FormulaWindow(QMainWindow):
     """ Import Materials to preview/compare """
 
     def import_data(self):
-        self.import_window = ImpPrevWindow(
+        self._import_window = ImpPrevWindow(
             self, ImpFlag.NONAME | ImpFlag.DB | ImpFlag.BUTTON
         )
-        self.import_window.imp_clicked.connect(self._import)
-        self.import_window.show()
+        self._import_window.imp_clicked.connect(self._import)
+        self._import_window.show()
 
     QtCore.pyqtSlot(object, str)
 
     def _import(self, imported_data, _):
         """Plot the imported data"""
-        if self.import_window is None:
+        if self._import_window is None:
             logging.critical("Unknown Error...")
             return
         data = imported_data.values
         self.left_plot.plot(data[:, 0], data[:, 1], "--b")
         self.right_plot.plot(data[:, 0], data[:, 2], "--r")
         self.plot_canvas.draw()
-        self.import_window.close()
+        self._import_window.close()
 
     """ Functions to Build the Variables for Different Methods """
 

@@ -378,5 +378,5 @@ class ImpPrevWindow(QWidget):
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         if self.preview_import is not None:
             self.preview_import.close()
-        self.parent.import_window=None
+        self.parent._import_window=None
         return super().closeEvent(a0)
