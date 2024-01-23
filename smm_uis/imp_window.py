@@ -56,7 +56,7 @@ class TableModel(QAbstractTableModel):
         if role == Qt.BackgroundRole and self._good_cols != 0:
             if index.column() >= self._good_cols:
                 return QtGui.QColor("#FF6666")
-            if not isinstance(self._data.iloc[index.row(), index.column()], float):
+            if not isinstance(self._data.iloc[index.row(), index.column()], (int, float)):
                 return QtGui.QColor("#FF6666")
 
 
