@@ -1,7 +1,7 @@
 [tool.pyright]
 venvPath = "/home/miguel/anaconda3/envs"
 venv = "scatmm"
-ignore = ["**/smm_uis"]
-exclude = ["**/smm_uis"]
+# ignore = ["**/smm_uis"]
+exclude = ["**/typings"]
 reportMissingImports = true
 useLibraryCodeForTypes = true
