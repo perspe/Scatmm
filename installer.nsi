@@ -32,8 +32,8 @@ InstallDir "$PROGRAMFILES\${COMPANYNAME}\${APPNAME}"
 
 # This will be in the installer/uninstaller's title bar
 Name "${COMPANYNAME} - ${APPNAME}"
-!define MUI_ICON "icons\logo.ico"
-!define MUI_UNICON "icons\logo.ico"
+!define MUI_ICON "logo.ico"
+!define MUI_UNICON "logo.ico"
 outFile "dist\${APPNAME}_v${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}.exe"
  
 # Just three pages - license agreement, install location, and installation
