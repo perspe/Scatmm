@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Alexandre"
+  given-names: "Miguel"
+  orcid: "https://orcid.org/0000-0002-7533-9469"
+- family-names: "Santos"
+  given-names: "Ivan M."
+  orcid: "https://orcid.org/0000-0001-6593-8698"
+- family-names: "Martins"
+  given-names: "Rodrigo"
+  orcid: "https://orcid.org/0000-0002-1997-7669"
+- family-names: "Mendes"
+  given-names: "Manuel J."
+  orcid: "https://orcid.org/0000-0002-7374-0726"
+title: "SCATMM: Easy-to-Use Graphical User Interface for Light Propagation in Arbitrary Multilayers"
+version: 3.8.3
+doi: 10.5334/jors.511
+date-released: 2024-08-19
+url: "https://github.com/perspe/Scatmm"
+preferred-citation:
+  type: article
+  doi: 10.5334/jors.511
+  authors:
+    - family-names: "Alexandre"
+      given-names: "Miguel"
+      orcid: "https://orcid.org/0000-0002-7533-9469"
+    - family-names: "Santos"
+      given-names: "Ivan M."
+      orcid: "https://orcid.org/0000-0001-6593-8698"
+    - family-names: "Martins"
+      given-names: "Rodrigo"
+      orcid: "https://orcid.org/0000-0002-1997-7669"
+    - family-names: "Mendes"
+      given-names: "Manuel J."
+      orcid: "https://orcid.org/0000-0002-7374-0726"
+  journal: "Journal of open research software"
+  month: 8
+  start: 11
+  title: "SCATMM: Easy-to-Use Graphical User Interface for Light Propagation in Arbitrary Multilayers"
+  issue: 1
+  volume: 12
+  year: 2024
