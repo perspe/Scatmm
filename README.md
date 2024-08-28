@@ -1,5 +1,7 @@
 # Transfer Matrix Method Graphical Interface
 
+⚠️ If using this software in scientific publications, please cite https://doi.org/10.5334/jors.511.
+
 ## Usage Example
 
 ![Usage Demonstration](Help/preview.gif)
