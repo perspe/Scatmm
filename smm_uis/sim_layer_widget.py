@@ -3,7 +3,7 @@ import uuid
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import (
-    QLocale, QMimeData, QPoint, Qt, pyqtSignal, QByteArray
+    QEvent, QLocale, QMimeData, QObject, QPoint, Qt, pyqtSignal, QByteArray
 )
 from PyQt5.QtWidgets import (
     QAction,
@@ -62,6 +62,7 @@ class SimLayerWidget(QWidget):
         # Add connectors
         self.ui.abs_cb.clicked.connect(lambda x: self.checked.emit(x, self._uuid))
         self.ui.del_button.clicked.connect(lambda: self.deleted.emit(self._uuid))
+        self.ui.mat_cb.installEventFilter(self)
         self.show()
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
@@ -109,6 +110,11 @@ class SimLayerWidget(QWidget):
         if curr_item in materials:
             self.ui.mat_cb.setCurrentText(curr_item)
         logging.debug(f"Updated CB: {curr_item} also set")
+
+    def eventFilter(self, a0: 'QObject', a1: 'QEvent') -> bool:
+        if a1.type() == QEvent.Wheel and a0 is self.ui.mat_cb:
+            return True
+        return super().eventFilter(a0, a1)
 
 
 class SimLayerLayout(QWidget):

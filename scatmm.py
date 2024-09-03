@@ -20,7 +20,7 @@ from PyQt5.QtGui import (
     QPalette,
     QRegExpValidator,
 )
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QShortcut, QVBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QScrollArea, QShortcut, QVBoxLayout
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 import appdirs
 import matplotlib as mpl
@@ -248,12 +248,22 @@ class SMMGUI(QMainWindow):
         self._simLayout = QVBoxLayout(self.ui.sim_tab_sim_frame)
         self._simLayout.setContentsMargins(0, 0, 0, 0)
         self.simWidget = SimLayerLayout(self, self.database.content, 2)
-        self._simLayout.addWidget(self.simWidget)
+        # Add scroll area to widget
+        self.sim_scroll = QScrollArea()
+        self.sim_scroll.setWidget(self.simWidget)
+        self.sim_scroll.setWidgetResizable(True)
+        self.sim_scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self._simLayout.addWidget(self.sim_scroll)
         # Create the opt_tab_widget
         self._optLayout = QVBoxLayout(self.ui.opt_tab_sim_frame)
         self._optLayout.setContentsMargins(0, 0, 0, 0)
         self.optWidget = OptLayerLayout(self, self.database.content, 2)
-        self._optLayout.addWidget(self.optWidget)
+        # Add scroll area to optimization
+        self.opt_scroll = QScrollArea()
+        self.opt_scroll.setWidget(self.optWidget)
+        self.opt_scroll.setWidgetResizable(True)
+        self.opt_scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self._optLayout.addWidget(self.opt_scroll)
         # Store Simulations
         self.sim_results: List[SRes] = []
         # Store imported data
