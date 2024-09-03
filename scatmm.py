@@ -12,7 +12,7 @@ from typing import Any, List, Tuple, Union
 import uuid
 import webbrowser
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets, Qt
 from PyQt5.QtGui import (
     QDoubleValidator,
     QIntValidator,
@@ -43,7 +43,7 @@ from smm_uis.opt_layer_widget import OptLayerLayout
 
 ABS_PATH = os.path.split(os.path.abspath(__file__))[0]
 logging.debug(ABS_PATH)
-VERSION = "3.8.3"
+VERSION = "3.8.4"
 
 log_config = {
     "format": "%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:"
@@ -59,6 +59,17 @@ config_dir = os.path.join(appdirs.user_data_dir(), "scatmm")
 if not os.path.isdir(config_dir):
     logging.info("Copying config data to user directory")
     shutil.copytree(os.path.join(ABS_PATH, "config"), config_dir)
+
+
+ABOUT_MSG =f"""
+<p>Graphical interface to interact with the transfer matrix method (using
+                                                                    scattering
+                                                                    matrices)</p>
+<p><b>Author:</b> Miguel Alexandre</p> <p><b>Version:</b> {VERSION}</p>
+<p><b>If using in scientific publications, please cite: <a
+href='https://doi.org/10.5334/jors.511'>
+https://doi.org/10.5334/jors.511</a></b></p>
+"""
 
 
 def find_loc(filename):
@@ -408,12 +419,7 @@ class SMMGUI(QMainWindow):
         """Show the about dialog"""
         logging.info("Open About Dialog Window")
         title = "About Scatmm"
-        msg = (
-            "Graphical interface to interact with"
-            "the transfer matrix method (using scattering"
-            f"matrices\n\nAuthor: Miguel Alexandre\n\nVersion: {VERSION}"
-        )
-        QMessageBox.about(self, title, msg)
+        about_dialog = QMessageBox.about(self, title, ABOUT_MSG)
 
     """ Simulation Configuration (wavelength or angle) """
 
