@@ -583,8 +583,8 @@ class SMMGUI(QMainWindow):
             lmb_max = float(self.sim_data["lmb_max"].text())
             pol = np.array(
                 [
-                    complex(self.sim_data["pte"].text()),
                     complex(self.sim_data["ptm"].text()),
+                    complex(self.sim_data["pte"].text()),
                 ]
             )
             pol /= norm(pol)
