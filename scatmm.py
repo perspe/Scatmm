@@ -43,7 +43,7 @@ from smm_uis.opt_layer_widget import OptLayerLayout
 
 ABS_PATH = os.path.split(os.path.abspath(__file__))[0]
 logging.debug(ABS_PATH)
-VERSION = "3.8.4"
+VERSION = "3.8.5"
 
 log_config = {
     "format": "%(asctime)s [%(levelname)s] %(filename)s:%(funcName)s:"
