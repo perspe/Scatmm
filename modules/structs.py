@@ -32,7 +32,7 @@ class SRes:
             self._Type = ("Wavelength (nm)", self.Lmb)
         elif self.Type == SType.ANGLE:
             self._REPR = f"A{self.ID}({self.Lmb},{self.Phi})"
-            self._Type = ("Angle (θ)", self.Theta)
+            self._Type = ("Angle (theta)", self.Theta)
         elif self.Type == SType.OPT:
             self._REPR = f"O{self.ID}({self.Theta},{self.Phi})"
             self._Type = ("Optimization (nm)", self.Lmb)
